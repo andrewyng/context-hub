@@ -8,20 +8,64 @@ Context Hub gives AI agents the right documentation — and agents that use it g
 
 ## The Problem
 
-Your AI agent was trained months ago. The API you're using shipped a breaking change last week. The agent doesn't know — it hallucinate parameters, uses deprecated patterns, and writes code that doesn't compile. You debug for 20 minutes, then paste the docs into chat yourself.
+Your LLM agent was trained months — or years — ago. You need to use an API which was not present in the training set. The agent doesn't know. It hallucinates parameters, uses deprecated patterns, and writes code that doesn't compile. Web search can solve this but is more error prone, and causes token burn.
 
-Pasting docs into chat doesn't scale. The agent forgets everything next session. It makes the same mistakes again.
+Debugging existing projects come with their own challenges. They use a particular version of API - and sometimes agents mix up parameters or names across versions. Web search again helps with this, but is still highly error prone based on the agent you are using.
+
+Then there are the things that aren't in any public doc: your team's deployment playbook, your auth patterns, your coding conventions. Every agent on your team should follow them, but none of them know they exist.
+
+You can paste docs into chat, but it doesn't scale. The agent forgets everything next session and makes the same mistakes again. And when the agent does figure something out — a workaround, a missing detail — that knowledge is lost. There's no way to capture it for next time.
+
+```
+  Without Context Hub                          With Context Hub
+  ───────────────────                          ─────────────────
+  Search the web                               Fetch curated docs
+  Noisy results                                Higher chance of code working
+  Code breaks                                  Agent notes any gaps/workarounds
+  Effort in fixing                             ↗ Even smarter next session
+  Knowledge forgotten
+  ↻ Repeat next session
+```
+
+## The Agent Workflow
+
+Context Hub is designed for a loop where agents get better over time.
+
+**Most of the time, it's simple — search, fetch, use:**
+
+```bash
+chub search "stripe payments"        # find relevant docs
+chub get stripe/api                  # fetch the doc
+# Agent reads the doc, writes correct code. Done.
+```
+
+**When the agent discovers a gap**, it can annotate locally for next time:
+
+```bash
+# Agent figured out that webhook verification needs the raw request body.
+# That wasn't obvious from the doc. Save it:
+chub annotate stripe/api "Webhook verification requires raw body — do not parse JSON before verifying"
+
+# Next session, the annotation appears automatically:
+chub get stripe/api
+# ---
+# [Agent note]
+# Webhook verification requires raw body — do not parse JSON before verifying
+```
+
+The annotation persists across sessions. The agent doesn't repeat the same mistake.
+
+**The content itself improves over time too.** Agents can send feedback (`chub feedback stripe/api up` or `down`) to doc authors, who update the content based on what's working and what isn't. So the docs get better for everyone — not just your local annotations.
 
 ## Quick Start
 
 ```bash
 npm install -g @aisuite/chub
-chub update                          # download the registry
 chub search "stripe"                 # find what's available
-chub get stripe/api --lang js        # fetch current docs
+chub get stripe/api                  # fetch current docs
 ```
 
-## Two Content Types
+## Content Types
 
 **Docs** — API and SDK references. Versioned, language-specific. "What to know."
 ```bash
@@ -29,45 +73,12 @@ chub get openai/chat-api --lang py   # Python variant
 chub get stripe/api --lang js        # JavaScript variant
 ```
 
-**Skills** — Task recipes, automation patterns, coding playbooks. Standalone. "How to do it."
+**Skills** — Task recipes, automation patterns, coding playbooks. Shareable across teams so every agent follows the same proven approach. "How to do it."
 ```bash
 chub get pw-community/login-flows    # fetch a skill
 ```
 
 Both are markdown with YAML frontmatter, following the [Agent Skills](https://agentskills.io) open standard — compatible with Claude Code, Cursor, Codex, and other AI tools.
-
-## The Agent Workflow
-
-Context Hub is designed for a loop where agents get better over time:
-
-```
-Search  →  Fetch  →  Use  →  Annotate  →  (next time) Fetch with notes
-```
-
-Here's what that looks like in practice:
-
-```bash
-# 1. Agent searches for relevant docs
-ID=$(chub search "stripe payments" --json | jq -r '.results[0].id')
-
-# 2. Agent fetches the doc
-chub get "$ID" --lang js -o .context/stripe.md
-
-# 3. Agent reads the doc, writes code, discovers that webhook
-#    signature verification requires raw body (not parsed JSON)
-
-# 4. Agent annotates for next time
-chub annotate "$ID" "Webhook signature verification requires raw request body — do not parse JSON before verifying"
-
-# 5. Next session — the annotation appears automatically when fetching
-chub get "$ID" --lang js
-# Output includes:
-# ---
-# [Agent note — 2025-01-15T10:30:00Z]
-# Webhook signature verification requires raw request body — do not parse JSON before verifying
-```
-
-The annotation persists across sessions. Every future fetch of that doc includes the note. The agent doesn't repeat the same mistake.
 
 ## Commands
 
@@ -79,133 +90,26 @@ The annotation persists across sessions. Every future fetch of that doc includes
 | `chub annotate <id> --clear` | Remove an annotation |
 | `chub annotate --list` | List all annotations |
 | `chub feedback <id> <up\|down>` | Rate a doc or skill (sent to maintainers) |
-| `chub update` | Refresh the cached registry |
-| `chub cache status\|clear` | Manage the local cache |
-| `chub build <content-dir>` | Build registry from a content directory |
 
-Every command supports `--json` for machine-readable output.
-
-### Key Flags
-
-| Flag | Purpose |
-|------|---------|
-| `--json` | Structured JSON output (for agents and piping) |
-| `--tags <csv>` | Filter search results by tags |
-| `--lang <language>` | Language variant (js, py, ts, etc.) |
-| `--full` | Fetch all files, not just the entry point |
-| `--file <paths>` | Fetch specific reference file(s), comma-separated |
-| `-o, --output <path>` | Write content to file or directory |
+For the full list of commands, flags, and piping patterns, see the [CLI Reference](docs/cli-reference.md).
 
 ## Key Features
 
 ### Incremental Fetch
 
-When a doc has reference files beyond the main entry point, the CLI tells you:
+Docs can have multiple reference files beyond the main entry point. The CLI shows you what's available and lets you fetch only what you need — no wasted tokens. Use `--file` to grab specific references, or `--full` for everything. See the [CLI Reference](docs/cli-reference.md) for details.
 
-```
-# Acme Widgets API
-...
+### Agent Annotations & Feedback
 
----
-Additional files available (use --file to fetch):
-  references/advanced.md
-  references/errors.md
-Example: chub get acme/widgets --file references/advanced.md
-```
+Annotations are local notes that agents attach to docs. They persist across sessions and appear automatically on future fetches — so agents learn from past experience. Feedback (up/down ratings) goes to doc authors to improve the content for everyone. See [Feedback and Annotations](docs/feedback-and-annotations.md).
 
-Fetch only what you need. No wasted tokens on files you won't use.
+### Private Content Repo — *Coming Soon*
 
-```bash
-chub get acme/widgets --file references/advanced.md     # one file
-chub get acme/widgets --file advanced.md,errors.md       # multiple
-chub get acme/widgets --full                             # everything
-```
-
-### Agent Annotations
-
-Agents attach notes to docs that persist across sessions:
-
-```bash
-chub annotate stripe/api "Use idempotency keys for all POST requests to avoid duplicate charges"
-```
-
-The note appears automatically on every future `chub get stripe/api`. Annotations are local — they live in `~/.chub/annotations/` and are specific to your machine.
-
-To view, replace, or clear:
-```bash
-chub annotate stripe/api                  # view current note
-chub annotate stripe/api "new note"       # replaces previous
-chub annotate stripe/api --clear          # removes it
-chub annotate --list                      # list all annotations
-```
-
-### Feedback
-
-Rate docs to help maintainers improve them:
-
-```bash
-chub feedback stripe/api up "Clear examples, well structured"
-chub feedback openai/chat down --label outdated --label wrong-examples
-```
-
-Feedback is sent to the registry. Annotations are local. Both matter.
-
-### Multi-Source
-
-Combine the public registry with your own private docs:
-
-```yaml
-# ~/.chub/config.yaml
-sources:
-  - name: community
-    url: https://cdn.aichub.org/v1
-  - name: internal
-    path: /path/to/local/docs
-```
-
-Build your own content with `chub build`:
-
-```bash
-chub build my-content/ -o dist/
-```
+Teams need their own internal docs alongside the public registry: deployment playbooks, coding conventions, internal API references. Agents should be able to search both seamlessly. We're working on making this easy to set up and distribute across your team. See [Private Content Repo](docs/private-content.md) for more.
 
 ### JSON Output
 
-Every command supports `--json` for agent piping:
-
-```bash
-# Search and fetch in one pipeline
-ID=$(chub search "stripe" --json | jq -r '.results[0].id')
-chub get "$ID" --lang js -o .context/stripe.md
-
-# Check for additional files
-chub get acme/widgets --json | jq '.additionalFiles'
-
-# List all annotations as JSON
-chub annotate --list --json
-```
-
-## Configuration
-
-Config lives at `~/.chub/config.yaml`:
-
-```yaml
-sources:
-  - name: community
-    url: https://cdn.aichub.org/v1
-  - name: internal
-    path: /path/to/local/docs
-
-source: "official,maintainer,community"   # trust policy
-refresh_interval: 86400                   # cache TTL in seconds (24h)
-telemetry: true                           # anonymous usage analytics
-```
-
-Opt out of telemetry:
-```yaml
-telemetry: false
-```
-Or via environment variable: `CHUB_TELEMETRY=0`
+Every command supports `--json` for structured output, making it easy to pipe into agents and automation. See the [CLI Reference](docs/cli-reference.md) for piping patterns.
 
 ## License
 

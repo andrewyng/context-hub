@@ -1,0 +1,52 @@
+name: Deploy Content to CDN
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'content/**'
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: rm -f package-lock.json && npm install
+
+      # Validate content first
+      - name: Validate content
+        run: node cli/bin/chub build content/ --validate-only
+
+      # Build registry + search index + content tree
+      - name: Build content
+        run: node cli/bin/chub build content/ -o dist/ --base-url https://cdn.aichub.org/v1
+
+      # Sync to S3
+      - name: Deploy to S3
+        run: aws s3 sync dist/ s3://${{ secrets.CDN_BUCKET_NAME }}/v1/ --delete
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+
+      # Invalidate CloudFront cache
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/v1/*"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}

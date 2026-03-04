@@ -226,6 +226,20 @@ export function loadSourceRegistry(source) {
 }
 
 /**
+ * Load BM25 search index for a single source (if available).
+ */
+export function loadSearchIndex(source) {
+  const basePath = source.path || getSourceDir(source.name);
+  const indexPath = join(basePath, 'search-index.json');
+  if (!existsSync(indexPath)) return null;
+  try {
+    return JSON.parse(readFileSync(indexPath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get cache stats.
  */
 export function getCacheStats() {

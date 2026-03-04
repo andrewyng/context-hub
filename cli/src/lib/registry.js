@@ -1,8 +1,10 @@
-import { loadSourceRegistry } from './cache.js';
+import { loadSourceRegistry, loadSearchIndex } from './cache.js';
 import { loadConfig } from './config.js';
 import { normalizeLanguage } from './normalize.js';
+import { search as bm25Search } from './bm25.js';
 
 let _merged = null;
+let _searchIndex = null;
 
 /**
  * Load and merge entries from all configured sources.
@@ -14,10 +16,15 @@ function getMerged() {
   const config = loadConfig();
   const allDocs = [];
   const allSkills = [];
+  const searchIndexes = [];
 
   for (const source of config.sources) {
     const registry = loadSourceRegistry(source);
     if (!registry) continue;
+
+    // Load BM25 search index if available
+    const idx = loadSearchIndex(source);
+    if (idx) searchIndexes.push(idx);
 
     // Support both new format (docs/skills) and old format (entries)
     if (registry.docs) {
@@ -43,6 +50,53 @@ function getMerged() {
           allDocs.push(tagged);
         }
       }
+    }
+  }
+
+  // Merge search indexes (combine documents and recompute IDF)
+  if (searchIndexes.length > 0) {
+    if (searchIndexes.length === 1) {
+      _searchIndex = searchIndexes[0];
+    } else {
+      // Merge multiple indexes: combine documents, recompute global IDF
+      const allDocuments = searchIndexes.flatMap((idx) => idx.documents);
+      const N = allDocuments.length;
+      const dfMap = {};
+      const fieldLengths = { name: [], description: [], tags: [] };
+
+      for (const doc of allDocuments) {
+        const allTerms = new Set([
+          ...(doc.tokens.name || []),
+          ...(doc.tokens.description || []),
+          ...(doc.tokens.tags || []),
+        ]);
+        for (const term of allTerms) {
+          dfMap[term] = (dfMap[term] || 0) + 1;
+        }
+        fieldLengths.name.push((doc.tokens.name || []).length);
+        fieldLengths.description.push((doc.tokens.description || []).length);
+        fieldLengths.tags.push((doc.tokens.tags || []).length);
+      }
+
+      const idf = {};
+      for (const [term, df] of Object.entries(dfMap)) {
+        idf[term] = Math.log((N - df + 0.5) / (df + 0.5) + 1);
+      }
+
+      const avg = (arr) => arr.length === 0 ? 0 : arr.reduce((a, b) => a + b, 0) / arr.length;
+      _searchIndex = {
+        version: '1.0.0',
+        algorithm: 'bm25',
+        params: searchIndexes[0].params,
+        totalDocs: N,
+        avgFieldLengths: {
+          name: avg(fieldLengths.name),
+          description: avg(fieldLengths.description),
+          tags: avg(fieldLengths.tags),
+        },
+        idf,
+        documents: allDocuments,
+      };
     }
   }
 
@@ -121,11 +175,10 @@ export function getDisplayId(entry) {
 
 /**
  * Search entries by query string. Searches both docs and skills.
+ * Uses BM25 when a search index is available, falls back to keyword matching.
  */
 export function searchEntries(query, filters = {}) {
   const entries = applySourceFilter(getAllEntries());
-  const q = query.toLowerCase();
-  const words = q.split(/\s+/);
 
   // Deduplicate: same id+source appearing as both doc and skill → show once
   const seen = new Set();
@@ -138,27 +191,50 @@ export function searchEntries(query, filters = {}) {
     }
   }
 
-  let results = deduped.map((entry) => {
-    let score = 0;
+  // Build entry lookup by id
+  const entryById = new Map();
+  for (const entry of deduped) {
+    entryById.set(entry.id, entry);
+  }
 
-    if (entry.id === q) score += 100;
-    else if (entry.id.includes(q)) score += 50;
+  let results;
 
-    const nameLower = entry.name.toLowerCase();
-    if (nameLower === q) score += 80;
-    else if (nameLower.includes(q)) score += 40;
+  if (_searchIndex) {
+    // BM25 search
+    const bm25Results = bm25Search(query, _searchIndex);
+    results = bm25Results
+      .map((r) => {
+        const entry = entryById.get(r.id);
+        return entry ? { entry, score: r.score } : null;
+      })
+      .filter(Boolean);
+  } else {
+    // Fallback: keyword matching
+    const q = query.toLowerCase();
+    const words = q.split(/\s+/);
 
-    for (const word of words) {
-      if (entry.id.includes(word)) score += 10;
-      if (nameLower.includes(word)) score += 10;
-      if (entry.description?.toLowerCase().includes(word)) score += 5;
-      if (entry.tags?.some((t) => t.toLowerCase().includes(word))) score += 15;
-    }
+    results = deduped.map((entry) => {
+      let score = 0;
 
-    return { entry, score };
-  });
+      if (entry.id === q) score += 100;
+      else if (entry.id.includes(q)) score += 50;
 
-  results = results.filter((r) => r.score > 0);
+      const nameLower = entry.name.toLowerCase();
+      if (nameLower === q) score += 80;
+      else if (nameLower.includes(q)) score += 40;
+
+      for (const word of words) {
+        if (entry.id.includes(word)) score += 10;
+        if (nameLower.includes(word)) score += 10;
+        if (entry.description?.toLowerCase().includes(word)) score += 5;
+        if (entry.tags?.some((t) => t.toLowerCase().includes(word))) score += 15;
+      }
+
+      return { entry, score };
+    });
+
+    results = results.filter((r) => r.score > 0);
+  }
 
   const filtered = applyFilters(results.map((r) => r.entry), filters);
   const filteredSet = new Set(filtered);

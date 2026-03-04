@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { parseFrontmatter } from '../lib/frontmatter.js';
 import { info } from '../lib/output.js';
 import { trackEvent } from '../lib/analytics.js';
+import { buildIndex } from '../lib/bm25.js';
 
 /**
  * Recursively find all DOC.md and SKILL.md files under a directory.
@@ -300,6 +301,14 @@ export function registerBuildCommand(program) {
       // Write output
       mkdirSync(outputDir, { recursive: true });
       writeFileSync(join(outputDir, 'registry.json'), JSON.stringify(registry, null, 2));
+
+      // Build and write BM25 search index
+      const allEntries = [
+        ...allDocs.map((d) => ({ ...d, _type: 'doc' })),
+        ...allSkills.map((s) => ({ ...s, _type: 'skill' })),
+      ];
+      const searchIndex = buildIndex(allEntries);
+      writeFileSync(join(outputDir, 'search-index.json'), JSON.stringify(searchIndex));
 
       // Copy content tree
       for (const authorEntry of topLevel) {

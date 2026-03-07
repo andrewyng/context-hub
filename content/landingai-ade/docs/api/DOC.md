@@ -32,16 +32,6 @@ All endpoint paths below are relative to the base URL (e.g., `POST {base}/v1/ade
 
 **Content type**: Always use `-F` (multipart form data), never `-d` (JSON body).
 
-## SDK Quick Start
-
-```bash
-# Python
-pip install landingai-ade
-
-# TypeScript / JavaScript
-npm install landingai-ade
-```
-
 ## Common Mistakes
 
 | Mistake | Fix |

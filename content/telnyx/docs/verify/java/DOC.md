@@ -5,7 +5,7 @@ metadata:
   languages: "java"
   versions: "6.26.0"
   updated-on: "2026-03-06"
-  source: maintainer
+  source: official
   tags: "telnyx,verify,otp,2fa,phone-verification,lookup"
 ---
 

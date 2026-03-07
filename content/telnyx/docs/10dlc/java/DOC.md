@@ -5,7 +5,7 @@ metadata:
   languages: "java"
   versions: "6.26.0"
   updated-on: "2026-03-06"
-  source: maintainer
+  source: official
   tags: "telnyx,10dlc,a2p,messaging,compliance,brand,campaign"
 ---
 

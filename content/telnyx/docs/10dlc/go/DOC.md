@@ -5,7 +5,7 @@ metadata:
   languages: "go"
   versions: "4.43.0"
   updated-on: "2026-03-06"
-  source: maintainer
+  source: official
   tags: "telnyx,10dlc,a2p,messaging,compliance,brand,campaign"
 ---
 

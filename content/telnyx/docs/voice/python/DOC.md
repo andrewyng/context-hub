@@ -5,7 +5,7 @@ metadata:
   languages: "python"
   versions: "4.60.0"
   updated-on: "2026-03-06"
-  source: maintainer
+  source: official
   tags: "telnyx,voice,call-control,telephony,sip,calls"
 ---
 

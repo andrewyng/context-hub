@@ -5,7 +5,7 @@ metadata:
   languages: "javascript"
   versions: "6.4.0"
   updated-on: "2026-03-06"
-  source: maintainer
+  source: official
   tags: "telnyx,account,sub-accounts,reseller,enterprise"
 ---
 

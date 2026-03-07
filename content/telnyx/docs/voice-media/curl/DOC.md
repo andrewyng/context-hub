@@ -5,7 +5,7 @@ metadata:
   languages: "curl"
   versions: "v2"
   updated-on: "2026-03-06"
-  source: maintainer
+  source: official
   tags: "telnyx,voice,tts,audio,recording,ivr"
 ---
 

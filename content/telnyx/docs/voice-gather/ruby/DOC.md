@@ -5,7 +5,7 @@ metadata:
   languages: "ruby"
   versions: "5.52.0"
   updated-on: "2026-03-06"
-  source: maintainer
+  source: official
   tags: "telnyx,voice,dtmf,speech,gather,ivr"
 ---
 

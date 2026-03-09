@@ -8,11 +8,29 @@ Coding agents hallucinate APIs and forget what they learn in a session. Context 
 
 ## Quick Start
 
+The recommended way to use Context Hub is through its MCP server, which gives your coding agent native tool calls (`chub_search`, `chub_get`, `chub_annotate`, `chub_feedback`) — no shell access required, no manual wiring.
+
+[ATK](https://github.com/Svtoo/atk) installs the MCP server, registers it with your agent, and injects the usage skill — all in three commands:
+
+```bash
+uv tool install atk-cli && atk init         # install ATK once
+atk add github.com/andrewyng/context-hub
+atk mcp add context-hub --claude --codex --gemini --opencode # pick your agents
+```
+
+After this, your agent can call `chub_get`, `chub_search`, and the rest directly as tools, and already knows when and how to use them.
+
+## Alternative: CLI Only
+
+If you prefer to use the `chub` CLI directly and configure your agent manually:
+
 ```bash
 npm install -g @aisuite/chub
 chub search openai                 # find what's available
-chub get openai/chat --lang py     # fetch current docs (Python version) 
+chub get openai/chat --lang py     # fetch current docs (Python version)
 ```
+
+To teach your agent to use the CLI, copy [SKILL.md](cli/skills/get-api-docs/SKILL.md) into your agent's context (e.g. `~/.claude/CLAUDE.md` for Claude Code) and prompt it to use `chub` before writing code against external APIs.
 
 ## How It Works
 

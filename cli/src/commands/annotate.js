@@ -1,6 +1,38 @@
 import chalk from 'chalk';
 import { readAnnotation, writeAnnotation, clearAnnotation, listAnnotations } from '../lib/annotations.js';
+import { getEntry, resolveDocPath } from '../lib/registry.js';
 import { output, error, info } from '../lib/output.js';
+
+/**
+ * Resolve current doc metadata (version, lastUpdated) for integrity tracking.
+ */
+function resolveDocMeta(entryId) {
+  try {
+    const result = getEntry(entryId);
+    if (!result.entry) return {};
+    const entry = result.entry;
+    const resolved = resolveDocPath(entry, null, null);
+    if (!resolved || resolved.needsLanguage || resolved.versionNotFound) return {};
+    // For docs, extract version and lastUpdated from the resolved version object
+    if (entry.languages) {
+      const langObj = entry.languages.length === 1 ? entry.languages[0] : null;
+      if (langObj) {
+        const rec = langObj.recommendedVersion;
+        const verObj = langObj.versions?.find((v) => v.version === rec) || langObj.versions?.[0];
+        if (verObj) {
+          return { version: verObj.version, lastUpdated: verObj.lastUpdated };
+        }
+      }
+    }
+    // For skills, use lastUpdated from the entry directly
+    if (entry.lastUpdated) {
+      return { lastUpdated: entry.lastUpdated };
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
 
 export function registerAnnotateCommand(program) {
   program
@@ -73,7 +105,8 @@ export function registerAnnotateCommand(program) {
         return;
       }
 
-      const data = writeAnnotation(id, note);
+      const docMeta = resolveDocMeta(id);
+      const data = writeAnnotation(id, note, docMeta);
       output(
         data,
         (d) => console.log(`Annotation saved for ${chalk.bold(d.id)}.`),

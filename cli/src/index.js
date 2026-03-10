@@ -11,6 +11,7 @@ import { registerGetCommand } from './commands/get.js';
 import { registerBuildCommand } from './commands/build.js';
 import { registerFeedbackCommand } from './commands/feedback.js';
 import { registerAnnotateCommand } from './commands/annotate.js';
+import { registerScanCommand } from './commands/scan.js';
 import { trackEvent, shutdownAnalytics } from './lib/analytics.js';
 import { error } from './lib/output.js';
 
@@ -51,6 +52,7 @@ ${chalk.bold.underline('Commands')}
 
   ${chalk.bold('search')} [query]              Search docs and skills (no query = list all)
   ${chalk.bold('get')} <ids...>                 Fetch docs or skills by ID
+  ${chalk.bold('scan')} [dir]                   Scan project deps, find available docs
   ${chalk.bold('annotate')} [id] [note]        Save a note — appears on future fetches
   ${chalk.bold('feedback')} <id> <up|down>     Rate a doc (helps authors improve it)
   ${chalk.bold('update')}                      Refresh the cached registry
@@ -66,6 +68,9 @@ ${chalk.bold.underline('Flags')}
   -o, --output <path>    Write content to file or directory
 
 ${chalk.bold.underline('Agent Piping Patterns')}
+
+  ${chalk.dim('# Scan project deps → see which docs are available')}
+  ${chalk.dim('$')} chub scan --json | jq '.matches[].doc_id'
 
   ${chalk.dim('# Get the top result id')}
   ${chalk.dim('$')} chub search "stripe" --json | jq -r '.results[0].id'
@@ -128,6 +133,7 @@ registerGetCommand(program);
 registerBuildCommand(program);
 registerFeedbackCommand(program);
 registerAnnotateCommand(program);
+registerScanCommand(program);
 
 program.parse();
 

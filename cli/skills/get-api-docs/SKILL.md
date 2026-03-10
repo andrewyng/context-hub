@@ -13,6 +13,19 @@ description: >
 When you need documentation for a library or API, fetch it with the `chub` CLI
 rather than guessing from training data. This gives you the current, correct API.
 
+## Step 0 — Scan the project (recommended at session start)
+
+Before writing any code, scan the project to see which dependencies have docs:
+
+```bash
+chub scan --json
+```
+
+This reads `package.json`, `requirements.txt`, `pyproject.toml`, and other
+manifest files, then cross-references against the chub registry. The output
+lists which dependencies have docs and suggests `chub get` commands. Use this
+to proactively load relevant docs before you start coding.
+
 ## Step 1 — Find the right doc ID
 
 ```bash
@@ -66,6 +79,7 @@ Available labels: `outdated`, `inaccurate`, `incomplete`, `wrong-examples`,
 
 | Goal | Command |
 |------|---------|
+| Scan project deps | `chub scan --json` |
 | List everything | `chub search` |
 | Find a doc | `chub search "stripe"` |
 | Exact id detail | `chub search stripe/api` |

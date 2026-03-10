@@ -10,6 +10,7 @@ import { searchEntries, getEntry, listEntries, resolveDocPath, resolveEntryFile 
 import { fetchDoc, fetchDocFull } from '../lib/cache.js';
 import { readAnnotation, writeAnnotation, clearAnnotation, listAnnotations } from '../lib/annotations.js';
 import { sendFeedback, isTelemetryEnabled } from '../lib/telemetry.js';
+import { parseDependencies } from '../lib/deps.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 let _cliVersion;
@@ -247,5 +248,70 @@ export async function handleFeedback({ id, rating, comment, type, lang, version,
     return textResult(result);
   } catch (err) {
     return errorResult(`Feedback failed: ${err.message}`);
+  }
+}
+
+export async function handleScan({ dir, lang }) {
+  try {
+    const scanDir = dir || process.cwd();
+    const { manifests, dependencies } = parseDependencies(scanDir);
+
+    if (manifests.length === 0) {
+      return errorResult(`No dependency files found in ${scanDir}.`, {
+        supported: ['package.json', 'requirements.txt', 'pyproject.toml', 'Pipfile', 'go.mod', 'Gemfile', 'Cargo.toml'],
+      });
+    }
+
+    if (dependencies.length === 0) {
+      return errorResult(`Found ${manifests.map((m) => m.file).join(', ')} but no dependencies detected.`);
+    }
+
+    // Match dependencies against registry
+    const allEntries = listEntries(lang ? { lang } : {});
+    const matches = [];
+    const matchedEntryIds = new Set();
+
+    for (const dep of dependencies) {
+      const q = dep.name.toLowerCase();
+
+      for (const entry of allEntries) {
+        if (matchedEntryIds.has(entry.id)) continue;
+
+        const idLower = entry.id.toLowerCase();
+        const nameLower = (entry.name || '').toLowerCase();
+        const tags = (entry.tags || []).map((t) => t.toLowerCase());
+
+        const idMatch = idLower.includes(q) || idLower.split('/').some((seg) => seg === q);
+        const nameMatch = nameLower.includes(q);
+        const tagMatch = tags.some((t) => t === q || t.includes(q));
+        const authorOrName = idLower.split('/');
+        const reverseMatch = authorOrName.some((seg) => q.includes(seg) && seg.length >= 3);
+
+        if (idMatch || nameMatch || tagMatch || reverseMatch) {
+          matchedEntryIds.add(entry.id);
+          matches.push({
+            dependency: dep.name,
+            ecosystem: dep.ecosystem,
+            doc_id: entry.id,
+            doc_type: entry._type || (entry.languages ? 'doc' : 'skill'),
+            description: entry.description,
+            languages: entry.languages ? entry.languages.map((l) => l.language) : undefined,
+          });
+        }
+      }
+    }
+
+    return textResult({
+      manifests: manifests.map((m) => m.file),
+      dependencies_found: dependencies.length,
+      matches,
+      match_count: matches.length,
+      fetch_commands: matches.map((m) => {
+        const langFlag = lang ? ` --lang ${lang}` : '';
+        return `chub get ${m.doc_id}${langFlag}`;
+      }),
+    });
+  } catch (err) {
+    return errorResult(`Scan failed: ${err.message}`);
   }
 }

@@ -13,7 +13,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { ensureRegistry } from '../lib/cache.js';
 import { listEntries } from '../lib/registry.js';
-import { handleSearch, handleGet, handleList, handleAnnotate, handleFeedback } from './tools.js';
+import { handleSearch, handleGet, handleList, handleAnnotate, handleFeedback, handleScan } from './tools.js';
 
 // Prevent console.log from corrupting the stdio JSON-RPC protocol.
 // Any transitive dependency (e.g. posthog-node) that calls console.log
@@ -102,6 +102,16 @@ server.tool(
     ])).optional().describe('Structured feedback labels'),
   },
   async (args) => handleFeedback(args),
+);
+
+server.tool(
+  'chub_scan',
+  'Scan a project directory for dependency files (package.json, requirements.txt, etc.), extract dependencies, and find which ones have chub docs available. Use this at the start of a coding session to proactively fetch relevant API docs before writing code.',
+  {
+    dir: z.string().optional().describe('Directory to scan (defaults to current working directory)'),
+    lang: z.string().optional().describe('Preferred language for fetch suggestions (e.g. "python", "js")'),
+  },
+  async (args) => handleScan(args),
 );
 
 // --- Register Resource ---

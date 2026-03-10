@@ -230,6 +230,59 @@ describe('chub CLI e2e', () => {
       expect(out).toContain('2.0.0');
       expect(out).toContain('1.0.0');
     });
+
+    it('keeps default get behavior unchanged when env matching is not used', () => {
+      const data = chubJSON(['get', 'acme/versioned-api']);
+      expect(data.content).toContain('Versioned API v2');
+      expect(data.match).toBeUndefined();
+      expect(data.policy).toBeUndefined();
+      expect(data.warnings).toBeUndefined();
+    });
+
+    it('fails on strict mismatch when env matching is enabled', () => {
+      const out = chub(
+        ['get', 'acme/versioned-api', '--match-env', 'node', '--detected-version', '9.9.9', '--mismatch', 'strict'],
+        { expectError: true }
+      );
+      expect(out).toContain('strict mode');
+      expect(out).toContain('Requested 9.9.9');
+    });
+
+    it('falls back on warn mismatch when env matching is enabled', () => {
+      const out = chub(['get', 'acme/versioned-api', '--match-env', 'node', '--detected-version', '9.9.9', '--mismatch', 'warn']);
+      expect(out).toContain('Versioned API v2');
+      expect(out).toContain('version 2.0.0');
+    });
+
+    it('handles undetermined hints by policy (strict fails, warn proceeds)', () => {
+      const strictOut = chub(['get', 'acme/versioned-api', '--match-env', 'node', '--mismatch', 'strict'], { expectError: true });
+      expect(strictOut).toContain('undetermined');
+
+      const warnOut = chub(['get', 'acme/versioned-api', '--match-env', 'node', '--mismatch', 'warn']);
+      expect(warnOut).toContain('Versioned API v2');
+    });
+
+    it('includes env matching diagnostics in --json output', () => {
+      const data = chubJSON([
+        'get',
+        'acme/versioned-api',
+        '--match-env',
+        'node',
+        '--detected-version',
+        '2.0.0',
+        '--confidence',
+        'locked',
+        '--mismatch',
+        'strict',
+      ]);
+      expect(data.policy).toBe('strict');
+      expect(data.match).toBeDefined();
+      expect(data.match.status).toBe('exact');
+      expect(data.match.selectedVersion).toBe('2.0.0');
+      expect(data.match.requestedVersion).toBe('2.0.0');
+      expect(data.match.confidence).toBe('locked');
+      expect(Array.isArray(data.warnings)).toBe(true);
+    });
   });
 
   describe('annotate', () => {

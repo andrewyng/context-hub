@@ -19,7 +19,7 @@ export function readAnnotation(entryId) {
   }
 }
 
-export function writeAnnotation(entryId, note) {
+export function writeAnnotation(entryId, note, docMeta = {}) {
   const dir = getAnnotationsDir();
   mkdirSync(dir, { recursive: true });
   const data = {
@@ -27,6 +27,9 @@ export function writeAnnotation(entryId, note) {
     note,
     updatedAt: new Date().toISOString(),
   };
+  // Store doc metadata for integrity checking
+  if (docMeta.version) data.docVersion = docMeta.version;
+  if (docMeta.lastUpdated) data.docLastUpdated = docMeta.lastUpdated;
   writeFileSync(annotationPath(entryId), JSON.stringify(data, null, 2));
   return data;
 }
@@ -54,4 +57,32 @@ export function listAnnotations() {
   } catch {
     return [];
   }
+}
+
+/**
+ * Check if an annotation may be stale relative to the current doc metadata.
+ * Returns null if no staleness detected, or a warning object if stale.
+ */
+export function checkAnnotationIntegrity(annotation, currentDocMeta) {
+  if (!annotation) return null;
+
+  const warnings = [];
+
+  // Version drift: annotation was made for a different version
+  if (annotation.docVersion && currentDocMeta.version && annotation.docVersion !== currentDocMeta.version) {
+    warnings.push(`version changed (${annotation.docVersion} → ${currentDocMeta.version})`);
+  }
+
+  // Content update: doc was updated after annotation was created
+  if (annotation.docLastUpdated && currentDocMeta.lastUpdated && annotation.docLastUpdated !== currentDocMeta.lastUpdated) {
+    warnings.push(`doc updated since annotation (${annotation.docLastUpdated} → ${currentDocMeta.lastUpdated})`);
+  }
+
+  if (warnings.length === 0) return null;
+
+  return {
+    stale: true,
+    reasons: warnings,
+    message: `This annotation may be outdated: ${warnings.join('; ')}.`,
+  };
 }

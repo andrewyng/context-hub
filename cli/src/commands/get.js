@@ -5,7 +5,7 @@ import { getEntry, resolveDocPath, resolveEntryFile } from '../lib/registry.js';
 import { fetchDoc, fetchDocFull } from '../lib/cache.js';
 import { output, error, info } from '../lib/output.js';
 import { trackEvent } from '../lib/analytics.js';
-import { readAnnotation } from '../lib/annotations.js';
+import { readAnnotation, checkAnnotationIntegrity } from '../lib/annotations.js';
 
 /**
  * Fetch one or more entries by ID. Auto-detects doc vs skill per entry.
@@ -64,6 +64,23 @@ async function fetchEntries(ids, opts, globalOpts) {
     const entryFileName = type === 'skill' ? 'SKILL.md' : 'DOC.md';
     const refFiles = resolved.files.filter((f) => f !== entryFileName);
 
+    // Resolve doc metadata for annotation integrity checking
+    let docMeta = {};
+    if (entry.languages) {
+      const langObj = entry.languages.length === 1 ? entry.languages[0]
+        : opts.lang ? entry.languages.find((l) => l.language === opts.lang) : null;
+      if (langObj) {
+        const ver = opts.version
+          ? langObj.versions?.find((v) => v.version === opts.version)
+          : langObj.versions?.find((v) => v.version === langObj.recommendedVersion) || langObj.versions?.[0];
+        if (ver) {
+          docMeta = { version: ver.version, lastUpdated: ver.lastUpdated };
+        }
+      }
+    } else if (entry.lastUpdated) {
+      docMeta = { lastUpdated: entry.lastUpdated };
+    }
+
     try {
       if (opts.file) {
         // --file mode: fetch specific file(s) by path
@@ -75,17 +92,17 @@ async function fetchEntries(ids, opts, globalOpts) {
         }
         if (requested.length === 1) {
           const content = await fetchDoc(resolved.source, join(resolved.path, requested[0]));
-          results.push({ id: entry.id, type, content, path: join(resolved.path, requested[0]) });
+          results.push({ id: entry.id, type, content, path: join(resolved.path, requested[0]), docMeta });
         } else {
           const allFiles = await fetchDocFull(resolved.source, resolved.path, requested);
-          results.push({ id: entry.id, type, files: allFiles, path: resolved.path });
+          results.push({ id: entry.id, type, files: allFiles, path: resolved.path, docMeta });
         }
       } else if (opts.full && resolved.files.length > 0) {
         const allFiles = await fetchDocFull(resolved.source, resolved.path, resolved.files);
-        results.push({ id: entry.id, type, files: allFiles, path: resolved.path });
+        results.push({ id: entry.id, type, files: allFiles, path: resolved.path, docMeta });
       } else {
         const content = await fetchDoc(resolved.source, entryFile.filePath);
-        results.push({ id: entry.id, type, content, path: entryFile.filePath, additionalFiles: refFiles });
+        results.push({ id: entry.id, type, content, path: entryFile.filePath, additionalFiles: refFiles, docMeta });
       }
     } catch (err) {
       error(`Failed to load "${id}": ${err.message}`, globalOpts);
@@ -98,7 +115,7 @@ async function fetchEntries(ids, opts, globalOpts) {
       entry_id: r.id,
       full: !!opts.full,
       lang: opts.lang || undefined,
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   // Output
@@ -147,14 +164,25 @@ async function fetchEntries(ids, opts, globalOpts) {
       const r = results[0];
       const extraFiles = r.additionalFiles || [];
       const annotation = readAnnotation(r.id);
+
+      // Resolve current doc metadata for integrity check
+      let integrityWarning = null;
+      if (annotation && r.docMeta) {
+        integrityWarning = checkAnnotationIntegrity(annotation, r.docMeta);
+      }
+
       const jsonData = { id: r.id, type: r.type, content: r.content, path: r.path };
       if (extraFiles.length > 0) jsonData.additionalFiles = extraFiles;
       if (annotation) jsonData.annotation = annotation;
+      if (integrityWarning) jsonData.staleWarning = integrityWarning;
       output(
         jsonData,
         (data) => {
           process.stdout.write(data.content);
           if (annotation) {
+            if (integrityWarning) {
+              process.stdout.write(`\n\n---\n[!] Warning: ${integrityWarning.message}\n`);
+            }
             process.stdout.write(`\n\n---\n[Agent note — ${annotation.updatedAt}]\n${annotation.note}\n`);
           }
           if (extraFiles.length > 0) {

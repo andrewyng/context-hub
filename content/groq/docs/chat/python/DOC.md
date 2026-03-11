@@ -4,6 +4,7 @@ description: "Groq API for fast LLM inference with chat completions, streaming, 
 metadata:
   languages: "python"
   versions: "0.15.0"
+  revision: 1
   updated-on: "2026-03-07"
   source: community
   tags: "groq,chat,llm,ai,inference"

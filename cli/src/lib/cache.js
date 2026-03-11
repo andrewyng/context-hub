@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, statSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve, relative } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { createWriteStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -152,14 +152,31 @@ export async function fetchDoc(source, docPath) {
   // Local source: read directly
   if (source.path) {
     const localPath = join(source.path, docPath);
+    // Prevent path traversal for local sources too
+    const resolvedLocal = resolve(localPath);
+    const resolvedRoot = resolve(source.path);
+    if (!resolvedLocal.startsWith(resolvedRoot)) {
+      throw new Error(`Security Error: Path traversal detected for local source "${docPath}"`);
+    }
+
     if (!existsSync(localPath)) {
       throw new Error(`File not found: ${localPath}`);
     }
     return readFileSync(localPath, 'utf8');
   }
 
+  const dataDir = getSourceDataDir(source.name);
+  const cachedPath = join(dataDir, docPath);
+
+  // Security: Prevent Path Traversal in cache
+  const resolvedCache = resolve(cachedPath);
+  const resolvedDataDir = resolve(dataDir);
+  const rel = relative(resolvedDataDir, resolvedCache);
+  if (rel.startsWith('..') || isAbs(rel)) {
+    throw new Error(`Security Error: Path traversal detected for doc "${docPath}"`);
+  }
+
   // Remote source: check cache first
-  const cachedPath = join(getSourceDataDir(source.name), docPath);
   if (existsSync(cachedPath)) {
     return readFileSync(cachedPath, 'utf8');
   }
@@ -187,11 +204,16 @@ export async function fetchDoc(source, docPath) {
   const content = await res.text();
 
   // Cache locally
-  const dir = cachedPath.substring(0, cachedPath.lastIndexOf('/'));
+  const dir = dirname(cachedPath);
   mkdirSync(dir, { recursive: true });
   writeFileSync(cachedPath, content);
 
   return content;
+}
+
+// Helper for path check
+function isAbs(path) {
+  return resolve(path) === resolve(path) && (process.platform === 'win32' || path.startsWith('/'));
 }
 
 /**

@@ -204,7 +204,7 @@ describe('chub_annotate (handleAnnotate)', () => {
 
 describe('chub_feedback (handleFeedback)', () => {
   afterEach(() => {
-    delete process.env.CHUB_TELEMETRY;
+    delete process.env.CHUB_FEEDBACK;
   });
 
   it('handles feedback without throwing', async () => {
@@ -218,11 +218,11 @@ describe('chub_feedback (handleFeedback)', () => {
     expect(['sent', 'skipped', 'error']).toContain(data.status);
   });
 
-  it('returns skipped when telemetry is disabled', async () => {
-    process.env.CHUB_TELEMETRY = '0';
+  it('returns skipped when feedback is disabled', async () => {
+    process.env.CHUB_FEEDBACK = '0';
     const result = await handleFeedback({ id: 'test/entry', rating: 'up' });
     const data = parseResult(result);
     expect(data.status).toBe('skipped');
-    expect(data.reason).toBe('telemetry_disabled');
+    expect(data.reason).toBe('feedback_disabled');
   });
 });

@@ -12,6 +12,7 @@ const DEFAULTS = {
   output_format: 'human',
   source: 'official,maintainer,community',
   telemetry: true,
+  feedback: true,
   telemetry_url: DEFAULT_TELEMETRY_URL,
 };
 
@@ -50,6 +51,7 @@ export function loadConfig() {
     output_format: fileConfig.output_format || DEFAULTS.output_format,
     source: fileConfig.source || DEFAULTS.source,
     telemetry: fileConfig.telemetry !== undefined ? fileConfig.telemetry : DEFAULTS.telemetry,
+    feedback: fileConfig.feedback !== undefined ? fileConfig.feedback : DEFAULTS.feedback,
     telemetry_url: fileConfig.telemetry_url || DEFAULTS.telemetry_url,
   };
 

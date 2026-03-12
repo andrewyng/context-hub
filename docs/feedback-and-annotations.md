@@ -103,13 +103,14 @@ Labels help authors pinpoint specific issues:
 
 **Negative:** `outdated`, `inaccurate`, `incomplete`, `wrong-examples`, `wrong-version`, `poorly-structured`
 
-### Telemetry
+### Disabling Feedback
 
-Feedback is sent via the telemetry system. If telemetry is disabled, feedback is silently skipped. Check status with:
-
-```bash
-chub feedback --status
+```yaml
+# ~/.chub/config.yaml
+feedback: false
 ```
+
+Or via environment variable: `CHUB_FEEDBACK=0`. Check status with `chub feedback --status`.
 
 ## Annotations vs Feedback
 

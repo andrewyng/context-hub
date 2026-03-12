@@ -9,7 +9,7 @@ import { dirname, join, resolve, relative } from 'node:path';
 import { searchEntries, getEntry, listEntries, resolveDocPath, resolveEntryFile } from '../lib/registry.js';
 import { fetchDoc, fetchDocFull } from '../lib/cache.js';
 import { readAnnotation, writeAnnotation, clearAnnotation, listAnnotations } from '../lib/annotations.js';
-import { sendFeedback, isTelemetryEnabled } from '../lib/telemetry.js';
+import { sendFeedback, isFeedbackEnabled } from '../lib/telemetry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 let _cliVersion;
@@ -216,8 +216,8 @@ export async function handleAnnotate({ id, note, clear = false, list = false }) 
 
 export async function handleFeedback({ id, rating, comment, type, lang, version, file, labels }) {
   try {
-    if (!isTelemetryEnabled()) {
-      return textResult({ status: 'skipped', reason: 'telemetry_disabled' });
+    if (!isFeedbackEnabled()) {
+      return textResult({ status: 'skipped', reason: 'feedback_disabled' });
     }
 
     // Auto-detect entry type if not provided

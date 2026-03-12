@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { getEntry } from '../lib/registry.js';
-import { sendFeedback, isTelemetryEnabled, getTelemetryUrl } from '../lib/telemetry.js';
+import { sendFeedback, isFeedbackEnabled, isTelemetryEnabled, getTelemetryUrl } from '../lib/telemetry.js';
 import { getOrCreateClientId } from '../lib/identity.js';
 import { output, error } from '../lib/output.js';
 import { trackEvent } from '../lib/analytics.js';
@@ -32,24 +32,27 @@ export function registerFeedbackCommand(program) {
     .option('--label <label>', 'Feedback label (repeatable: --label outdated --label wrong-examples)', collect, [])
     .option('--agent <name>', 'AI coding tool name')
     .option('--model <model>', 'LLM model name')
-    .option('--status', 'Show telemetry status')
+    .option('--status', 'Show feedback and telemetry status')
     .action(async (id, rating, comment, opts) => {
       const globalOpts = program.optsWithGlobals();
 
       // --status flag
       if (opts.status) {
-        const enabled = isTelemetryEnabled();
+        const feedbackEnabled = isFeedbackEnabled();
+        const telemetryEnabled = isTelemetryEnabled();
         if (globalOpts.json) {
           let clientId = null;
           try { clientId = await getOrCreateClientId(); } catch {}
           console.log(JSON.stringify({
-            telemetry: enabled,
+            feedback: feedbackEnabled,
+            telemetry: telemetryEnabled,
             client_id_prefix: clientId ? clientId.slice(0, 8) : null,
             endpoint: getTelemetryUrl(),
             valid_labels: VALID_LABELS,
           }));
         } else {
-          console.log(`Telemetry: ${enabled ? chalk.green('enabled') : chalk.red('disabled')}`);
+          console.log(`Feedback:  ${feedbackEnabled ? chalk.green('enabled') : chalk.red('disabled')}`);
+          console.log(`Telemetry: ${telemetryEnabled ? chalk.green('enabled') : chalk.red('disabled')}`);
           try {
             const cid = await getOrCreateClientId();
             console.log(`Client ID: ${cid.slice(0, 8)}...`);
@@ -69,10 +72,10 @@ export function registerFeedbackCommand(program) {
         error('Rating must be "up" or "down".', globalOpts);
       }
 
-      if (!isTelemetryEnabled()) {
+      if (!isFeedbackEnabled()) {
         output(
-          { status: 'skipped', reason: 'telemetry_disabled' },
-          () => console.log(chalk.yellow('Telemetry is disabled. Enable with: telemetry: true in ~/.chub/config.yaml')),
+          { status: 'skipped', reason: 'feedback_disabled' },
+          () => console.log(chalk.yellow('Feedback is disabled. Enable with: feedback: true in ~/.chub/config.yaml')),
           globalOpts
         );
         return;

@@ -8,6 +8,12 @@ export function isTelemetryEnabled() {
   return config.telemetry !== false;
 }
 
+export function isFeedbackEnabled() {
+  if (process.env.CHUB_FEEDBACK === '0' || process.env.CHUB_FEEDBACK === 'false') return false;
+  const config = loadConfig();
+  return config.feedback !== false;
+}
+
 export function getTelemetryUrl() {
   const url = process.env.CHUB_TELEMETRY_URL;
   if (url) return url;
@@ -33,7 +39,7 @@ export function getTelemetryUrl() {
  * @param {string} [opts.source] - Registry source name
  */
 export async function sendFeedback(entryId, entryType, rating, opts = {}) {
-  if (!isTelemetryEnabled()) return { status: 'skipped', reason: 'telemetry_disabled' };
+  if (!isFeedbackEnabled()) return { status: 'skipped', reason: 'feedback_disabled' };
 
   const { getOrCreateClientId, detectAgent, detectAgentVersion } = await import('./identity.js');
   const clientId = await getOrCreateClientId();

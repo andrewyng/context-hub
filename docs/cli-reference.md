@@ -105,7 +105,7 @@ Rate a doc or skill. Feedback is sent to the registry for maintainers. See [Feed
 | `--file <file>` | Specific file within the entry |
 | `--agent <name>` | AI tool name |
 | `--model <model>` | LLM model name |
-| `--status` | Show telemetry status |
+| `--status` | Show feedback and telemetry status |
 
 Valid labels: `accurate`, `well-structured`, `helpful`, `good-examples`, `outdated`, `inaccurate`, `incomplete`, `wrong-examples`, `wrong-version`, `poorly-structured`.
 
@@ -179,7 +179,8 @@ sources:
 
 source: "official,maintainer,community"   # trust policy
 refresh_interval: 86400                   # cache TTL in seconds (24h)
-telemetry: true                           # anonymous usage analytics
+telemetry: true                           # anonymous usage analytics (passive)
+feedback: true                            # allow chub feedback to send ratings (explicit)
 ```
 
 ### Telemetry
@@ -191,6 +192,16 @@ Opt out:
 telemetry: false
 ```
 Or via environment variable: `CHUB_TELEMETRY=0`
+
+### Feedback
+
+The `chub feedback` command sends doc/skill ratings to maintainers. This is separate from telemetry — you can disable passive analytics while still being able to rate docs.
+
+Opt out:
+```yaml
+feedback: false
+```
+Or via environment variable: `CHUB_FEEDBACK=0`
 
 ### Multi-Source
 

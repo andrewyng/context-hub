@@ -4,7 +4,8 @@
  * Tracks: command usage, search patterns, doc/skill popularity, errors.
  * Does NOT track feedback ratings (those go to the custom API via telemetry.js).
  *
- * Respects the same telemetry opt-out: `telemetry: false` in config or CHUB_TELEMETRY=0.
+ * Respects telemetry opt-out: `telemetry: false` in config or CHUB_TELEMETRY=0.
+ * Feedback has a separate opt-out: `feedback: false` in config or CHUB_FEEDBACK=0.
  */
 
 import { isTelemetryEnabled } from './telemetry.js';

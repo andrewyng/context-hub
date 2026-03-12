@@ -1,12 +1,12 @@
 ---
 name: genai
-description: "Google Gemini GenAI SDK for multimodal LLM interactions in JavaScript/TypeScript"
+description: "Google Gemini GenAI SDK for multimodal LLM interactions, image generation (Nano Banana), and video generation in JavaScript/TypeScript"
 metadata:
   languages: "javascript"
   versions: "1.43.0"
   updated-on: "2026-03-01"
   source: maintainer
-  tags: "gemini,google,genai,llm,multimodal"
+  tags: "gemini,google,genai,llm,multimodal,nano banana,imagen,image generation,veo,video generation"
 ---
 
 # Gemini API Coding Guidelines (JavaScript/TypeScript)

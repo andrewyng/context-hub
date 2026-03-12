@@ -4,7 +4,7 @@ description: "FastAPI framework for building high-performance REST APIs with Pyt
 metadata:
   languages: "python"
   versions: "0.115.0"
-  updated-on: "2025-07-15"
+  updated-on: "2026-03-12"
   source: community
   tags: "fastapi,python,web,api,rest,pydantic,async"
 ---
@@ -141,36 +141,13 @@ async def list_items(
 ) -> list[ItemResponse]:
     ...
 
-# Mixed path + query + body
-@app.put("/users/{user_id}/items/{item_id}")
-async def update_user_item(
-    user_id: int,
-    item_id: int,
-    q: Optional[str] = None,
-    item: ItemUpdate = ...,  # request body (Pydantic model)
-) -> ItemResponse:
-    ...
 ```
 
 FastAPI distinguishes path, query, and body parameters by type: primitives without a path match → query; Pydantic models → request body.
 
 ## Request Body
 
-```python
-from fastapi import FastAPI
-from pydantic import BaseModel
-
-class Item(BaseModel):
-    name: str
-    price: float
-    in_stock: bool = True
-
-app = FastAPI()
-
-@app.post("/items", status_code=201)
-async def create_item(item: Item) -> Item:
-    return item  # fully validated and typed
-```
+Declare a Pydantic model parameter in the route handler — FastAPI automatically reads it from the JSON request body, validates it, and generates the schema. See [Pydantic v2 Models](#pydantic-v2-models) above.
 
 ## Async Handlers
 
@@ -409,15 +386,9 @@ async def patch_user(user_id: int, update: UserUpdate) -> UserInternal:
 ```python
 from fastapi import status
 # Use named constants — not magic numbers
-status.HTTP_200_OK           # 200
-status.HTTP_201_CREATED      # 201
-status.HTTP_204_NO_CONTENT   # 204
-status.HTTP_400_BAD_REQUEST  # 400
-status.HTTP_401_UNAUTHORIZED # 401
-status.HTTP_403_FORBIDDEN    # 403
-status.HTTP_404_NOT_FOUND    # 404
-status.HTTP_422_UNPROCESSABLE_ENTITY  # auto-raised on validation error
-status.HTTP_500_INTERNAL_SERVER_ERROR # 500
+status.HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
+status.HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
+status.HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY  # 422 auto-raised on validation error
 ```
 
 ## Anti-Patterns to Avoid

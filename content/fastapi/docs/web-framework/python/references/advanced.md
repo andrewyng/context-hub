@@ -88,7 +88,7 @@ async def read_me(user: User = Depends(get_current_user)) -> UserPublic:
 ## File Uploads
 
 ```python
-# pip install python-multipart (included in fastapi[standard])
+# pip install aiofiles python-multipart (python-multipart included in fastapi[standard])
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from pathlib import Path
 import aiofiles
@@ -234,7 +234,7 @@ async def create_item(data: ItemCreate, db: AsyncSession = Depends(get_db)):
     return item
 
 
-# Lifespan — create/drop tables
+# Lifespan — create/drop tables (pass to FastAPI constructor)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
@@ -242,13 +242,13 @@ async def lifespan(app: FastAPI):
     yield
     await engine.dispose()
 
-app = FastAPI(lifespan=lifespan)
+# app = FastAPI(lifespan=lifespan)  — defined once at module top
 ```
 
 ## Testing with TestClient and httpx
 
 ```python
-# pip install httpx pytest pytest-anyio
+# pip install httpx pytest anyio[trio]
 import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient, ASGITransport

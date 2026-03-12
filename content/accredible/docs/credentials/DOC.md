@@ -3,7 +3,7 @@ name: credentials
 description: "Digital credential platform API for issuing, managing, and verifying certificates and badges — covers credential CRUD, bulk operations, search, and group management"
 metadata:
   languages: "http"
-  versions: "1.0.0"
+  versions: "v1"
   revision: 1
   updated-on: "2026-03-12"
   source: community

@@ -2,8 +2,9 @@
 name: voice-ai
 description: "Gradium Voice AI API for low-latency text-to-speech and speech-to-text with WebSocket streaming"
 metadata:
-  languages: "python,rust,javascript,typescript,curl"
+  languages: "python"
   versions: "0.1.0"
+  revision: 1
   source: community
   tags: "gradium,tts,stt,voice,speech,websocket,streaming"
   updated-on: "2026-03-10"
@@ -16,17 +17,15 @@ You are a Gradium API coding expert. Help with writing code that integrates the 
 Please follow the following guidelines when generating code.
 
 You can find the official API documentation and code samples here:
-https://gradium.ai/api_docs.html
+https://docs.gradium.ai/
 
 ## Golden Rule: Use the Correct SDK or API
 
-Use the official Gradium Python SDK for Python projects, or call the REST/WebSocket API directly for JavaScript/TypeScript and other languages.
+Use the official Gradium Python SDK for Python projects.
 
 - **Python Package:** `gradium`
-- **Rust Crate:** Available via crates.io
-- **JavaScript/TypeScript:** No SDK — use standard `fetch` and `WebSocket` APIs directly
 
-**Installation (Python):**
+**Installation:**
 
 ```bash
 pip install gradium
@@ -37,12 +36,6 @@ pip install gradium
 - **Correct:** `from gradium.client import GradiumClient`
 - **Correct:** `client = GradiumClient(api_key="gd_your_api_key_here")`
 - **Correct:** `client = GradiumClient()` (reads `GRADIUM_API_KEY` env var)
-
-**Correct JavaScript/TypeScript usage:**
-
-- **Correct:** `fetch("https://eu.api.gradium.ai/api/post/speech/tts", { headers: { "x-api-key": apiKey } })`
-- **Correct:** `new WebSocket("wss://eu.api.gradium.ai/api/speech/tts", { headers: { "x-api-key": apiKey } })`
-- **Incorrect:** Do not look for an `@gradium/sdk` or `gradium-js` npm package — none exists
 
 ## Initialization and API Key
 
@@ -56,11 +49,6 @@ client = GradiumClient()
 
 # Or pass the API key directly
 client = GradiumClient(api_key="gd_your_api_key_here")
-```
-
-```javascript
-// JavaScript/TypeScript — pass as header in fetch or WebSocket
-const headers = { "x-api-key": process.env.GRADIUM_API_KEY };
 ```
 
 ## Base URLs
@@ -108,26 +96,21 @@ Gradium supports 5 languages across 200+ voices:
 
 Convert text to speech using the POST endpoint:
 
-```bash
-curl -L -X POST https://eu.api.gradium.ai/api/post/speech/tts \
-  -H "x-api-key: your_api_key" \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Hello, world!", "voice_id": "YTpq7expH9539ERJ", "output_format": "wav", "only_audio": true}' \
-  > output.wav
-```
+```python
+import requests
 
-```javascript
-const response = await fetch("https://eu.api.gradium.ai/api/post/speech/tts", {
-    method: "POST",
-    headers: { "x-api-key": gradiumApiKey, "Content-Type": "application/json" },
-    body: JSON.stringify({
-        text: "Hello, world!",
-        voice_id: "YTpq7expH9539ERJ",
-        output_format: "wav",
-        only_audio: true,
-    }),
-});
-const audioBuffer = await response.arrayBuffer();
+response = requests.post(
+    "https://eu.api.gradium.ai/api/post/speech/tts",
+    headers={"x-api-key": api_key, "Content-Type": "application/json"},
+    json={
+        "text": "Hello, world!",
+        "voice_id": "YTpq7expH9539ERJ",
+        "output_format": "wav",
+        "only_audio": True,
+    },
+)
+with open("output.wav", "wb") as f:
+    f.write(response.content)
 ```
 
 **POST request body parameters:**
@@ -179,34 +162,6 @@ async def tts_stream(text, api_key, voice_id="YTpq7expH9539ERJ"):
     return b"".join(audio_chunks)
 ```
 
-```javascript
-const WebSocket = require("ws"); // Node.js; browsers use native WebSocket
-
-const ws = new WebSocket("wss://eu.api.gradium.ai/api/speech/tts", {
-    headers: { "x-api-key": gradiumApiKey },
-});
-
-ws.on("open", () => {
-    ws.send(JSON.stringify({
-        type: "setup", voice_id: "YTpq7expH9539ERJ",
-        model_name: "default", output_format: "wav",
-    }));
-});
-
-const audioChunks = [];
-ws.on("message", (data) => {
-    const msg = JSON.parse(data);
-    if (msg.type === "ready") {
-        ws.send(JSON.stringify({ type: "text", text: "Hello, world!" }));
-        ws.send(JSON.stringify({ type: "end_of_stream" }));
-    } else if (msg.type === "audio") {
-        audioChunks.push(Buffer.from(msg.audio, "base64"));
-    } else if (msg.type === "end_of_stream") {
-        const fullAudio = Buffer.concat(audioChunks);
-    }
-});
-```
-
 **Setup parameters:** `voice_id`, `model_name`, `output_format`, `pronunciation_id` (optional), `close_ws_on_eos` (set `false` for multiplexing), `json_config` (optional).
 
 See [TTS API Reference](references/tts-api.md) for message types, text control tags, multiplexing, and advanced configuration.
@@ -252,29 +207,6 @@ async def stt_stream(audio_data, api_key):
     return " ".join(transcripts)
 ```
 
-```javascript
-const ws = new WebSocket("wss://eu.api.gradium.ai/api/speech/asr", {
-    headers: { "x-api-key": gradiumApiKey },
-});
-
-ws.on("open", () => {
-    ws.send(JSON.stringify({ type: "setup", model_name: "default", input_format: "pcm" }));
-});
-
-const transcripts = [];
-ws.on("message", (data) => {
-    const msg = JSON.parse(data);
-    if (msg.type === "ready") {
-        ws.send(JSON.stringify({ type: "audio", audio: base64Audio }));
-        ws.send(JSON.stringify({ type: "end_of_stream" }));
-    } else if (msg.type === "text") {
-        transcripts.push(msg.text);
-    } else if (msg.type === "end_of_stream") {
-        console.log("Transcription:", transcripts.join(" "));
-    }
-});
-```
-
 **STT audio input requirements (PCM):** 24kHz, 16-bit signed integer, mono. Recommended 1,920 samples (80ms) per chunk.
 
 See [STT API Reference](references/stt-api.md) for VAD usage, flush mechanism, and all message types.
@@ -283,36 +215,11 @@ See [STT API Reference](references/stt-api.md) for VAD usage, flush mechanism, a
 
 Clone a voice by uploading an audio file. **Minimum sample: 10 seconds** of clear speech.
 
-```bash
-curl -X POST https://eu.api.gradium.ai/api/voice/clone \
-  -H "x-api-key: your_api_key" --data-binary @recording.wav
-```
-
 ```python
 with open("recording.wav", "rb") as f:
     response = requests.post("https://eu.api.gradium.ai/api/voice/clone",
                              headers={"x-api-key": api_key}, data=f)
 voice_id = response.json()["voice_id"]
-```
-
-```javascript
-// Browser: from a recorded audio blob
-const file = new File([wavBlob], "recording.wav", { type: "audio/wav" });
-const response = await fetch("https://eu.api.gradium.ai/api/voice/clone", {
-    method: "POST", headers: { "x-api-key": gradiumApiKey }, body: file,
-});
-const { voice_id } = await response.json();
-```
-
-```javascript
-// Server-side (e.g., Next.js API route)
-const formData = await req.formData();
-const file = formData.get("audio");
-const apiKey = req.headers.get("x-gradium-api-key") || process.env.GRADIUM_API_KEY;
-const gradiumRes = await fetch("https://eu.api.gradium.ai/api/voice/clone", {
-    method: "POST", headers: { "x-api-key": apiKey }, body: file,
-});
-const { voice_id } = await gradiumRes.json();
 ```
 
 ## Voice Management
@@ -337,10 +244,18 @@ gradium.voices.delete(client, voice_uid="abc123")
 
 Custom text normalization rules for TTS. See [Pronunciations API Reference](references/pronunciations-api.md).
 
-```bash
-curl -X POST https://eu.api.gradium.ai/api/pronunciations/ \
-  -H "x-api-key: your_api_key" -H "Content-Type: application/json" \
-  -d '{"name": "tech-terms", "language": "en", "rules": [{"original": "API", "rewrite": "A P I", "case_sensitive": true}]}'
+```python
+import requests
+
+response = requests.post(
+    "https://eu.api.gradium.ai/api/pronunciations/",
+    headers={"x-api-key": api_key, "Content-Type": "application/json"},
+    json={
+        "name": "tech-terms",
+        "language": "en",
+        "rules": [{"original": "API", "rewrite": "A P I", "case_sensitive": True}],
+    },
+)
 ```
 
 **REST endpoints:** `POST /pronunciations/`, `GET /pronunciations/`, `GET /pronunciations/{uid}`, `PUT /pronunciations/{uid}`, `DELETE /pronunciations/{uid}`
@@ -373,10 +288,6 @@ Use inline tags in your text for fine-grained control:
 credits = gradium.usages.get(client)
 ```
 
-```bash
-curl https://eu.api.gradium.ai/api/usages/credits -H "x-api-key: your_api_key"
-```
-
 TTS consumes 1 credit per character (~750 characters per minute, ~45,000 per hour).
 
 ## Error Handling
@@ -403,7 +314,7 @@ TTS consumes 1 credit per character (~750 characters per minute, ~45,000 per hou
 
 ## Useful Links
 
-- API Documentation: https://gradium.ai/api_docs.html
+- API Documentation: https://docs.gradium.ai/
 - Support: support@gradium.ai
 
 ## Notes

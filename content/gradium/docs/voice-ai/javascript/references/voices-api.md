@@ -13,22 +13,6 @@ Clone a voice by uploading a raw audio file. This is the simplest way to create 
 }
 ```
 
-```bash
-curl -X POST https://eu.api.gradium.ai/api/voice/clone \
-  -H "x-api-key: your_api_key" \
-  --data-binary @recording.wav
-```
-
-```python
-with open("recording.wav", "rb") as f:
-    response = requests.post(
-        "https://eu.api.gradium.ai/api/voice/clone",
-        headers={"x-api-key": api_key},
-        data=f,
-    )
-voice_id = response.json()["voice_id"]
-```
-
 ```javascript
 // Browser: from a recorded Blob
 const file = new File([wavBlob], "recording.wav", { type: "audio/wav" });
@@ -89,16 +73,6 @@ Create a custom voice from an audio file upload. **Minimum audio sample: 10 seco
 }
 ```
 
-```bash
-curl -X POST https://eu.api.gradium.ai/api/voices/ \
-  -H "x-api-key: your_api_key" \
-  -F "audio_file=@sample.wav" \
-  -F "name=my-custom-voice" \
-  -F "input_format=wav" \
-  -F "description=A warm male voice" \
-  -F "language=en"
-```
-
 ---
 
 ## List Voices
@@ -112,11 +86,6 @@ curl -X POST https://eu.api.gradium.ai/api/voices/ \
 | `include_catalog` | bool | false | Include Gradium's built-in catalog voices |
 
 **Response (200):** Array of voice objects.
-
-```bash
-curl "https://eu.api.gradium.ai/api/voices/?include_catalog=true&limit=10" \
-  -H "x-api-key: your_api_key"
-```
 
 ---
 
@@ -168,11 +137,6 @@ All fields are optional. Only provided fields are updated.
 
 **Response:** 204 No Content
 
-```bash
-curl -X DELETE https://eu.api.gradium.ai/api/voices/abc123 \
-  -H "x-api-key: your_api_key"
-```
-
 ---
 
 ## Voice Response Schema
@@ -188,33 +152,6 @@ curl -X DELETE https://eu.api.gradium.ai/api/voices/abc123 \
 | `is_pro_clone` | boolean | Whether this is a professional clone |
 | `language` | string/null | Voice language code |
 | `tags` | array | Tags with `category` and `value` fields |
-
----
-
-## Python SDK
-
-```python
-import gradium
-
-client = GradiumClient(api_key="gd_your_api_key")
-
-# Create
-voice = gradium.voices.create(client, audio_file="sample.wav", name="my-voice",
-                              description="A warm voice", start_s=0)
-
-# List all
-voices = gradium.voices.get(client)
-
-# Get one
-voice = gradium.voices.get(client, voice_uid="abc123")
-
-# Update
-gradium.voices.update(client, voice_uid="abc123", name="new-name",
-                      description="Updated", start_s=0)
-
-# Delete
-gradium.voices.delete(client, voice_uid="abc123")
-```
 
 ---
 

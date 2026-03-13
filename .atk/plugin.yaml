@@ -1,0 +1,22 @@
+schema_version: "2026-01-23"
+name: context-hub
+description: >
+  Curated, versioned API docs and agent skills for 80+ services — fetched on-demand
+  by coding agents so they write correct code instead of hallucinating APIs.
+
+maturity: community
+
+vendor:
+  name: Andrew Ng / AI Suite
+  url: https://github.com/andrewyng/context-hub
+  docs: https://github.com/andrewyng/context-hub#readme
+
+lifecycle:
+  install: npm install -g @aisuite/chub
+  uninstall: npm uninstall -g @aisuite/chub
+
+mcp:
+  transport: stdio
+  command: npx
+  args: ["-y", "--package", "@aisuite/chub", "chub-mcp"]
+

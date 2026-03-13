@@ -187,8 +187,7 @@ export async function fetchDoc(source, docPath) {
   const content = await res.text();
 
   // Cache locally
-  const dir = cachedPath.substring(0, cachedPath.lastIndexOf('/'));
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dirname(cachedPath), { recursive: true });
   writeFileSync(cachedPath, content);
 
   return content;

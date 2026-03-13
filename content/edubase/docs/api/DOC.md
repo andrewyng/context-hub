@@ -1,13 +1,13 @@
 ---
 name: api
-description: "EduBase API for managing online exams, quizzes, classes, users, and programmatically creating questions with parametric generation, multiple question types, and LMS integration"
+description: "EduBase API for managing online exams, quizzes, users, and programmatically creating questions with parametric generation, multiple question types, and LMS integration"
 metadata:
   languages: "http"
   versions: "1.0.0"
   revision: 1
   updated-on: "2026-03-13"
   source: maintainer
-  tags: "edubase,quiz,exam,lms,education,api,lti,assessment"
+  tags: "edubase,api,quiz,exam,lms,education,lti,assessment,compliance,training,testing"
 ---
 # EduBase API
 

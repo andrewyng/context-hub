@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const CLI_BIN = join(import.meta.dirname, '..', '..', 'bin', 'chub');
-const FIXTURES = join(import.meta.dirname, '..', '..', 'test', 'fixtures');
+const FIXTURES = join(import.meta.dirname, '..', 'fixtures');
 
 describe('chub build', () => {
   it('validates test fixtures and finds docs and skills', () => {
@@ -29,7 +29,7 @@ describe('chub build', () => {
     );
 
     const parsed = JSON.parse(result.trim());
-    // test/fixtures has 3 docs (acme/widgets, acme/versioned-api, multilang/client) and 1 skill (testskills/deploy)
+    // fixtures has 3 docs (acme/widgets, acme/versioned-api, multilang/client) and 1 skill (testskills/deploy)
     expect(parsed.docs).toBe(3);
     expect(parsed.skills).toBe(1);
   });

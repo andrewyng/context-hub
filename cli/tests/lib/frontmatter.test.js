@@ -48,6 +48,7 @@ Body content.`;
     const result = parseFrontmatter(content);
 
     expect(result.attributes.name).toBe('empty-meta');
+    expect(result.attributes.metadata).toBeUndefined();
     expect(result.body).toContain('Body content.');
   });
 
@@ -76,5 +77,17 @@ Immediate body.`;
 
     expect(result.attributes.name).toBe('test');
     expect(result.body).toBe('Immediate body.');
+  });
+
+  it('handles empty frontmatter block', () => {
+    const content = `---
+---
+
+Content.`;
+
+    const result = parseFrontmatter(content);
+
+    expect(result.attributes).toEqual({});
+    expect(result.body).toContain('Content.');
   });
 });

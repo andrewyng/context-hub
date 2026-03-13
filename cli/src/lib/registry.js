@@ -6,6 +6,20 @@ import { search as bm25Search } from './bm25.js';
 let _merged = null;
 let _searchIndex = null;
 
+function getSearchLookupId(sourceName, entryId) {
+  return `${sourceName}:${entryId}`;
+}
+
+function namespaceSearchIndex(index, sourceName) {
+  return {
+    ...index,
+    documents: (index.documents || []).map((doc) => ({
+      ...doc,
+      id: getSearchLookupId(sourceName, doc.id),
+    })),
+  };
+}
+
 /**
  * Load and merge entries from all configured sources.
  * Returns { docs: [...], skills: [...] } with each entry tagged with _source/_sourceObj.
@@ -24,7 +38,7 @@ function getMerged() {
 
     // Load BM25 search index if available
     const idx = loadSearchIndex(source);
-    if (idx) searchIndexes.push(idx);
+    if (idx) searchIndexes.push(namespaceSearchIndex(idx, source.name));
 
     // Support both new format (docs/skills) and old format (entries)
     if (registry.docs) {
@@ -194,7 +208,7 @@ export function searchEntries(query, filters = {}) {
   // Build entry lookup by id
   const entryById = new Map();
   for (const entry of deduped) {
-    entryById.set(entry.id, entry);
+    entryById.set(getSearchLookupId(entry._source, entry.id), entry);
   }
 
   let results;

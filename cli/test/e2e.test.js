@@ -237,7 +237,8 @@ describe('chub CLI e2e', () => {
     });
   });
 
-  describe('annotate', () => {
+  // Annotation tests make multiple CLI calls (~3s each), so need a longer timeout
+  describe('annotate', { timeout: 30_000 }, () => {
     it('saves and displays annotation on get', () => {
       chub(['annotate', 'acme/widgets', 'Use batch mode for large datasets']);
       const out = chub(['get', 'acme/widgets', '--lang', 'js']);

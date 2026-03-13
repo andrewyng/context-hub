@@ -1,5 +1,5 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, basename } from 'node:path';
 import chalk from 'chalk';
 import { getEntry, resolveDocPath, resolveEntryFile } from '../lib/registry.js';
 import { fetchDoc, fetchDocFull } from '../lib/cache.js';
@@ -106,16 +106,17 @@ async function fetchEntries(ids, opts, globalOpts) {
     if (opts.full) {
       for (const r of results) {
         if (r.files) {
-          const baseDir = ids.length > 1 ? join(opts.output, r.id) : opts.output;
+          const safeId = basename(r.id);
+          const baseDir = ids.length > 1 ? join(opts.output, safeId) : opts.output;
           mkdirSync(baseDir, { recursive: true });
           for (const f of r.files) {
-            const outPath = join(baseDir, f.name);
+            const outPath = join(baseDir, basename(f.name));
             mkdirSync(dirname(outPath), { recursive: true });
             writeFileSync(outPath, f.content);
           }
           info(`Written ${r.files.length} files to ${baseDir}`);
         } else {
-          const outPath = join(opts.output, `${r.id}.md`);
+          const outPath = join(opts.output, `${basename(r.id)}.md`);
           mkdirSync(dirname(outPath), { recursive: true });
           writeFileSync(outPath, r.content);
           info(`Written to ${outPath}`);
@@ -126,13 +127,14 @@ async function fetchEntries(ids, opts, globalOpts) {
       if (isDir && results.length > 1) {
         mkdirSync(opts.output, { recursive: true });
         for (const r of results) {
-          const outPath = join(opts.output, `${r.id}.md`);
+          const outPath = join(opts.output, `${basename(r.id)}.md`);
           mkdirSync(dirname(outPath), { recursive: true });
           writeFileSync(outPath, r.content);
           info(`Written to ${outPath}`);
         }
       } else {
-        const outPath = isDir ? join(opts.output, `${results[0].id}.md`) : opts.output;
+        const safeId = basename(results[0].id);
+        const outPath = isDir ? join(opts.output, `${safeId}.md`) : opts.output;
         mkdirSync(dirname(outPath), { recursive: true });
         const combined = results.map((r) => r.content).join('\n\n---\n\n');
         writeFileSync(outPath, combined);

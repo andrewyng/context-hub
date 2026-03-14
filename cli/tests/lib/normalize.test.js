@@ -22,10 +22,17 @@ describe('normalizeLanguage', () => {
     expect(normalizeLanguage('cs')).toBe('csharp');
   });
 
+  it('passes through full language names', () => {
+    expect(normalizeLanguage('python')).toBe('python');
+    expect(normalizeLanguage('javascript')).toBe('javascript');
+    expect(normalizeLanguage('typescript')).toBe('typescript');
+  });
+
   it('is case-insensitive', () => {
     expect(normalizeLanguage('JS')).toBe('javascript');
     expect(normalizeLanguage('Py')).toBe('python');
     expect(normalizeLanguage('TS')).toBe('typescript');
+    expect(normalizeLanguage('Python')).toBe('python');
   });
 
   it('passes through unknown languages unchanged (lowercased)', () => {

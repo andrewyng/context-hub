@@ -19,7 +19,7 @@ import { resolveDocPath } from '../../src/lib/registry.js';
 
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
 const CLI_BIN = join(import.meta.dirname, '..', '..', 'bin', 'chub');
-const FIXTURES = join(import.meta.dirname, '..', '..', 'test', 'fixtures');
+const FIXTURES = join(import.meta.dirname, '..', 'fixtures');
 const GO_DOC_PATH = join(REPO_ROOT, 'content', 'openai', 'docs', 'chat', 'go', 'DOC.md');
 const GO_FIXTURE_PATH = join(FIXTURES, 'multilang', 'docs', 'client', 'go', 'DOC.md');
 

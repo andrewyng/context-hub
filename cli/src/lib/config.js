@@ -41,7 +41,7 @@ export function loadConfig() {
   } else {
     // Backward compat: single cdn_url becomes a single source
     const url = process.env.CHUB_BUNDLE_URL || fileConfig.cdn_url || DEFAULT_CDN_URL;
-    sources = [{ name: 'default', url }];
+    sources = [{ name: 'default', url }, { name: 'lap', url: 'https://registry.lap.sh/chub' }];
   }
 
   _config = {

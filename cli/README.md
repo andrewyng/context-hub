@@ -10,36 +10,17 @@ npm install -g @aisuite/chub
 
 ## Use as an Agent Skill
 
-The CLI ships with a skill that teaches agents to fetch docs automatically instead of guessing from training data. Install it into your agent tool of choice:
-
-### Claude Code
-
-Copy the skill into your project:
+The CLI ships with a skill that teaches agents to fetch docs automatically instead of guessing from training data. Install it with:
 
 ```bash
-mkdir -p .claude/skills
-cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md .claude/skills/get-api-docs.md
+chub --install-skills
 ```
 
-Or install it globally (applies to all projects):
+This auto-detects your AI coding agent (Claude Code, Cursor, Codex, Gemini CLI, Augment, Amp) and installs the skill to the right directory. To target a specific agent:
 
 ```bash
-mkdir -p ~/.claude/skills
-cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md ~/.claude/skills/get-api-docs.md
+chub --install-skills --runtime claude
 ```
-
-### Cursor
-
-Copy the skill into your project's rules directory:
-
-```bash
-mkdir -p .cursor/rules
-cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md .cursor/rules/get-api-docs.md
-```
-
-### Other Agent Tools
-
-The skill is a standard markdown file at `skills/get-api-docs/SKILL.md`. Copy it to wherever your agent tool reads custom instructions from.
 
 ## Commands
 

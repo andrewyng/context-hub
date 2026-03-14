@@ -7,8 +7,40 @@ Full command reference for Context Hub (`chub`).
 | Flag | Purpose |
 |------|---------|
 | `--json` | Structured JSON output (for agents and piping) |
+| `--install-skills` | Install the get-api-docs skill for your AI coding agent |
+| `--runtime <agent>` | Target agent for `--install-skills`: claude, cursor, codex, gemini, augment, amp, generic |
+| `--force` | Overwrite existing skill files (with `--install-skills`) |
+| `--dry-run` | Show what would be installed without writing (with `--install-skills`) |
 | `--version` | Print CLI version |
 | `--help` | Show help |
+
+## chub --install-skills
+
+Install the bundled `get-api-docs` skill into the correct directory for your AI coding agent.
+
+Auto-detects Claude Code, Cursor, Codex CLI, Gemini CLI, Augment, and Amp using repo markers (`.claude/`, `.cursor/`, etc.), environment variables, and binary scan on `$PATH`.
+
+```bash
+chub --install-skills                    # auto-detect agent, install skill
+chub --install-skills --runtime claude   # target a specific agent
+chub --install-skills --runtime generic  # install to .agents/skills/ (universal)
+chub --install-skills --dry-run          # preview without writing
+chub --install-skills --force            # overwrite existing installation
+```
+
+When multiple agents are detected, an interactive menu lets you choose which agent(s) to install for. In non-interactive mode (`--json` or piped), use `--runtime` to specify the target.
+
+### Supported agents
+
+| Agent | Skills directory |
+|-------|-----------------|
+| Claude Code | `.claude/skills/get-api-docs/` |
+| Cursor | `.cursor/skills/get-api-docs/` |
+| Codex CLI | `.codex/skills/get-api-docs/` |
+| Gemini CLI | `.gemini/skills/get-api-docs/` |
+| Augment (Auggie) | `.augment/skills/get-api-docs/` |
+| Amp | `.agents/skills/get-api-docs/` |
+| Generic | `.agents/skills/get-api-docs/` |
 
 ## chub search [query]
 

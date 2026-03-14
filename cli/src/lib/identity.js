@@ -1,6 +1,4 @@
-import { createHash } from 'node:crypto';
-import { execSync } from 'node:child_process';
-import { platform } from 'node:os';
+import { randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { getChubDir } from './config.js';
@@ -8,43 +6,12 @@ import { getChubDir } from './config.js';
 let _cachedClientId = null;
 
 /**
- * Get the platform-native machine UUID.
- */
-function getMachineUUID() {
-  const plat = platform();
-
-  if (plat === 'darwin') {
-    return execSync(
-      `ioreg -rd1 -c IOPlatformExpertDevice | awk -F'"' '/IOPlatformUUID/{print $4}'`,
-      { encoding: 'utf8' }
-    ).trim();
-  }
-
-  if (plat === 'linux') {
-    try {
-      return readFileSync('/etc/machine-id', 'utf8').trim();
-    } catch {
-      return readFileSync('/var/lib/dbus/machine-id', 'utf8').trim();
-    }
-  }
-
-  if (plat === 'win32') {
-    const output = execSync(
-      'reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography" /v MachineGuid',
-      { encoding: 'utf8' }
-    );
-    const match = output.match(/MachineGuid\s+REG_SZ\s+(.+)/);
-    if (match) return match[1].trim();
-    throw new Error('Could not parse MachineGuid from registry');
-  }
-
-  throw new Error(`Unsupported platform: ${plat}`);
-}
-
-/**
  * Get or create a stable, anonymous client ID.
- * Checks ~/.chub/client_id for a cached 64-char hex string.
- * If not found, hashes the machine UUID with SHA-256 and saves it.
+ * Checks ~/.chub/client_id for a persisted value.
+ * If not found, generates a random UUID (no hardware fingerprinting).
+ *
+ * Existing client_id files (64-char hex from previous versions) are
+ * accepted as-is so upgrades are seamless.
  */
 export async function getOrCreateClientId() {
   if (_cachedClientId) return _cachedClientId;
@@ -55,7 +22,7 @@ export async function getOrCreateClientId() {
   // Try to read existing client id
   try {
     const existing = readFileSync(idPath, 'utf8').trim();
-    if (/^[0-9a-f]{64}$/.test(existing)) {
+    if (existing.length > 0) {
       _cachedClientId = existing;
       return existing;
     }
@@ -63,18 +30,20 @@ export async function getOrCreateClientId() {
     // File doesn't exist or is unreadable
   }
 
-  // Generate from machine UUID
-  const uuid = getMachineUUID();
-  const hash = createHash('sha256').update(uuid).digest('hex');
+  // Generate a random ID (no hardware binding)
+  const id = randomUUID();
 
-  // Ensure directory exists
-  if (!existsSync(chubDir)) {
-    mkdirSync(chubDir, { recursive: true });
+  try {
+    if (!existsSync(chubDir)) {
+      mkdirSync(chubDir, { recursive: true });
+    }
+    writeFileSync(idPath, id, 'utf8');
+  } catch {
+    // Non-fatal — use the ID in memory for this session
   }
 
-  writeFileSync(idPath, hash, 'utf8');
-  _cachedClientId = hash;
-  return hash;
+  _cachedClientId = id;
+  return id;
 }
 
 /**

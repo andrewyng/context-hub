@@ -11,6 +11,7 @@ import { registerGetCommand } from './commands/get.js';
 import { registerBuildCommand } from './commands/build.js';
 import { registerFeedbackCommand } from './commands/feedback.js';
 import { registerAnnotateCommand } from './commands/annotate.js';
+import { handleInstallSkills } from './commands/install.js';
 import { trackEvent, shutdownAnalytics } from './lib/analytics.js';
 import { error } from './lib/output.js';
 import { showWelcomeIfNeeded } from './lib/welcome.js';
@@ -58,6 +59,12 @@ ${chalk.bold.underline('Commands')}
   ${chalk.bold('cache')} status|clear          Manage the local cache
   ${chalk.bold('build')} <content-dir>        Build registry from content directory
 
+${chalk.bold.underline('Skill Install')}
+
+  ${chalk.dim('$')} chub --install-skills                        ${chalk.dim('# auto-detect agent, install skill')}
+  ${chalk.dim('$')} chub --install-skills --runtime claude       ${chalk.dim('# target a specific agent')}
+  ${chalk.dim('$')} chub --install-skills --dry-run              ${chalk.dim('# preview without writing')}
+
 ${chalk.bold.underline('Flags')}
 
   --json                 Structured JSON output (for agents and piping)
@@ -97,7 +104,16 @@ program
   .description('Context Hub - search and retrieve LLM-optimized docs and skills')
   .version(pkg.version, '-V, --cli-version')
   .option('--json', 'Output as JSON (machine-readable)')
-  .action(() => {
+  .option('--install-skills', 'Install the get-api-docs skill for your AI coding agent')
+  .option('--runtime <agent>', 'Target agent for --install-skills: claude, cursor, codex, gemini, augment, amp, generic')
+  .option('--force', 'Overwrite existing skill files (with --install-skills)')
+  .option('--dry-run', 'Show what would be installed without writing (with --install-skills)')
+  .action(async () => {
+    const opts = program.opts();
+    if (opts.installSkills) {
+      await handleInstallSkills(opts, opts);
+      return;
+    }
     printUsage();
   });
 

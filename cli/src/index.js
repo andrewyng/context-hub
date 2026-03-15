@@ -29,11 +29,11 @@ ${chalk.bold.underline('Getting Started')}
   ${chalk.dim('$')} chub search                                ${chalk.dim('# list everything available')}
   ${chalk.dim('$')} chub search "stripe"                       ${chalk.dim('# fuzzy search')}
   ${chalk.dim('$')} chub search stripe/payments                ${chalk.dim('# exact id → full detail')}
-  ${chalk.dim('$')} chub get stripe/api                        ${chalk.dim('# print doc to terminal')}
-  ${chalk.dim('$')} chub get stripe/api -o doc.md              ${chalk.dim('# save to file')}
+  ${chalk.dim('$')} chub get stripe/api --lang js              ${chalk.dim('# print doc to terminal')}
+  ${chalk.dim('$')} chub get stripe/api --lang js -o doc.md    ${chalk.dim('# save to file')}
   ${chalk.dim('$')} chub get openai/chat --lang py             ${chalk.dim('# specific language')}
   ${chalk.dim('$')} chub get pw-community/login-flows          ${chalk.dim('# fetch a skill')}
-  ${chalk.dim('$')} chub get openai/chat stripe/api            ${chalk.dim('# fetch multiple')}
+  ${chalk.dim('$')} chub get openai/chat stripe/api --lang js  ${chalk.dim('# fetch multiple')}
 
 ${chalk.bold.underline('Learn & Improve')}
 
@@ -76,7 +76,7 @@ ${chalk.bold.underline('Agent Piping Patterns')}
   ${chalk.dim('$')} chub get "$ID" --lang js -o .context/stripe.md
 
   ${chalk.dim('# Fetch multiple at once')}
-  ${chalk.dim('$')} chub get openai/chat stripe/api -o .context/
+  ${chalk.dim('$')} chub get openai/chat stripe/api --lang js -o .context/
 
 ${chalk.bold.underline('Multi-Source Config')} ${chalk.dim('(~/.chub/config.yaml)')}
 
@@ -86,7 +86,7 @@ ${chalk.bold.underline('Multi-Source Config')} ${chalk.dim('(~/.chub/config.yaml
   ${chalk.dim('  - name: internal')}
   ${chalk.dim('    path: /path/to/local/docs')}
 
-  ${chalk.dim('# On id collision, use source: prefix: chub get internal:openai/chat')}
+  ${chalk.dim('# On id collision, use source: prefix: chub get internal:openai/chat --lang py')}
 `);
 }
 

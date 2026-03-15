@@ -31,22 +31,22 @@ chub search --tags automation        # filter by tag
 
 ## chub get \<ids...\>
 
-Fetch one or more docs or skills by ID. Auto-detects type (doc vs skill). Auto-infers language when only one variant exists.
+Fetch one or more docs or skills by ID. Auto-detects type (doc vs skill). Docs require `--lang`.
 
 | Flag | Purpose |
 |------|---------|
-| `--lang <language>` | Language variant (js, py, ts, etc.) |
+| `--lang <language>` | Language variant for docs (required) |
 | `--version <version>` | Specific doc version |
 | `--full` | Fetch all files, not just the entry point |
 | `--file <paths>` | Fetch specific file(s) by path (comma-separated) |
 | `-o, --output <path>` | Write to file or directory |
 
 ```bash
-chub get stripe/api                  # single doc (auto-infers lang)
-chub get openai/chat-api --lang py   # specific language
+chub get stripe/api --lang js        # single doc
+chub get openai/chat --lang py       # specific language
 chub get pw-community/login-flows    # fetch a skill
-chub get stripe/api openai/chat-api  # multiple entries
-chub get stripe/api -o .context/     # save to file
+chub get stripe/api openai/chat --lang js  # multiple entries
+chub get stripe/api --lang js -o .context/ # save to file
 ```
 
 ### Incremental Fetch
@@ -58,24 +58,22 @@ When a doc has reference files beyond the main entry point, the output includes 
 Additional files available (use --file to fetch):
   references/advanced.md
   references/errors.md
-Example: chub get acme/widgets --file references/advanced.md
+Example: chub get acme/widgets --lang js --file references/advanced.md
 ```
 
 Fetch only what you need:
 
 ```bash
-chub get acme/widgets --file references/advanced.md       # one file
-chub get acme/widgets --file advanced.md,errors.md         # multiple
-chub get acme/widgets --full                               # everything
+chub get acme/widgets --lang js --file references/advanced.md                      # one file
+chub get acme/widgets --lang js --file references/advanced.md,references/errors.md # multiple
+chub get acme/widgets --lang js --full                                              # everything
 ```
 
 With `--json`, the response includes an `additionalFiles` array listing available reference files.
 
 ### Multi-Language Docs
 
-If a doc is available in multiple languages and `--lang` is not specified, the CLI lists available languages and asks you to choose.
-
-If a doc has only one language, `--lang` is not required — it's auto-inferred.
+If `--lang` is omitted for a doc, the CLI errors and lists available languages.
 
 ## chub annotate [id] [note]
 
@@ -151,16 +149,16 @@ chub build my-content/ --validate-only           # validate only
 ```bash
 # Search, pick first result, fetch
 ID=$(chub search "stripe" --json | jq -r '.results[0].id')
-chub get "$ID" -o .context/stripe.md
+chub get "$ID" --lang js -o .context/stripe.md
 
 # Fetch multiple docs at once
-chub get openai/chat stripe/api -o .context/
+chub get openai/chat stripe/api --lang js -o .context/
 
 # Check what additional files are available
-chub get acme/widgets --json | jq '.additionalFiles'
+chub get acme/widgets --lang js --json | jq '.additionalFiles'
 
 # Fetch a specific reference file
-chub get acme/widgets --file references/advanced.md
+chub get acme/widgets --lang js --file references/advanced.md
 
 # List all annotations as JSON
 chub annotate --list --json
@@ -208,5 +206,5 @@ Or via environment variable: `CHUB_FEEDBACK=0`
 When multiple sources define the same entry ID, prefix with the source name to disambiguate:
 
 ```bash
-chub get internal:openai/chat
+chub get internal:openai/chat --lang py
 ```

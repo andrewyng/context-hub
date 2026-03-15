@@ -23,10 +23,10 @@ Examples:
   chub search --tags automation       # filter by tag
 
 ### chub get <ids...>
-Fetch one or more docs or skills by ID. Auto-detects type (doc vs skill). Auto-infers language when only one is available.
+Fetch one or more docs or skills by ID. Auto-detects type (doc vs skill). Docs require `--lang`.
 
 Flags:
-  --lang <language>   Language variant (js, py, ts, etc.)
+  --lang <language>   Language variant (js, py, ts, etc.) for docs (required)
   --version <version> Specific doc version
   --full              Fetch all files, not just the entry point
   --file <paths>      Fetch specific file(s) by path (comma-separated)
@@ -34,13 +34,12 @@ Flags:
   --json              JSON output with { id, type, content, path, additionalFiles?, annotation? }
 
 Examples:
-  chub get stripe/api                           # single doc (auto-infers lang if only one)
-  chub get openai/chat-api --lang py            # specific language
+  chub get stripe/api --lang js                 # single doc, specific language is passed via `--lang` (required)
   chub get pw-community/login-flows             # fetch a skill
-  chub get stripe/api openai/chat-api           # multiple entries
-  chub get acme/widgets --file references/advanced.md   # specific reference file
-  chub get acme/widgets --full                  # all files
-  chub get stripe/api -o .context/stripe.md     # save to file
+  chub get stripe/api openai/chat --lang js     # multiple entries
+  chub get acme/widgets --lang js --file references/advanced.md   # specific reference file
+  chub get acme/widgets --lang js --full        # all files
+  chub get stripe/api --lang js -o .context/stripe.md     # save to file
 
 Behavior:
   - When additional reference files exist beyond the entry point, output includes a footer listing them
@@ -133,13 +132,13 @@ ID=$(chub search "stripe" --json | jq -r '.results[0].id')
 chub get "$ID" --lang js -o .context/stripe.md
 
 # Fetch multiple docs at once
-chub get openai/chat stripe/api -o .context/
+chub get openai/chat stripe/api --lang js -o .context/
 
 # Check what additional files are available
-chub get acme/widgets --json | jq '.additionalFiles'
+chub get acme/widgets --lang js --json | jq '.additionalFiles'
 
 # Fetch a specific reference file
-chub get acme/widgets --file references/advanced.md
+chub get acme/widgets --lang js --file references/advanced.md
 
 # List all your annotations
 chub annotate --list --json
@@ -147,11 +146,10 @@ chub annotate --list --json
 ## Key Behaviors
 
 - Auto-detect type: `chub get` works for both docs and skills. No need to specify type.
-- Auto-infer language: If a doc has only one language variant, --lang is not required.
-- Multi-language prompt: If a doc has multiple languages and --lang is not specified, the CLI lists available languages.
+- Docs require `--lang`: If it is omitted, the CLI errors and lists available languages.
 - Incremental fetch: Default fetch returns only the entry file. A footer lists additional reference files. Use --file for selective fetch, --full for everything.
 - Annotations on fetch: If an annotation exists for an entry, it appears at the end of `chub get` output in both human and JSON modes.
-- Multi-source: Config supports multiple sources (URLs and local paths). On ID collision, prefix with source name: `chub get internal:openai/chat`.
+- Multi-source: Config supports multiple sources (URLs and local paths). On ID collision, prefix with source name: `chub get internal:openai/chat --lang py`.
 - JSON everywhere: All commands support --json for structured output.
 
 ## Configuration

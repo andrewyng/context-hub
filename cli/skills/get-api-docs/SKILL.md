@@ -28,7 +28,7 @@ Pick the best-matching `id` from the results (e.g. `openai/chat`, `anthropic/sdk
 chub get <id> --lang py    # or --lang js, --lang ts
 ```
 
-Omit `--lang` if the doc has only one language variant — it will be auto-selected.
+`--lang` is required for all docs.
 
 ## Step 3 — Use the docs
 

@@ -1,5 +1,26 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { mkdtempSync, rmSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 import { handleSearch, handleGet, handleList, handleAnnotate, handleFeedback } from '../../src/mcp/tools.js';
+
+let tmpChubDir;
+let origChubDir;
+
+beforeAll(() => {
+  tmpChubDir = mkdtempSync(join(tmpdir(), 'chub-mcp-test-'));
+  origChubDir = process.env.CHUB_DIR;
+  process.env.CHUB_DIR = tmpChubDir;
+});
+
+afterAll(() => {
+  if (origChubDir !== undefined) {
+    process.env.CHUB_DIR = origChubDir;
+  } else {
+    delete process.env.CHUB_DIR;
+  }
+  rmSync(tmpChubDir, { recursive: true, force: true });
+});
 
 /**
  * Helper to parse the JSON text from an MCP tool result.

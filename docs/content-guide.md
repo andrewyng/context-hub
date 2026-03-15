@@ -79,9 +79,11 @@ author/docs/entry-name/
 Agents request a specific version with `--version`:
 
 ```bash
-chub get author/entry-name                    # latest version (recommended)
-chub get author/entry-name --version 1.0.0    # specific version
+chub get author/entry-name --lang js                    # latest version (recommended)
+chub get author/entry-name --lang js --version 1.0.0    # specific version
 ```
+
+Docs require `--lang` for every fetch, including single-language entries. Use `--version` in addition to `--lang`, not instead of it.
 
 If a requested version doesn't exist, the CLI lists available versions.
 

@@ -25,9 +25,10 @@ The DOC.md has standard frontmatter:
 ---
 name: internal-api
 description: Our internal REST API
-languages: python
-versions: 2.0.0
-tags: internal, rest, api
+metadata:
+  languages: "python"
+  versions: "2.0.0"
+  tags: "internal,rest,api"
 ---
 # Internal API
 ...
@@ -71,7 +72,7 @@ Now everything works across both sources:
 
 ```bash
 chub search "api"                          # searches public + private
-chub get mycompany/internal-api             # fetches your private doc
+chub get mycompany/internal-api --lang py   # fetches your private doc
 chub get mycompany/deploy-staging           # fetches your private skill
 ```
 
@@ -82,8 +83,8 @@ Put your content directory in a shared git repo or internal CDN. Everyone on the
 If a private id collides with a public one, use the `source:` prefix:
 
 ```bash
-chub get internal:openai/chat           # your internal version
-chub get community:openai/chat         # the public version
+chub get internal:openai/chat --lang py   # your internal version
+chub get community:openai/chat --lang py  # the public version
 ```
 
 One CLI, one search, public and private content layered together.

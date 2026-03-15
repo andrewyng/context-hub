@@ -30,6 +30,22 @@ chub get <id> --lang py    # or --lang js, --lang ts
 
 Omit `--lang` if the doc has only one language variant — it will be auto-selected.
 
+For version-sensitive tasks, collect deterministic hints first, then opt into env matching:
+
+1. Prefer locked/installed evidence (lockfile, pinned dependency, runtime output) over declared ranges.
+2. Pass what you can prove:
+
+```bash
+chub get <id> --lang js --match-env node --detected-version 20.11.0 --confidence locked --mismatch strict
+```
+
+Policy guidance:
+- Use `--mismatch strict` for CI/high-safety workflows.
+- Use `--mismatch warn` for interactive workflows where fallback is acceptable.
+
+Do not claim an exact version match when your evidence is only declared constraints.
+If confidence is weak, use `--confidence declared` (or `unknown`) and state uncertainty.
+
 ## Step 3 — Use the docs
 
 Read the fetched content and use it to write accurate code or answer the question.

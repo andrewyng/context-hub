@@ -37,6 +37,10 @@ Fetch one or more docs or skills by ID. Auto-detects type (doc vs skill). Auto-i
 |------|---------|
 | `--lang <language>` | Language variant (js, py, ts, etc.) |
 | `--version <version>` | Specific doc version |
+| `--match-env <python\|node\|auto>` | Opt-in env-version matching for docs |
+| `--mismatch <strict\|warn>` | Policy when env hint does not match (default: `warn`) |
+| `--detected-version <version>` | Optional environment version hint |
+| `--confidence <installed\|locked\|declared\|unknown>` | Optional confidence for the version hint |
 | `--full` | Fetch all files, not just the entry point |
 | `--file <paths>` | Fetch specific file(s) by path (comma-separated) |
 | `-o, --output <path>` | Write to file or directory |
@@ -47,6 +51,33 @@ chub get openai/chat-api --lang py   # specific language
 chub get pw-community/login-flows    # fetch a skill
 chub get stripe/api openai/chat-api  # multiple entries
 chub get stripe/api -o .context/     # save to file
+chub get acme/versioned-api --match-env node --detected-version 20.11.0 --mismatch warn
+```
+
+### Env Version Matching (Opt-in)
+
+`--match-env` enables version matching against your hinted runtime/environment version.
+
+- `--match-env` not provided: existing `chub get` behavior is unchanged.
+- `--mismatch strict`: fail closed on mismatch or undetermined hint.
+- `--mismatch warn`: continue with fallback and include warnings.
+
+`--detected-version` and `--confidence` are optional agent-provided hints.
+
+When `--json` and `--match-env` are used, output includes:
+
+```json
+{
+  "id": "openai/chat",
+  "policy": "strict",
+  "match": {
+    "status": "exact",
+    "selectedVersion": "4.52.0",
+    "requestedVersion": "4.52.0",
+    "confidence": "locked"
+  },
+  "warnings": []
+}
 ```
 
 ### Incremental Fetch

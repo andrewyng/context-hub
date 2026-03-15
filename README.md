@@ -26,6 +26,12 @@ chub get stripe/api --lang js        # fetch the doc
 # Agent reads the doc, writes correct code. Done.
 ```
 
+**For version-sensitive tasks, opt into environment matching:**
+
+```bash
+chub get openai/chat --lang py --match-env python --detected-version 1.72.0 --mismatch strict
+```
+
 **When the agent discovers a gap**, it can annotate locally for next time:
 
 ```bash
@@ -59,6 +65,12 @@ More content types than API documentation (such as agent skills) are on the road
 | `chub feedback <id> <up\|down>` | Upvote or downvote a doc (sent to maintainers) |
 
 For the full list of commands, flags, and piping patterns, see the [CLI Reference](docs/cli-reference.md).
+
+`chub get` also supports opt-in env-version matching:
+- `--match-env <python|node|auto>`
+- `--mismatch <strict|warn>`
+- `--detected-version <version>`
+- `--confidence <installed|locked|declared|unknown>`
 
 ## Self-Improving Agents
 

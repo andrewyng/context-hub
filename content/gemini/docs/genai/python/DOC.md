@@ -3,8 +3,8 @@ name: genai
 description: "Google Gemini GenAI SDK for multimodal LLM interactions, image generation (Nano Banana), and video generation in Python"
 metadata:
   languages: "python"
-  versions: "1.56.0"
-  updated-on: "2026-03-01"
+  versions: "1.67.0"
+  updated-on: "2026-03-17"
   source: maintainer
   tags: "gemini,google,genai,llm,multimodal,nano banana,imagen,image generation,veo,video generation"
 ---
@@ -73,23 +73,21 @@ The `google-genai` library requires creating a client object for all API calls.
 ## Models
 
 - By default, use the following models as of March 2026:
-    - **General Text & Multimodal Tasks:** `gemini-2.5-flash`
-    - **Coding and Complex Reasoning Tasks:** `gemini-2.5-pro`
+    - **General Text & Multimodal Tasks:** `gemini-3-flash-preview`
+    - **Coding and Complex Reasoning Tasks:** `gemini-3.1-pro-preview`
+    - **Cost-Efficient Tasks:** `gemini-3.1-flash-lite`
     - **Image Generation Tasks:** `imagen-4.0-fast-generate-001`,
         `imagen-4.0-generate-001` or `imagen-4.0-ultra-generate-001`
-    - **Image Editing Tasks:** `gemini-2.5-flash-image-preview`
+    - **Image Editing Tasks:** `gemini-3.1-flash-image`
     - **Video Generation Tasks:** `veo-3.0-fast-generate-preview` or
         `veo-3.0-generate-preview`.
 
-- It is also acceptable to use following models if explicitly requested by the
-    user:
-    - **Gemini 2.0 Series**: `gemini-2.0-flash`, `gemini-2.0-pro`
-
-- Do not use the following deprecated models (or their variants like
-    `gemini-1.5-flash-latest`):
-    - **Prohibited:** `gemini-1.5-flash`
-    - **Prohibited:** `gemini-1.5-pro`
+- Do not use the following deprecated models (or their variants):
+    - **Prohibited:** `gemini-1.5-flash`, `gemini-1.5-pro`
     - **Prohibited:** `gemini-pro`
+    - **Prohibited:** `gemini-2.0-flash`, `gemini-2.0-pro`
+    - **Prohibited:** `gemini-2.5-flash`, `gemini-2.5-pro`
+    - **Prohibited:** `gemini-3-pro-preview` (shut down March 9, 2026 — migrate to 3.1)
 
 ## Basic Inference (Text Generation)
 
@@ -101,7 +99,7 @@ from google import genai
 client = genai.Client()
 
 response = client.models.generate_content(
-  model='gemini-2.5-flash',
+  model='gemini-3-flash-preview',
   contents='why is the sky blue?',
 )
 
@@ -119,7 +117,7 @@ client = genai.Client()
 image = Image.open(img_path)
 
 response = client.models.generate_content(
-  model='gemini-2.5-flash',
+  model='gemini-3-flash-preview',
   contents=[image, "explain that image"],
 )
 
@@ -136,7 +134,7 @@ from google.genai import types
     image_bytes = f.read()
 
   response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemini-3-flash-preview',
     contents=[
       types.Part.from_bytes(
         data=image_bytes,
@@ -155,7 +153,7 @@ For larger files, use `client.files.upload`:
 f = client.files.upload(file=img_path)
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemini-3-flash-preview',
     contents=[f, "can you describe this image?"]
 )
 ```
@@ -174,7 +172,7 @@ Below are examples of advanced configurations.
 ### Thinking
 
 Gemini 2.5 series models support thinking, which is on by default for
-`gemini-2.5-flash`. It can be adjusted by using `thinking_budget` setting.
+`gemini-3-flash-preview`. It can be adjusted by using `thinking_budget` setting.
 Setting it to zero turns thinking off, and will reduce latency.
 
 ```python
@@ -184,7 +182,7 @@ from google.genai import types
 client = genai.Client()
 
 client.models.generate_content(
-  model='gemini-2.5-flash',
+  model='gemini-3-flash-preview',
   contents="What is AI?",
   config=types.GenerateContentConfig(
     thinking_config=types.ThinkingConfig(
@@ -196,11 +194,11 @@ client.models.generate_content(
 
 IMPORTANT NOTES:
 
-- Minimum thinking budget for `gemini-2.5-pro` is `128` and thinking can not
+- Minimum thinking budget for `gemini-3.1-pro-preview` is `128` and thinking can not
     be turned off for that model.
 - No models (apart from Gemini 2.5 series) support thinking or thinking
     budgets APIs. Do not try to adjust thinking budgets other models (such as
-    `gemini-2.0-flash` or `gemini-2.0-pro`) otherwise it will cause syntax
+    `gemini-3-flash-preview` or `gemini-3.1-pro-preview`) otherwise it will cause syntax
     errors.
 
 ### System instructions
@@ -218,7 +216,7 @@ config = types.GenerateContentConfig(
 )
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemini-3-flash-preview',
     contents='Tell me a pirate joke',
     config=config,
 )
@@ -246,7 +244,7 @@ client = genai.Client()
 
 img = Image.open("/path/to/img")
 response = client.models.generate_content(
-    model="gemini-2.0-flash",
+    model="gemini-3-flash-preview",
     contents=['Do these look store-bought or homemade?', img],
     config=types.GenerateContentConfig(
       safety_settings=[
@@ -271,7 +269,7 @@ from google import genai
 client = genai.Client()
 
 response = client.models.generate_content_stream(
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     contents=["Explain how AI works"]
 )
 for chunk in response:
@@ -287,7 +285,7 @@ history.
 from google import genai
 
 client = genai.Client()
-chat = client.chats.create(model="gemini-2.5-flash")
+chat = client.chats.create(model="gemini-3-flash-preview")
 
 response = chat.send_message("I have 2 dogs in my house.")
 print(response.text)
@@ -321,7 +319,7 @@ class Recipe(BaseModel):
 
 # Request the model to populate the schema
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemini-3-flash-preview',
     contents="Provide a classic recipe for chocolate chip cookies.",
     config=types.GenerateContentConfig(
         response_mime_type="application/json",
@@ -354,7 +352,7 @@ def get_current_weather(city: str) -> str:
 
 # Make the function available to the model as a tool
 response = client.models.generate_content(
-  model='gemini-2.5-flash',
+  model='gemini-3-flash-preview',
   contents="What is the weather like in Boston?",
   config=types.GenerateContentConfig(
       tools=[get_current_weather]
@@ -418,7 +416,7 @@ prompt = """
 image = PIL.Image.open('/path/to/image.png')
 
 # Create the chat
-chat = client.chats.create(model="gemini-2.5-flash-image-preview")
+chat = client.chats.create(model="gemini-3-flash-preview-image-preview")
 # Send the image and ask for it to be edited
 response = chat.send_message([prompt, image])
 
@@ -486,7 +484,7 @@ from google import genai
 client = genai.Client()
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemini-3-flash-preview',
     contents="What was the score of the latest Olympique Lyonnais game?",
     config={"tools": [{"google_search": {}}]},
 )
@@ -517,7 +515,7 @@ from google import genai
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     contents="How does AI work?"
 )
 print(response.text)
@@ -532,7 +530,7 @@ from google.genai import types
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     contents=[
       types.Content(role="user", parts=[types.Part.from_text(text="How does AI work?")]),
     ]

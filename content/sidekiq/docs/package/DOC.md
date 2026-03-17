@@ -14,6 +14,10 @@ metadata:
 
 Sidekiq is a background job processor for Ruby. It uses Redis for storage and runs jobs in threads for high throughput.
 
+## Golden Rule
+
+Use Sidekiq with Redis for production background jobs. Include `Sidekiq::Job` for native workers, or use ActiveJob adapter. Pass simple serializable arguments. Design workers to be idempotent and thread-safe.
+
 ## Setup
 
 ```ruby
@@ -98,8 +102,8 @@ class ImportWorker
     queue: "bulk",
     retry: 10,
     backtrace: true,
-    lock: :until_executed,  # sidekiq-unique-jobs
     dead: false             # don't move to dead set after retries
+    # lock: :until_executed — requires sidekiq-unique-jobs gem
   )
 
   def perform(file_path)
@@ -168,7 +172,7 @@ Sidekiq.configure_server do |config|
 end
 ```
 
-## Batches (Sidekiq Pro)
+## Batches (Sidekiq Pro — paid)
 
 ```ruby
 batch = Sidekiq::Batch.new

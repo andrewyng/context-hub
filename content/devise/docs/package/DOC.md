@@ -14,6 +14,10 @@ metadata:
 
 Devise is a flexible authentication solution for Rails. It handles user registration, login, logout, password reset, email confirmation, account locking, and more.
 
+## Golden Rule
+
+Use Devise for authentication in Rails apps. Configure modules in the model, not globally. Use `devise_parameter_sanitizer` for custom fields. For API-only apps, pair with `devise-jwt` or roll token auth.
+
 ## Setup
 
 ```ruby

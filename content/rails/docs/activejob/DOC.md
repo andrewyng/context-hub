@@ -14,6 +14,14 @@ metadata:
 
 ActiveJob is Rails' framework for declaring background jobs and running them on various queue backends (Sidekiq, Resque, Delayed Job, Solid Queue, etc.).
 
+## Golden Rule
+
+Use ActiveJob as the interface, pick a backend (Sidekiq, Solid Queue) for production. Pass IDs not objects. Design jobs to be idempotent.
+
+## Setup
+
+ActiveJob ships with Rails. In a Rails app, it's available automatically. For standalone use: `gem 'activejob'`.
+
 ## Generating Jobs
 
 ```bash

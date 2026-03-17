@@ -14,9 +14,13 @@ metadata:
 
 ActiveRecord is the ORM layer in Ruby on Rails. It maps database tables to Ruby classes, rows to objects, and columns to attributes.
 
+## Golden Rule
+
+Use ActiveRecord through Rails. Prefer `where` chains over raw SQL. Use `includes` to prevent N+1 queries. Don't use `find_by_sql` unless absolutely necessary.
+
 ## Setup
 
-In a Rails app, ActiveRecord is configured automatically. For standalone use:
+ActiveRecord ships with Rails. In a Rails app, it's available automatically. For standalone use:
 
 ```ruby
 gem "activerecord", "~> 8.0"

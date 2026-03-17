@@ -14,6 +14,10 @@ metadata:
 
 FactoryBot is a library for setting up test data in Ruby. It replaces fixtures with factories — flexible, composable definitions for creating test objects.
 
+## Golden Rule
+
+Use `factory_bot_rails` with Rails. Prefer `build` or `build_stubbed` over `create` for speed. Use traits for variations. Include `FactoryBot::Syntax::Methods` in test helpers.
+
 ## Setup
 
 ```ruby

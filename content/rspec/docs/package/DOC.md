@@ -14,6 +14,10 @@ metadata:
 
 RSpec is a BDD testing framework for Ruby. It provides a readable DSL for writing tests (specs), built-in matchers, mocking/stubbing, and shared examples.
 
+## Golden Rule
+
+Use RSpec with `rspec-rails` for Rails projects. Prefer request specs over controller specs. Use `let` for lazy setup, `let!` when side effects are needed. Use verified doubles (`instance_double`) over plain `double`.
+
 ## Setup
 
 ```ruby

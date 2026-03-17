@@ -14,6 +14,10 @@ metadata:
 
 Faraday is an HTTP client library for Ruby with a middleware architecture. It supports pluggable adapters (Net::HTTP, Typhoeus, etc.) and composable request/response middleware.
 
+## Golden Rule
+
+Use Faraday when you need composable middleware (retries, logging, auth). Build a `Faraday.new` connection object and reuse it. Middleware order matters: request middleware first, response last, adapter at the very end.
+
 ## Setup
 
 ```ruby

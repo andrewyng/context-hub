@@ -14,6 +14,14 @@ metadata:
 
 ActionController handles HTTP requests in Rails. It receives requests via routes, processes params, interacts with models, and renders responses.
 
+## Golden Rule
+
+Use resourceful routes and strong parameters. Prefer `before_action` for shared logic. Return proper HTTP status codes. Never pass raw `params` to models.
+
+## Setup
+
+ActionController ships with Rails. In a Rails app, it's available automatically. For standalone use: `gem 'actionpack'`.
+
 ## Routing
 
 Define routes in `config/routes.rb`:

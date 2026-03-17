@@ -14,6 +14,10 @@ metadata:
 
 HTTParty is a simple HTTP client for Ruby. It provides class-level methods and a module mixin for consuming REST APIs with minimal boilerplate.
 
+## Golden Rule
+
+Use HTTParty for simple HTTP calls. Include it in a class with `base_uri` for reusable API clients. For complex needs (middleware, retries), use Faraday instead.
+
 ## Setup
 
 ```ruby
@@ -95,11 +99,15 @@ class ApiClient
   default_timeout 10               # seconds
   debug_output $stdout             # log requests (dev only)
 
-  # Basic auth
+  # Basic auth (static credentials are OK at class level)
   basic_auth "user", "password"
 
-  # Bearer token
-  headers "Authorization" => "Bearer #{ENV['API_TOKEN']}"
+  # Bearer tokens: pass per-request via instance methods, not at class level.
+  # Class-level headers are evaluated at load time — tokens that expire or
+  # rotate will silently break.
+  def get_with_auth(path, token)
+    self.class.get(path, headers: { "Authorization" => "Bearer #{token}" })
+  end
 
   # Custom parser
   parser ->(body, format) { JSON.parse(body, symbolize_names: true) }

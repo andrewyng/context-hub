@@ -1,17 +1,17 @@
 ---
 name: mcp
-description: "MCP server for live flight search across 400+ airlines. 75 direct airline connectors run locally (no API key), plus GDS/NDC sources (Amadeus, Duffel, Sabre) with optional API key. Search, compare, unlock, and book flights."
+description: "MCP server for live flight search across 400+ airlines. 102 direct airline connectors run locally (no API key), plus GDS/NDC sources (Amadeus, Duffel, Sabre) with optional API key. Search, compare, unlock, and book flights."
 metadata:
   languages: "javascript"
-  versions: "1.0.1"
-  revision: 1
-  updated-on: "2026-03-16"
+  versions: "1.0.2"
+  revision: 2
+  updated-on: "2026-03-18"
   source: maintainer
   tags: "letsfg,mcp,flights,travel,airlines,booking,search"
 ---
 # LetsFG MCP Server
 
-MCP server for real-time flight search and booking. 75 airline connectors run locally via Playwright (Ryanair, EasyJet, Wizz Air, Southwest, AirAsia, Norwegian, and 69 more). Optional API key adds GDS/NDC sources (Amadeus, Duffel, Sabre, Travelport) covering 400+ airlines total.
+MCP server for real-time flight search and booking. 102 airline connectors run locally via Playwright (Ryanair, EasyJet, Wizz Air, Southwest, AirAsia, Norwegian, Qatar Airways, LATAM, Finnair, and 93 more). Optional API key adds GDS/NDC sources (Amadeus, Duffel, Sabre, Travelport) covering 400+ airlines total.
 
 ## Installation
 
@@ -55,7 +55,7 @@ Add to your MCP client config (Claude Desktop, VS Code, Cursor, etc.):
 
 ### search_flights
 
-Search live flight availability and prices. Fires 75 airline connectors in parallel on the local machine — no API key needed.
+Search live flight availability and prices. Fires 102 airline connectors in parallel on the local machine — no API key needed.
 
 ```javascript
 // Minimal search
@@ -244,9 +244,9 @@ Use this to determine optimal `max_browsers` for `search_flights`.
    OR → start_checkout(off_abc, checkout_token) for manual completion
 ```
 
-## Covered Airlines (75 Local Connectors)
+## Covered Airlines (102 Local Connectors)
 
-Ryanair, EasyJet, Wizz Air, Norwegian, Vueling, Transavia, Eurowings, Volotea, Pegasus, SunExpress, Condor, airBaltic, Play, SmartWings, Flyr, AirAsia, Scoot, Cebu Pacific, IndiGo, SpiceJet, Spring Airlines, Lucky Air, 9 Air, Jeju Air, T'way Air, Peach, Jetstar, Southwest, Spirit, Frontier, Allegiant, JetBlue, Avelo, Sun Country, Flair, WestJet, Porter, Flybondi, JetSMART, Viva Aerobus, Volaris, SKY Airline, Azul, GOL, Copa, LATAM, Jazeera Airways, flynas, Air Arabia, Salam Air, flydubai, Emirates, Cathay Pacific, ANA, Singapore Airlines, Turkish Airlines, Biman Bangladesh, US-Bangla, Batik Air, Nok Air, Lion Air, Thai AirAsia, VietJet, Bamboo Airways, FlySafair, fastjet, Air Austral, Fiji Airways, Rex Airlines, and more.
+Ryanair, EasyJet, Wizz Air, Norwegian, Vueling, Transavia, Eurowings, Volotea, Pegasus, SunExpress, Condor, airBaltic, Play, SmartWings, Flyr, AirAsia, Scoot, Cebu Pacific, IndiGo, SpiceJet, Spring Airlines, Lucky Air, 9 Air, Jeju Air, T'way Air, Peach, Jetstar, Southwest, Spirit, Frontier, Allegiant, JetBlue, Avelo, Sun Country, Flair, WestJet, Porter, Flybondi, JetSMART, Viva Aerobus, Volaris, SKY Airline, Azul, GOL, Copa, LATAM, Jazeera Airways, flynas, Air Arabia, Salam Air, flydubai, Emirates, Cathay Pacific, ANA, Singapore Airlines, Turkish Airlines, Biman Bangladesh, US-Bangla, Batik Air, Nok Air, Lion Air, Thai AirAsia, VietJet, Bamboo Airways, FlySafair, fastjet, Air Austral, Fiji Airways, Rex Airlines, Qantas, Virgin Australia, Bangkok Airways, Qatar Airways, Air Canada, Air India, Finnair, SAS, Aegean, Aer Lingus, ITA Airways, TAP Portugal, Icelandair, EgyptAir, Ethiopian, Kenya Airways, Royal Air Maroc, South African Airways, JAL, Air New Zealand, Garuda Indonesia, Philippine Airlines, LOT Polish, Arajet, Wingo, Avianca, and more.
 
 With `LETSFG_API_KEY`, adds GDS/NDC sources covering 400+ airlines including all major full-service carriers.
 

@@ -14,28 +14,15 @@ Important caveat:
 
 Novita's official guide is Python-based, but the compatibility rule matters even if your surrounding application has JavaScript or TypeScript components.
 
-## Minimal Setup
+## Integration Guidance
 
-```python
-import os
-from openai import AsyncOpenAI
-from agents import (
-    Agent,
-    Runner,
-    set_default_openai_api,
-    set_default_openai_client,
-    set_tracing_disabled,
-)
+Novita's official compatibility guide for OpenAI Agents SDK is Python-based. For JavaScript/TypeScript teams, the important takeaway is not a separate Novita JavaScript agents client, but the protocol constraint:
 
-set_default_openai_api("chat_completions")
-set_default_openai_client(
-    AsyncOpenAI(
-        base_url="https://api.novita.ai/openai",
-        api_key=os.environ["NOVITA_API_KEY"],
-    )
-)
-set_tracing_disabled(disabled=True)
-```
+- use Novita through an OpenAI-compatible client pointed at `https://api.novita.ai/openai`
+- force the agent framework onto the chat-completions path
+- do not assume a Responses API-based integration will work unchanged
+
+If your stack includes a JavaScript application layer and a Python-based agent runtime, apply Novita configuration at the agent runtime boundary rather than trying to translate the official example into a different API mode.
 
 ## Common Mistakes
 

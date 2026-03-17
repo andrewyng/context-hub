@@ -16,7 +16,7 @@ function chub(args, { expectError = false } = {}) {
   try {
     const result = execFileSync('node', [CLI, ...args], {
       encoding: 'utf8',
-      env: { ...process.env, NO_COLOR: '1', CHUB_DIR: tmpChubDir },
+      env: { ...process.env, NO_COLOR: '1', CHUB_DIR: tmpChubDir, CHUB_TELEMETRY: '0' },
       timeout: 10000,
     });
     return result;
@@ -56,7 +56,7 @@ describe('chub CLI e2e', () => {
         writeFileSync(join(freshChubDir, 'config.yaml'), `sources:\n  - name: test\n    path: ${BUILD_OUTPUT}\n\nsource: official,maintainer,community\n`);
         const result = spawnSync('node', [CLI, 'build', FIXTURES, '--validate-only', '--json'], {
           encoding: 'utf8',
-          env: { ...process.env, NO_COLOR: '1', CHUB_DIR: freshChubDir },
+          env: { ...process.env, NO_COLOR: '1', CHUB_DIR: freshChubDir, CHUB_TELEMETRY: '0' },
           timeout: 10000,
         });
 

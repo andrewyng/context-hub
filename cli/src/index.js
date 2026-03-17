@@ -134,5 +134,7 @@ registerAnnotateCommand(program);
 
 program.parse();
 
-// Flush analytics before exit (best-effort)
-process.on('beforeExit', () => shutdownAnalytics().catch(() => {}));
+// Best effort only: never block process exit on analytics shutdown.
+process.on('exit', () => {
+  void shutdownAnalytics();
+});

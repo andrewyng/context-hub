@@ -26,4 +26,37 @@ describe('analytics', () => {
     const { shutdownAnalytics } = await import('../../src/lib/analytics.js');
     await expect(shutdownAnalytics()).resolves.not.toThrow();
   });
+
+  it('trackEvent resolves quickly even if flush is slow', async () => {
+    vi.doMock('../../src/lib/telemetry.js', () => ({
+      isTelemetryEnabled: () => true,
+    }));
+    vi.doMock('../../src/lib/identity.js', () => ({
+      getOrCreateClientId: async () => 'test-client-id',
+    }));
+
+    let flushCalled = false;
+    vi.doMock('posthog-node', () => ({
+      PostHog: class {
+        capture() {}
+        flush() {
+          flushCalled = true;
+          return new Promise(() => {});
+        }
+        shutdown() {
+          return Promise.resolve();
+        }
+      },
+    }));
+
+    const { trackEvent } = await import('../../src/lib/analytics.js');
+
+    const resolved = await Promise.race([
+      trackEvent('test_event', {}).then(() => true),
+      new Promise((resolve) => setTimeout(() => resolve(false), 25)),
+    ]);
+
+    expect(flushCalled).toBe(true);
+    expect(resolved).toBe(true);
+  });
 });

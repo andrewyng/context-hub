@@ -69,8 +69,8 @@ export async function trackEvent(event, properties = {}) {
       },
     });
 
-    // Flush immediately since CLI process exits soon
-    await client.flush();
+    // Best effort: ask PostHog to flush, but do not block command completion.
+    Promise.resolve(client.flush()).catch(() => {});
   } catch {
     // Silent fail — analytics should never disrupt CLI
   }

@@ -23,6 +23,18 @@ const FIXTURES = join(import.meta.dirname, '..', '..', 'test', 'fixtures');
 const GO_DOC_PATH = join(REPO_ROOT, 'content', 'openai', 'docs', 'chat', 'go', 'DOC.md');
 const GO_FIXTURE_PATH = join(FIXTURES, 'multilang', 'docs', 'client', 'go', 'DOC.md');
 
+function execCli(args, options = {}) {
+  return execFileSync(
+    process.execPath,
+    args,
+    {
+      encoding: 'utf8',
+      env: { ...process.env, CHUB_TELEMETRY: '0' },
+      ...options,
+    },
+  );
+}
+
 // ---------------------------------------------------------------------------
 // 1. Content file — frontmatter validation
 // ---------------------------------------------------------------------------
@@ -203,10 +215,8 @@ describe('resolveDocPath() — Go language support', () => {
 // ---------------------------------------------------------------------------
 describe('chub build — Go fixture integration', () => {
   it('validates the multilang fixture (including Go variant) without errors', () => {
-    const result = execFileSync(
-      process.execPath,
+    const result = execCli(
       [CLI_BIN, 'build', FIXTURES, '--validate-only', '--json'],
-      { encoding: 'utf8' },
     );
 
     const parsed = JSON.parse(result.trim());
@@ -217,10 +227,8 @@ describe('chub build — Go fixture integration', () => {
   it('doc count includes Go as part of the multilang entry (not a new doc)', () => {
     // The multilang/client entry now has 3 language variants: python, javascript, go.
     // It should still count as 1 doc entry (language variants share the same name).
-    const result = execFileSync(
-      process.execPath,
+    const result = execCli(
       [CLI_BIN, 'build', FIXTURES, '--validate-only', '--json'],
-      { encoding: 'utf8' },
     );
 
     const parsed = JSON.parse(result.trim());
@@ -231,10 +239,9 @@ describe('chub build — Go fixture integration', () => {
   it('exits cleanly (exit code 0) with Go fixture present', () => {
     let threw = false;
     try {
-      execFileSync(
-        process.execPath,
+      execCli(
         [CLI_BIN, 'build', FIXTURES, '--validate-only'],
-        { encoding: 'utf8', stdio: 'pipe' },
+        { stdio: 'pipe' },
       );
     } catch {
       threw = true;
@@ -250,10 +257,8 @@ describe('chub build — Go appears in built registry.json', () => {
   it('go language is present in registry after building content/', () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'chub-go-test-'));
 
-    execFileSync(
-      process.execPath,
+    execCli(
       [CLI_BIN, 'build', join(REPO_ROOT, 'content'), '-o', tmpDir],
-      { encoding: 'utf8' },
     );
 
     const registry = JSON.parse(readFileSync(join(tmpDir, 'registry.json'), 'utf8'));

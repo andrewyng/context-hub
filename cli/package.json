@@ -47,6 +47,7 @@
     "commander": "^12.0.0",
     "posthog-node": "^5.24.17",
     "tar": "^7.5.8",
+    "update-notifier": "^7.3.1",
     "yaml": "^2.3.0",
     "zod": "^4.3.6"
   },

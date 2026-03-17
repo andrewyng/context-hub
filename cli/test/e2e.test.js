@@ -297,7 +297,7 @@ describe('chub CLI e2e', () => {
       // Clean up
       chub(['annotate', 'acme/widgets', '--clear']);
       chub(['annotate', 'multilang/client', '--clear']);
-    }, 10000);
+    });
 
     it('--json includes annotation in get output', () => {
       chub(['annotate', 'acme/widgets', 'JSON test note']);

@@ -7,6 +7,16 @@ let _merged = null;
 let _searchIndex = null;
 
 /**
+ * Clear cached registry and search-index so the next call to getMerged()
+ * re-reads from disk.  Used by the server after a rebuild to avoid a
+ * full process restart.
+ */
+export function resetRegistry() {
+  _merged = null;
+  _searchIndex = null;
+}
+
+/**
  * Load and merge entries from all configured sources.
  * Returns { docs: [...], skills: [...] } with each entry tagged with _source/_sourceObj.
  */

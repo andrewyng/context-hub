@@ -7,3 +7,5 @@ dist/
 coverage/
 .chub/
 *.tgz
+server/src/web/*
+!server/src/web/.gitkeep

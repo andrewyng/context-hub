@@ -26,7 +26,7 @@ Agent Module is a **knowledge retrieval service** built specifically for autonom
 ## 2. MCP Server Details
 
 **Endpoint:** `https://api.agent-module.dev/mcp`
-**Protocol:** MCP Streamable HTTP (SSE)
+**Protocol:** Streamable HTTP (JSON-RPC 2.0)
 **Authentication:** `X-Agent-Module-Key` header
 
 **Available MCP Tools (7):**
@@ -73,15 +73,8 @@ X-Agent-Module-Key: am_live_xxxxxxxxxxxxxxxx
 {
   "mcpServers": {
     "agent-module": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://api.agent-module.dev/mcp"
-      ],
-      "env": {
-        "X_AGENT_MODULE_KEY": "am_live_your_key_here"
-      }
+      "type": "streamable-http",
+      "url": "https://api.agent-module.dev/mcp"
     }
   }
 }

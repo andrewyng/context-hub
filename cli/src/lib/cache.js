@@ -4,6 +4,7 @@ import { pipeline } from 'node:stream/promises';
 import { createWriteStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { getChubDir, loadConfig } from './config.js';
+import { verifyRegistry, verifyDoc, verifyBundle } from './integrity.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -55,6 +56,7 @@ function isSourceCacheFresh(sourceName) {
 
 /**
  * Fetch registry for a single remote source.
+ * Performs integrity verification if manifest is available.
  */
 async function fetchRemoteRegistry(source, force = false) {
   if (!force && isSourceCacheFresh(source.name) && existsSync(getSourceRegistryPath(source.name))) {
@@ -75,6 +77,21 @@ async function fetchRemoteRegistry(source, force = false) {
   }
 
   const data = await res.text();
+
+  // Verify integrity if manifest is available
+  try {
+    const verification = verifyRegistry(source.name, data);
+    if (verification.verified) {
+      // Silently succeed on verification
+    }
+  } catch (err) {
+    // On verification failure, fail closed - don't cache malicious content
+    throw new Error(
+      `Registry integrity check failed for ${source.name}: ${err.message}\n` +
+      `Refusing to cache potentially malicious content.`
+    );
+  }
+
   const dir = getSourceDir(source.name);
   mkdirSync(dir, { recursive: true });
   writeFileSync(getSourceRegistryPath(source.name), data);
@@ -102,6 +119,7 @@ export async function fetchAllRegistries(force = false) {
 
 /**
  * Download full bundle for a remote source.
+ * Performs integrity verification if manifest is available.
  */
 export async function fetchFullBundle(sourceName) {
   const config = loadConfig();
@@ -125,9 +143,25 @@ export async function fetchFullBundle(sourceName) {
     throw new Error(`Failed to fetch bundle from ${sourceName}: ${res.status} ${res.statusText}`);
   }
 
+  // Buffer the response for integrity check before writing to disk
+  const buffer = Buffer.from(await res.arrayBuffer());
+
+  // Verify integrity BEFORE writing to disk or extracting
+  try {
+    const verification = verifyBundle(sourceName, buffer);
+    if (verification.verified) {
+      // Silently succeed on verification
+    }
+  } catch (err) {
+    throw new Error(
+      `Bundle integrity check failed for ${sourceName}: ${err.message}\n` +
+      `Refusing to extract potentially malicious archive.`
+    );
+  }
+
   const dir = getSourceDir(sourceName);
   mkdirSync(dir, { recursive: true });
-  await pipeline(res.body, createWriteStream(tmpPath));
+  writeFileSync(tmpPath, buffer);
 
   const { extract } = await import('tar');
   const dataDir = getSourceDataDir(sourceName);
@@ -147,6 +181,7 @@ export async function fetchFullBundle(sourceName) {
 
 /**
  * Fetch a single doc. Source object must have name + (url or path).
+ * Performs integrity verification if manifest is available.
  */
 export async function fetchDoc(source, docPath) {
   // Local source: read directly
@@ -186,7 +221,20 @@ export async function fetchDoc(source, docPath) {
 
   const content = await res.text();
 
-  // Cache locally
+  // Verify integrity if manifest is available BEFORE caching
+  try {
+    const verification = verifyDoc(source.name, docPath, content);
+    if (verification.verified) {
+      // Silently succeed on verification
+    }
+  } catch (err) {
+    throw new Error(
+      `Doc integrity check failed for ${source.name}/${docPath}: ${err.message}\n` +
+      `Refusing to cache potentially malicious content.`
+    );
+  }
+
+  // Cache locally (only after verification passes)
   const dir = cachedPath.substring(0, cachedPath.lastIndexOf('/'));
   mkdirSync(dir, { recursive: true });
   writeFileSync(cachedPath, content);

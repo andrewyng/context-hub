@@ -47,10 +47,12 @@ const client = new OpenAI({
 
 | Model | Context Window | Notes |
 |-------|---------------|-------|
-| `MiniMax-M2.5` | 204K tokens | Flagship model, best quality |
-| `MiniMax-M2.5-highspeed` | 204K tokens | Optimized for speed, lower latency |
+| `MiniMax-M2.7` | 204K tokens | Latest flagship model with enhanced reasoning and coding |
+| `MiniMax-M2.7-highspeed` | 204K tokens | High-speed version of M2.7 for low-latency scenarios |
+| `MiniMax-M2.5` | 204K tokens | Previous generation flagship model |
+| `MiniMax-M2.5-highspeed` | 204K tokens | Previous generation high-speed model |
 
-Use `MiniMax-M2.5` for quality-sensitive tasks. Use `MiniMax-M2.5-highspeed` when latency matters more than peak quality.
+Use `MiniMax-M2.7` for quality-sensitive tasks. Use `MiniMax-M2.7-highspeed` when latency matters more than peak quality.
 
 ## Core Usage
 
@@ -65,7 +67,7 @@ const client = new OpenAI({
 });
 
 const completion = await client.chat.completions.create({
-  model: "MiniMax-M2.5",
+  model: "MiniMax-M2.7",
   messages: [
     { role: "system", content: "You are a helpful assistant." },
     { role: "user", content: "Explain the difference between TCP and UDP." },
@@ -89,7 +91,7 @@ const client = new OpenAI({
 });
 
 const stream = await client.chat.completions.create({
-  model: "MiniMax-M2.5",
+  model: "MiniMax-M2.7",
   messages: [{ role: "user", content: "Write a haiku about programming." }],
   stream: true,
   temperature: 0.7,
@@ -137,7 +139,7 @@ const tools = [
 ];
 
 const completion = await client.chat.completions.create({
-  model: "MiniMax-M2.5",
+  model: "MiniMax-M2.7",
   messages: [{ role: "user", content: "What's the weather in Tokyo?" }],
   tools,
   temperature: 0.7,
@@ -161,7 +163,7 @@ MiniMax requires `temperature` to be strictly between 0.0 (exclusive) and 1.0 (i
 ```javascript
 // Valid
 const completion = await client.chat.completions.create({
-  model: "MiniMax-M2.5",
+  model: "MiniMax-M2.7",
   messages: [{ role: "user", content: "Hello" }],
   temperature: 0.01, // near-deterministic
 });
@@ -186,7 +188,7 @@ const client = new OpenAI({
 
 try {
   const completion = await client.chat.completions.create({
-    model: "MiniMax-M2.5",
+    model: "MiniMax-M2.7",
     messages: [{ role: "user", content: "Hello" }],
     temperature: 0.7,
   });
@@ -207,7 +209,7 @@ try {
 ## Common Pitfalls
 
 - **Temperature must be > 0.** Setting `temperature: 0.0` raises an error. Use `0.01` for near-deterministic behavior.
-- **Model names are case-sensitive.** Use `MiniMax-M2.5`, not `minimax-m2.5`.
+- **Model names are case-sensitive.** Use `MiniMax-M2.7`, not `minimax-m2.7`.
 - **Always set `baseURL`.** Without `baseURL: "https://api.minimax.io/v1"`, requests go to OpenAI instead of MiniMax.
 - **Use a dedicated env var.** Store the key in `MINIMAX_API_KEY` (not `OPENAI_API_KEY`) to avoid confusion when working with multiple providers.
 - **Large context window.** MiniMax supports up to 204K tokens, but longer inputs cost more and take longer to process. Only send what you need.

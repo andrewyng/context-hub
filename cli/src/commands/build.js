@@ -1,10 +1,18 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync, cpSync } from 'node:fs';
-import { join, relative, dirname } from 'node:path';
+import { join, relative, dirname, basename } from 'node:path';
 import chalk from 'chalk';
 import { parseFrontmatter } from '../lib/frontmatter.js';
 import { info } from '../lib/output.js';
 import { trackEvent } from '../lib/analytics.js';
 import { buildIndex } from '../lib/bm25.js';
+
+/**
+ * Normalize a path to use forward slashes so registry.json is
+ * consistent regardless of which OS ran the build.
+ */
+function toPosix(p) {
+  return p.split('\\').join('/');
+}
 
 /**
  * Recursively find all DOC.md and SKILL.md files under a directory.
@@ -31,7 +39,7 @@ function listDirFiles(dir) {
     for (const entry of readdirSync(d, { withFileTypes: true })) {
       const full = join(d, entry.name);
       if (entry.isDirectory()) walk(full);
-      else results.push(relative(dir, full));
+      else results.push(toPosix(relative(dir, full)));
     }
   };
   walk(dir);
@@ -83,7 +91,7 @@ function discoverAuthor(authorDir, authorName, contentDir) {
     const tags = meta.tags ? meta.tags.split(',').map((t) => t.trim()) : [];
     const updatedOn = meta['updated-on'] || new Date().toISOString().split('T')[0];
     const entryDir = dirname(ef.path);
-    const entryPath = relative(contentDir, entryDir);
+    const entryPath = toPosix(relative(contentDir, entryDir));
     const files = listDirFiles(entryDir);
     const size = dirSize(entryDir);
 
@@ -317,7 +325,7 @@ export function registerBuildCommand(program) {
         // Skip registry.json in author dirs
         cpSync(src, dest, {
           recursive: true,
-          filter: (s) => !s.endsWith('/registry.json'),
+          filter: (s) => basename(s) !== 'registry.json',
         });
       }
 

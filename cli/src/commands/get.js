@@ -122,7 +122,7 @@ async function fetchEntries(ids, opts, globalOpts) {
         }
       }
     } else {
-      const isDir = opts.output.endsWith('/');
+      const isDir = opts.output.endsWith('/') || opts.output.endsWith('\\');
       if (isDir && results.length > 1) {
         mkdirSync(opts.output, { recursive: true });
         for (const r of results) {

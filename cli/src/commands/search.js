@@ -56,7 +56,7 @@ export function registerSearchCommand(program) {
     .option('--limit <n>', 'Max results', '20')
     .action((query, opts) => {
       const globalOpts = program.optsWithGlobals();
-      const limit = parseInt(opts.limit, 10);
+      const limit = parseInt(opts.limit, 10) || 20;
 
       // No query: list all
       if (!query) {

@@ -28,54 +28,6 @@ This guide provides instructions for generating AWS Cloud Development Kit (CDK) 
 npm install -g aws-cdk
 ```
 
-### Alpha Packages (Experimental Higher-Level Constructs)
-
-The AWS CDK has higher-level constructs in experimental *Alpha* stage under active development. Install only the packages you need when authorized by the user:
-
-| Package | Purpose |
-|---------|---------|
-| `aws-amplify-alpha` | AWS Amplify application constructs |
-| `aws-applicationsignals-alpha` | CloudWatch Application Signals constructs |
-| `aws-apprunner-alpha` | AWS App Runner service constructs |
-| `aws-bedrock-agentcore-alpha` | Bedrock AgentCore primitives |
-| `aws-bedrock-alpha` | Amazon Bedrock constructs |
-| `aws-cloud9-alpha` | AWS Cloud9 environment constructs |
-| `aws-codestar-alpha` | AWS CodeStar constructs |
-| `aws-ec2-alpha` | EC2 VPC V2 and advanced networking constructs |
-| `aws-elasticache-alpha` | Amazon ElastiCache constructs |
-| `aws-gamelift-alpha` | Amazon GameLift constructs |
-| `aws-glue-alpha` | AWS Glue job and database constructs |
-| `aws-imagebuilder-alpha` | EC2 Image Builder constructs |
-| `aws-iot-actions-alpha` | IoT rule actions |
-| `aws-iot-alpha` | AWS IoT constructs |
-| `aws-iotevents-alpha` | AWS IoT Events detector model constructs |
-| `aws-iotevents-actions-alpha` | AWS IoT Events actions |
-| `aws-ivs-alpha` | Amazon Interactive Video Service constructs |
-| `aws-kinesisanalytics-flink-alpha` | Kinesis Analytics Flink applications |
-| `aws-lambda-go-alpha` | Constructs for Go Lambda functions |
-| `aws-lambda-python-alpha` | Constructs for Python Lambda functions |
-| `aws-location-alpha` | Amazon Location Service constructs |
-| `aws-msk-alpha` | Managed Streaming for Kafka (MSK) |
-| `aws-neptune-alpha` | Neptune database clusters |
-| `aws-pipes-alpha` | EventBridge Pipes constructs |
-| `aws-pipes-enrichments-alpha` | EventBridge Pipes enrichments |
-| `aws-pipes-sources-alpha` | EventBridge Pipes sources |
-| `aws-pipes-targets-alpha` | EventBridge Pipes targets |
-| `aws-redshift-alpha` | Redshift cluster constructs |
-| `aws-route53resolver-alpha` | Route 53 Resolver constructs |
-| `aws-s3objectlambda-alpha` | S3 Object Lambda access point constructs |
-| `aws-s3tables-alpha` | S3 Tables constructs |
-| `aws-sagemaker-alpha` | SageMaker model and endpoint constructs |
-| `aws-servicecatalogappregistry-alpha` | Service Catalog AppRegistry constructs |
-| `integ-tests-alpha` | Integration testing framework for CDK |
-
-Installation example:
-
-```bash
-# Install specific Alpha packages as needed
-npm install @aws-cdk/aws-lambda-python-alpha
-```
-
 ## Initialization
 
 ### Basic CDK App Setup
@@ -179,6 +131,179 @@ export class MyStack extends Stack {
   }
 }
 ```
+
+## Additional CDK Libraries
+
+Beyond the core `aws-cdk-lib`, AWS provides specialized libraries for specific use cases. Always ask the user for permission before using experimental (Alpha) packages or specialized libraries.
+
+### Alpha Packages (Experimental Higher-Level Constructs)
+
+The AWS CDK has higher-level constructs in experimental *Alpha* stage under active development. Install only the packages you need when authorized by the user:
+
+| Package | Purpose |
+|---------|---------|
+| `aws-amplify-alpha` | AWS Amplify application constructs |
+| `aws-applicationsignals-alpha` | CloudWatch Application Signals constructs |
+| `aws-apprunner-alpha` | AWS App Runner service constructs |
+| `aws-bedrock-agentcore-alpha` | Bedrock AgentCore primitives |
+| `aws-bedrock-alpha` | Amazon Bedrock constructs |
+| `aws-cloud9-alpha` | AWS Cloud9 environment constructs |
+| `aws-codestar-alpha` | AWS CodeStar constructs |
+| `aws-ec2-alpha` | EC2 VPC V2 and advanced networking constructs |
+| `aws-elasticache-alpha` | Amazon ElastiCache constructs |
+| `aws-gamelift-alpha` | Amazon GameLift constructs |
+| `aws-glue-alpha` | AWS Glue job and database constructs |
+| `aws-imagebuilder-alpha` | EC2 Image Builder constructs |
+| `aws-iot-actions-alpha` | IoT rule actions |
+| `aws-iot-alpha` | AWS IoT constructs |
+| `aws-iotevents-alpha` | AWS IoT Events detector model constructs |
+| `aws-iotevents-actions-alpha` | AWS IoT Events actions |
+| `aws-ivs-alpha` | Amazon Interactive Video Service constructs |
+| `aws-kinesisanalytics-flink-alpha` | Kinesis Analytics Flink applications |
+| `aws-lambda-go-alpha` | Constructs for Go Lambda functions |
+| `aws-lambda-python-alpha` | Constructs for Python Lambda functions |
+| `aws-location-alpha` | Amazon Location Service constructs |
+| `aws-msk-alpha` | Managed Streaming for Kafka (MSK) |
+| `aws-neptune-alpha` | Neptune database clusters |
+| `aws-pipes-alpha` | EventBridge Pipes constructs |
+| `aws-pipes-enrichments-alpha` | EventBridge Pipes enrichments |
+| `aws-pipes-sources-alpha` | EventBridge Pipes sources |
+| `aws-pipes-targets-alpha` | EventBridge Pipes targets |
+| `aws-redshift-alpha` | Redshift cluster constructs |
+| `aws-route53resolver-alpha` | Route 53 Resolver constructs |
+| `aws-s3objectlambda-alpha` | S3 Object Lambda access point constructs |
+| `aws-s3tables-alpha` | S3 Tables constructs |
+| `aws-sagemaker-alpha` | SageMaker model and endpoint constructs |
+| `aws-servicecatalogappregistry-alpha` | Service Catalog AppRegistry constructs |
+| `integ-tests-alpha` | Integration testing framework for CDK |
+
+Installation example:
+
+```bash
+# Install specific Alpha packages as needed
+npm install @aws-cdk/aws-lambda-python-alpha
+```
+
+### Generative AI CDK Constructs
+
+The `@cdklabs/generative-ai-cdk-constructs` library provides higher-level L2 and L3 constructs for building generative AI applications on AWS. These constructs simplify common patterns for working with Amazon Bedrock, agents, and related services.
+
+**When to use:** Always ask the user for permission before using this library. Use these constructs to avoid working with low-level L1 Bedrock constructs directly.
+
+**Installation:**
+
+```bash
+npm install @cdklabs/generative-ai-cdk-constructs
+```
+
+**Example: Bedrock Guardrails**
+
+Bedrock Guardrails help you implement safeguards for generative AI applications. Here's a comparison of L1 (CloudFormation) vs L2 (generative-ai-cdk-constructs) approaches:
+
+**L1 Construct (Low-level, verbose):**
+
+```typescript
+import * as bedrock from 'aws-cdk-lib/aws-bedrock';
+
+const guardrail = new bedrock.CfnGuardrail(this, 'MyGuardrail', {
+  name: 'my-guardrail',
+  description: 'Guardrail for content filtering',
+  contentPolicyConfig: {
+    filtersConfig: [
+      {
+        type: 'SEXUAL',
+        inputStrength: 'HIGH',
+        outputStrength: 'HIGH',
+      },
+      {
+        type: 'VIOLENCE',
+        inputStrength: 'HIGH',
+        outputStrength: 'HIGH',
+      },
+      {
+        type: 'HATE',
+        inputStrength: 'MEDIUM',
+        outputStrength: 'MEDIUM',
+      },
+      {
+        type: 'INSULTS',
+        inputStrength: 'MEDIUM',
+        outputStrength: 'MEDIUM',
+      },
+      {
+        type: 'MISCONDUCT',
+        inputStrength: 'MEDIUM',
+        outputStrength: 'MEDIUM',
+      },
+      {
+        type: 'PROMPT_ATTACK',
+        inputStrength: 'HIGH',
+        outputStrength: 'HIGH',
+      },
+    ],
+  },
+  topicPolicyConfig: {
+    topicsConfig: [
+      {
+        name: 'Politics',
+        definition: 'Political discussions and elections',
+        examples: ['election results', 'voting'],
+        type: 'DENY',
+      },
+    ],
+  },
+  wordPolicyConfig: {
+    wordsConfig: [
+      {
+        text: 'badword',
+      },
+    ],
+    managedWordListConfig: [
+      {
+        type: 'PROFANITY',
+      },
+    ],
+  },
+});
+```
+
+**L2 Construct (High-level, concise):**
+
+```typescript
+import { Guardrail } from '@cdklabs/generative-ai-cdk-constructs';
+
+const guardrail = new Guardrail(this, 'MyGuardrail', {
+  name: 'my-guardrail',
+  description: 'Guardrail for content filtering',
+  contentFilters: [
+    { type: 'SEXUAL', inputStrength: 'HIGH', outputStrength: 'HIGH' },
+    { type: 'VIOLENCE', inputStrength: 'HIGH', outputStrength: 'HIGH' },
+    { type: 'HATE', inputStrength: 'MEDIUM', outputStrength: 'MEDIUM' },
+    { type: 'INSULTS', inputStrength: 'MEDIUM', outputStrength: 'MEDIUM' },
+    { type: 'MISCONDUCT', inputStrength: 'MEDIUM', outputStrength: 'MEDIUM' },
+    { type: 'PROMPT_ATTACK', inputStrength: 'HIGH', outputStrength: 'HIGH' },
+  ],
+  topicFilters: [
+    {
+      name: 'Politics',
+      definition: 'Political discussions and elections',
+      examples: ['election results', 'voting'],
+      type: 'DENY',
+    },
+  ],
+  wordFilters: {
+    customWords: ['badword'],
+    managedWordLists: ['PROFANITY'],
+  },
+});
+```
+
+**Key benefits of L2 constructs:**
+- Sensible defaults for common configurations
+- Reduced boilerplate code
+- Type-safe property definitions
+- Built-in best practices for security and performance
+- Easier to maintain and update
 
 ## Core CDK Concepts
 

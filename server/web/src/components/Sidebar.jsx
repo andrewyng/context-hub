@@ -4,6 +4,8 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: '⊞' },
   { to: '/content', label: 'Content', icon: '⊟' },
   { to: '/search', label: 'Search', icon: '⊙' },
+  { to: '/import', label: 'Import', icon: '↑' },
+  { to: '/settings', label: 'Settings', icon: '⚙' },
 ];
 
 const styles = {

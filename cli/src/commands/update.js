@@ -31,7 +31,7 @@ export function registerUpdateCommand(program) {
           );
         } else {
           info('Updating registries...');
-          const errors = await fetchAllRegistries(opts.force || true);
+          const errors = await fetchAllRegistries(opts.force);
           if (errors.length > 0) {
             for (const e of errors) {
               process.stderr.write(chalk.yellow(`Warning: ${e.source}: ${e.error}\n`));

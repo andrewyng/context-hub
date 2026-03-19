@@ -5,7 +5,7 @@ metadata:
   languages: "typescript"
   versions: "2.243.0"
   revision: 1
-  updated-on: "2026-03-12"
+  updated-on: "2026-03-19"
   source: community
   tags: "aws,cdk,cloud,infrastructure,iac"
 ---
@@ -606,6 +606,71 @@ item.addMethod('PUT', new apigateway.LambdaIntegration(updateFn));
 item.addMethod('DELETE', new apigateway.LambdaIntegration(deleteFn));
 ```
 
+**Custom Domain with TLS 1.3 Security Policy (v2.242.0+)**
+
+Use TLS 1.3 security policies to enforce modern cryptography standards on your custom API domains. API Gateway provides several TLS 1.3 options including post-quantum cryptography support.
+
+```typescript
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+
+// Import an existing ACM certificate for your custom domain
+const certificate = acm.Certificate.fromCertificateArn(
+  this,
+  'ApiCertificate',
+  'arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012'
+);
+
+// Add custom domain with TLS 1.3 security policy
+// Enhanced security policies (TLS13_*) require endpointAccessMode to be specified
+api.addDomainName('CustomDomain', {
+  domainName: 'api.example.com',
+  certificate: certificate,
+  securityPolicy: apigateway.SecurityPolicy.TLS13_1_3_2025_09,
+  endpointAccessMode: apigateway.EndpointAccessMode.STRICT,
+});
+```
+
+**New Props, Methods and ENUMs**
+| Construct | Prop | Value | Comment |
+|-----------|------|-------|---------|
+| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_3_2025_09` | TLS 1.3 only — requires `endpointAccessMode` |
+| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_3_FIPS_2025_09` | TLS 1.3 FIPS compliant — requires `endpointAccessMode` |
+| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_2_PQ_2025_09` | TLS 1.3 & 1.2 with post-quantum cryptography — requires `endpointAccessMode` |
+| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_2_PFS_PQ_2025_09` | TLS 1.3 & 1.2 with PFS and post-quantum — requires `endpointAccessMode` |
+| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_2025_EDGE` | TLS 1.3 for edge-optimized (CloudFront) endpoints |
+| `DomainNameOptions` | `endpointAccessMode` | `EndpointAccessMode.STRICT` | Required for all `TLS13_*` enhanced security policies. Recommended for production |
+| `DomainNameOptions` | `endpointAccessMode` | `EndpointAccessMode.BASIC` | Alternative to `STRICT` — use during migration or for specific architectures |
+| `LambdaIntegration` | `responseTransferMode` | `ResponseTransferMode.STREAM` | Streams response as received. Supported for `AWS_PROXY` integrations only |
+| `LambdaIntegration` | `responseTransferMode` | `ResponseTransferMode.BUFFERED` | Default — waits for complete response before transmission |
+
+**Response Streaming with Transfer Mode (v2.230.0+)**
+
+Enable response streaming to allow API Gateway to stream responses back as they're received from the integration (Lambda, HTTP endpoint, etc.) rather than buffering the complete response. Useful for large payloads or real-time streaming responses.
+
+```typescript
+// Response streaming with Lambda integration
+const streamingMethod = items.addMethod(
+  'POST',
+  new apigateway.LambdaIntegration(processFn, {
+    responseTransferMode: apigateway.ResponseTransferMode.STREAM,
+  }),
+  {
+    requestParameters: {
+      'method.request.header.Content-Type': true,
+    },
+  }
+);
+
+// Response streaming with HTTP integration
+const httpStreamingMethod = api.root.addResource('stream').addMethod(
+  'GET',
+  new apigateway.HttpIntegration('https://stream.example.com/data', {
+    httpMethod: 'GET',
+    responseTransferMode: apigateway.ResponseTransferMode.STREAM,
+  })
+);
+```
+
 **Deprecated Props and Methods**
 | Construct | Deprecated Prop | Comment |
 |-----------|-----------------|---------|
@@ -715,6 +780,53 @@ userPool.addDomain('CustomDomain', {
 |-----------|-----------------|---------|
 | `UserPool` | `advancedSecurityMode` | Advanced Security Mode is deprecated due to user pool feature plans. Use `StandardThreatProtectionMode` and `CustomThreatProtectionMode` to set Threat Protection level |
 
+### CloudFront
+
+**Lambda Function URL with Origin Access Control (OAC) (v2.230.0+, 2025-07-18)**
+
+CloudFront can now directly invoke Lambda Function URLs with Origin Access Control (OAC) for secure communication. OAC provides automatic SigV4 signing of requests from CloudFront to Lambda, eliminating the need to manage permissions manually.
+
+```typescript
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as cloudfrontOrigins from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+
+// Create a Lambda function URL (must use AWS_IAM auth for OAC)
+const functionUrl = myFunction.addFunctionUrl({
+  authType: lambda.FunctionUrlAuthType.AWS_IAM,
+});
+
+// Create OAC for secure CloudFront-to-Lambda communication
+const oac = new cloudfront.FunctionUrlOriginAccessControl(this, 'FunctionUrlOAC', {
+  originAccessControlName: 'LambdaFunctionUrlOAC',
+  signing: cloudfront.Signing.SIGV4_ALWAYS,
+});
+
+// Create CloudFront distribution with Lambda Function URL origin
+// Use the static withOriginAccessControl() factory method on FunctionUrlOrigin
+const distribution = new cloudfront.Distribution(this, 'Distribution', {
+  defaultBehavior: {
+    origin: cloudfrontOrigins.FunctionUrlOrigin.withOriginAccessControl(functionUrl, {
+      originAccessControl: oac,
+    }),
+    viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.ALLOW_ALL,
+    cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+  },
+});
+```
+
+**New Props, Methods and ENUMs**
+| Construct | Prop | Value | Comment |
+|-----------|------|-------|---------|
+| `FunctionUrlOriginAccessControl` | `originAccessControlName` | `string` | Optional name for the OAC resource |
+| `FunctionUrlOriginAccessControl` | `signing` | `Signing.SIGV4_ALWAYS` | Always sign requests with SigV4 (recommended) |
+| `FunctionUrlOriginAccessControl` | `signing` | `Signing.SIGV4_NO_OVERRIDE` | Sign only if origin does not override |
+| `FunctionUrlOriginAccessControl` | `signing` | `Signing.NEVER` | Never sign requests |
+
+| Construct | New Method | Comment |
+|-----------|------------|---------|
+| `FunctionUrlOrigin` | `withOriginAccessControl()` | Use instead of constructor when attaching an OAC — `FunctionUrlOrigin.withOriginAccessControl(fnUrl, { originAccessControl: oac })` |
+
 ### DynamoDB Table (TableV2)
 
 The recommended construct for new DynamoDB tables is `TableV2`. It supports single-region tables as well as globally-replicated tables and provides newer, more expressive properties (billing helpers, replica management, encryption choices, and warm throughput).
@@ -722,6 +834,7 @@ The recommended construct for new DynamoDB tables is `TableV2`. It supports sing
 ```typescript
 import { RemovalPolicy } from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 
 // Single region TableV2 example (on-demand billing)
@@ -735,11 +848,11 @@ const table = new dynamodb.TableV2(this, 'UsersTable', {
   timeToLiveAttribute: 'ttl',
 });
 
-// Add a GSI using TableV2 helpers
+// Add a GSI with compound keys (up to 4 partition keys + 4 sort keys) (v2.226.0+)
 table.addGlobalSecondaryIndex({
-  indexName: 'email-index',
-  partitionKey: { name: 'gsi1-pk', type: dynamodb.AttributeType.STRING },
-  sortKey: { name: 'gsi1-sk', type: dynamodb.AttributeType.STRING },
+  indexName: 'index-1',
+  partitionKeys: [{ name: 'gsi1-pk', type: dynamodb.AttributeType.STRING }, { name: 'gsi12-pk', type: dynamodb.AttributeType.NUMBER }],
+  sortKeys: [{ name: 'gsi1-sk', type: dynamodb.AttributeType.STRING }, { name: 'gsi2-sk', type: dynamodb.AttributeType.NUMBER }],
   projectionType: dynamodb.ProjectionType.ALL,
 });
 
@@ -761,6 +874,154 @@ const globalTable = new dynamodb.TableV2(this, 'GlobalUsersTable', {
 
 // per-replica adjustments
 globalTable.addReplica({ region: 'eu-west-1', deletionProtection: true });
+```
+
+**TableGrants for Permission Management (v2.227.0+)**
+
+Use `TableGrants` (via `table.grants`) for fine-grained permission management, ensuring least-privilege access to DynamoDB tables. Stream grants are available directly on the `TableV2` instance when the table is created with `dynamoStream` enabled.
+
+```typescript
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+
+// Grant read-only access to a Lambda function
+const readOnlyGrant = table.grants.readData(lambdaFunction);
+
+// Grant write-only access
+const writeOnlyGrant = table.grants.writeData(lambdaFunction);
+
+// Grant read-write access
+const readWriteGrant = table.grants.readWriteData(lambdaFunction);
+
+// Grant specific actions for fine-grained control
+table.grants.actions(lambdaFunction, 
+  'dynamodb:GetItem', 
+  'dynamodb:Query'
+);
+
+// Stream grants — available directly on TableV2 when dynamoStream is configured
+const tableWithStream = new dynamodb.TableV2(this, 'TableWithStream', {
+  partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+  dynamoStream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
+});
+
+// Grant stream read permissions (DescribeStream, GetRecords, GetShardIterator, ListStreams)
+tableWithStream.grantStreamRead(streamConsumerFunction);
+
+// Grant specific stream actions
+tableWithStream.grantStream(streamConsumerFunction,
+  'dynamodb:GetRecords',
+  'dynamodb:GetShardIterator'
+);
+
+// List streams permissions only
+tableWithStream.grantTableListStreams(streamConsumerFunction);
+```
+
+**New Props, Methods and ENUMs**
+
+| New Construct | Comment |
+|---------------|---------|
+| `TableV2MultiAccountReplica` | Create DynamoDB replicas in other AWS accounts (v2.239.0+) |
+
+| Construct | Prop | Value | Comment |
+|-----------|------|-------|---------|
+| `GlobalSecondaryIndexPropsV2` | `partitionKeys` | `Attribute[]` | Array of up to 4 partition key attributes for compound GSI keys (v2.226.0+) |
+| `GlobalSecondaryIndexPropsV2` | `sortKeys` | `Attribute[]` | Array of up to 4 sort key attributes for compound GSI keys (v2.226.0+) |
+
+| Construct | New Method | Comment |
+|-----------|------------|---------|
+| `TableGrants` | `readData()` | Grant `GetItem`, `Query`, `Scan`, `BatchGetItem`, `ConditionCheckItem`, `DescribeTable` |
+| `TableGrants` | `writeData()` | Grant `PutItem`, `UpdateItem`, `DeleteItem`, `BatchWriteItem`, `ConditionCheckItem`, `DescribeTable` |
+| `TableGrants` | `readWriteData()` | Grant combined read and write permissions |
+| `TableGrants` | `actions()` | Grant specific DynamoDB actions |
+| `TableV2` | `grantStreamRead()` | Grant stream read permissions when `dynamoStream` is configured (v2.227.0+) |
+| `TableV2` | `grantStream()` | Grant specific stream actions when `dynamoStream` is configured (v2.227.0+) |
+| `TableV2` | `grantTableListStreams()` | Grant `ListStreams` permission when `dynamoStream` is configured (v2.227.0+) |
+
+**Cross-Account Global Table Replication (v2.239.0+)**
+
+Set up DynamoDB global tables with cross-account replication for multi-account, multi-region applications. Use `TableV2MultiAccountReplica` to create replicas in other AWS accounts.
+
+**In the source account:**
+
+```typescript
+// Create the primary table in the source account
+const sourceTable = new dynamodb.TableV2(this, 'SourceTable', {
+  partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+  sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+  billing: dynamodb.Billing.provisioned({
+    readCapacity: dynamodb.Capacity.fixed(10),
+    writeCapacity: dynamodb.Capacity.fixed(10),
+  }),
+  encryption: dynamodb.TableEncryptionV2.awsManagedKey(),
+  removalPolicy: RemovalPolicy.RETAIN,
+});
+
+// Grant multi-account replication permissions to the destination account
+sourceTable.grants.multiAccountReplicationTo(
+  'arn:aws:dynamodb:us-west-2:987654321098:table/DestinationTable'
+);
+```
+
+**In the destination account:**
+
+```typescript
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+
+// Create a multi-account replica that replicates from the source table
+const replicaTable = new dynamodb.TableV2MultiAccountReplica(this, 'ReplicaTable', {
+  replicaSourceTable: sourceTableReference, // ITableV2 reference to the source table
+  billing: dynamodb.Billing.provisioned({
+    readCapacity: dynamodb.Capacity.fixed(10),
+    writeCapacity: dynamodb.Capacity.fixed(10),
+  }),
+  encryption: dynamodb.TableEncryptionV2.awsManagedKey(),
+  removalPolicy: RemovalPolicy.RETAIN,
+});
+
+// Grant replication permissions from the source account
+replicaTable.grants.multiAccountReplicationFrom(
+  'arn:aws:dynamodb:us-east-1:123456789012:table/SourceTable'
+);
+```
+
+**Cross-Account Setup Pattern:**
+
+```typescript
+// Reference a table from another account for multi-account replication
+const sourceTableArn = 'arn:aws:dynamodb:us-east-1:123456789012:table/SourceTable';
+const sourceStreamArn = 'arn:aws:dynamodb:us-east-1:123456789012:table/SourceTable/stream/2024-01-01T00:00:00.000';
+
+// In consumer account, create replica with reference
+const replica = new dynamodb.TableV2MultiAccountReplica(this, 'MultiAccountReplica', {
+  replicaSourceTable: dynamodb.TableV2.fromTableArn(this, 'SourceTableRef', sourceTableArn),
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+  billing: dynamodb.Billing.provisioned({
+    readCapacity: dynamodb.Capacity.fixed(5),
+    writeCapacity: dynamodb.Capacity.fixed(5),
+  }),
+  removalPolicy: RemovalPolicy.RETAIN,
+});
+
+// Configure IAM role for cross-account replication
+const replicationRole = new iam.Role(this, 'ReplicationRole', {
+  assumedBy: new iam.ServicePrincipal('dynamodb.amazonaws.com'),
+});
+
+// Add permissions for cross-account access
+replicationRole.addToPrincipalPolicy(
+  new iam.PolicyStatement({
+    actions: [
+      'dynamodb:DescribeTable',
+      'dynamodb:DescribeStream',
+      'dynamodb:GetRecords',
+      'dynamodb:GetShardIterator',
+      'dynamodb:ListStreams',
+    ],
+    resources: [sourceTableArn, sourceStreamArn],
+  })
+);
 ```
 
 **Deprecated Props and Methods**
@@ -815,6 +1076,45 @@ vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
   service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
 });
 ```
+
+**VPC Flow Logs with Firehose Delivery Stream (v2.230.0+, 2025-07-18)**
+
+VPC Flow Logs can now be delivered to Amazon Kinesis Data Firehose for real-time processing and archival to S3, data lakes, or analytics platforms.
+
+```typescript
+import * as kinesisfirehose from 'aws-cdk-lib/aws-kinesisfirehose';
+
+// Create Firehose delivery stream for VPC Flow Logs
+const firehoseStream = new kinesisfirehose.CfnDeliveryStream(this, 'VpcFlowLogsFirehose', {
+  deliveryStreamType: 'DirectPut',
+  extendedS3DestinationConfiguration: {
+    roleArn: firehoseRole.roleArn,
+    bucketArn: bucket.bucketArn,
+    bufferingHints: {
+      sizeInMBs: 128,
+      intervalInSeconds: 60,
+    },
+    cloudWatchLoggingOptions: {
+      enabled: true,
+      logGroupName: logGroup.logGroupName,
+      logStreamName: 'vpc-flow-logs',
+    },
+  },
+});
+
+// Add VPC Flow Logs with Firehose destination
+vpc.addFlowLog('VpcFlowLogsFirehose', {
+  destination: ec2.FlowLogDestination.toFirehose(firehoseStream),
+  trafficType: ec2.FlowLogTrafficType.ALL,
+});
+```
+
+**Note:** For cross-account delivery, you must specify an IAM role with appropriate permissions. Refer to [AWS documentation](https://docs.aws.amazon.com/vpc/latest/userguide/firehose-cross-account-delivery.html) for cross-account setup.
+
+**New Props, Methods and ENUMs**
+| Construct | Method | Comment |
+|-----------|--------|---------|
+| `FlowLogDestination` | `toFirehose()` | New destination type — pass a `CfnDeliveryStream` to send VPC flow logs to Kinesis Data Firehose (v2.230.0+) |
 
 **Deprecated Props and Methods**
 | Construct | Deprecated Prop | Comment |
@@ -910,6 +1210,88 @@ listener.addTargets('ECS', {
 });
 ```
 
+**Linear and Canary Deployments (v2.230.0+, 2025-07-18)**
+
+ECS now supports built-in Linear and Canary deployment strategies for controlled and progressive rollouts. Configure deployment strategies at the service level to gradually update task definitions.
+
+```typescript
+// Linear deployment: gradually replace tasks at a fixed percentage interval
+const linearService = new ecs.FargateService(this, 'LinearService', {
+  cluster,
+  taskDefinition,
+  desiredCount: 10,
+  deploymentStrategy: ecs.DeploymentStrategy.LINEAR,
+  linearConfiguration: {
+    stepPercent: 25,          // Replace 25% of tasks each step
+    stepBakeTime: Duration.minutes(1),  // Wait 1 minute between steps
+  },
+});
+
+// Canary deployment: test with a small percentage before full rollout
+const canaryService = new ecs.FargateService(this, 'CanaryService', {
+  cluster,
+  taskDefinition,
+  desiredCount: 10,
+  deploymentStrategy: ecs.DeploymentStrategy.CANARY,
+  canaryConfiguration: {
+    stepPercent: 10,          // Start with 10% of tasks
+    stepBakeTime: Duration.minutes(5),  // Bake for 5 minutes before full rollout
+  },
+});
+```
+
+**Spot Capacity Provider (v2.230.0+, 2025-07-18)**
+
+Use Spot instances through Managed Instances Capacity Providers to reduce costs while maintaining service availability.
+
+```typescript
+import * as iam from 'aws-cdk-lib/aws-iam';
+
+const infrastructureRole = new iam.Role(this, 'InfrastructureRole', {
+  assumedBy: new iam.ServicePrincipal('ecs.amazonaws.com'),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'),
+  ],
+});
+
+const instanceRole = new iam.Role(this, 'InstanceRole', {
+  assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'),
+  ],
+});
+
+const instanceProfile = new iam.InstanceProfile(this, 'InstanceProfile', {
+  role: instanceRole,
+});
+
+const securityGroup = new ec2.SecurityGroup(this, 'SpotSG', {
+  vpc,
+  description: 'Security group for Spot capacity provider instances',
+});
+
+// Create Spot capacity provider (securityGroups is required)
+const spotCapacityProvider = new ecs.ManagedInstancesCapacityProvider(this, 'SpotProvider', {
+  infrastructureRole: infrastructureRole,
+  ec2InstanceProfile: instanceProfile,
+  subnets: vpc.privateSubnets,
+  securityGroups: [securityGroup],
+  capacityOptionType: ecs.CapacityOptionType.SPOT,  // Use Spot instances
+});
+
+cluster.addManagedInstancesCapacityProvider(spotCapacityProvider);
+```
+
+**New Props, Methods and ENUMs**
+| Construct | Prop | Value | Comment |
+|-----------|------|-------|---------|
+| `FargateService` | `deploymentStrategy` | `DeploymentStrategy.LINEAR` | Gradually replace tasks at a fixed percentage per step (v2.230.0+) |
+| `FargateService` | `deploymentStrategy` | `DeploymentStrategy.CANARY` | Test with a small percentage before full rollout (v2.230.0+) |
+| `FargateService` | `linearConfiguration` | `{ stepPercent, stepBakeTime }` | Required when `deploymentStrategy` is `LINEAR` |
+| `FargateService` | `canaryConfiguration` | `{ stepPercent, stepBakeTime }` | Required when `deploymentStrategy` is `CANARY` |
+| `ManagedInstancesCapacityProvider` | `capacityOptionType` | `CapacityOptionType.ON_DEMAND` | Use On-Demand instances (default) (v2.230.0+) |
+| `ManagedInstancesCapacityProvider` | `capacityOptionType` | `CapacityOptionType.SPOT` | Use Spot instances for cost savings (v2.230.0+) |
+
 **Deprecated Props and Methods**
 | Construct | Deprecated Prop | Comment |
 |-----------|-----------------|---------|
@@ -984,6 +1366,65 @@ const listFn = new lambda.Function(this, 'ApiHandler', {
 table.grantReadWriteData(listFn);
 ```
 
+**Capacity Providers (v2.230.0+, 2025-07-18)**
+
+Lambda Capacity Providers manage a pool of EC2 instances for Lambda functions, enabling predictable performance and cost control. Create a `CapacityProvider` with VPC subnets and security groups, then associate Lambda functions via `addFunction()`.
+
+```typescript
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+
+const capacityProvider = new lambda.CapacityProvider(this, 'MyCapacityProvider', {
+  subnets: vpc.privateSubnets,       // required: at least one subnet
+  securityGroups: [securityGroup],   // required: at least one security group
+  // optional:
+  // maxVCpuCount: 400,
+  // scalingOptions: lambda.ScalingOptions.manual([...]),
+});
+
+const fn = new lambda.Function(this, 'MyFunction', {
+  runtime: lambda.Runtime.NODEJS_22_X,
+  handler: 'index.handler',
+  code: lambda.Code.fromAsset('lambda'),
+});
+
+// Associate the function with the capacity provider
+capacityProvider.addFunction(fn);
+```
+
+**Durable Functions (v2.230.0+, 2025-07-18)**
+
+Durable Functions allow Lambda to maintain execution state across long-running operations using checkpointing. Use the `durableConfig` property to enable durable execution. The function's execution role is automatically updated to use `AWSLambdaBasicDurableExecutionRolePolicy`.
+
+```typescript
+import { Duration } from 'aws-cdk-lib';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+
+const durableFunction = new lambda.Function(this, 'DurableFunction', {
+  runtime: lambda.Runtime.NODEJS_22_X,
+  handler: 'index.handler',
+  code: lambda.Code.fromAsset('lambda'),
+  durableConfig: {
+    executionTimeout: Duration.hours(1),  // max execution time including checkpoints
+    retentionPeriod: Duration.days(30),   // how long to retain execution state
+  },
+});
+```
+
+**New Props, Methods and ENUMs**
+
+| New Construct | Comment |
+|---------------|---------|
+| `CapacityProvider` | Manages a pool of EC2 instances for Lambda. Requires `subnets` and `securityGroups` (v2.230.0+) |
+
+| Construct | Prop | Value | Comment |
+|-----------|------|-------|---------|
+| `Function` | `durableConfig` | `{ executionTimeout, retentionPeriod }` | Enables durable execution with checkpointing. Automatically uses `AWSLambdaBasicDurableExecutionRolePolicy` (v2.230.0+) |
+
+| Construct | New Method | Comment |
+|-----------|------------|---------|
+| `CapacityProvider` | `addFunction()` | Associates a Lambda function with this capacity provider |
+
 **Deprecated Props and Methods**
 | Construct | Deprecated Prop | Comment |
 |-----------|-----------------|---------|
@@ -1036,6 +1477,63 @@ const bucket = new s3.Bucket(this, 'MyBucket', {
 bucket.grantReadWrite(processFn);
 ```
 
+**Attribute-Based Access Control (v2.230.0+, 2025-07-18)**
+
+Enable Attribute-Based Access Control (ABAC) on S3 buckets to support fine-grained permission management using resource tags. Set `abacStatus: true` to activate ABAC for the bucket.
+
+```typescript
+import * as s3 from 'aws-cdk-lib/aws-s3';
+
+const abacBucket = new s3.Bucket(this, 'AbacBucket', {
+  versioned: true,
+  encryption: s3.BucketEncryption.S3_MANAGED,
+  abacStatus: true,
+  blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+  removalPolicy: RemovalPolicy.RETAIN,
+});
+```
+
+**BucketGrants (v2.230.0+, 2025-07-18)**
+
+The `BucketGrants` class provides fine-grained permission management for S3 buckets. Access grant methods through the `bucket.grants` property. These mirror the existing `bucket.grant*()` methods but are grouped under a dedicated class.
+
+```typescript
+import * as s3 from 'aws-cdk-lib/aws-s3';
+
+// Grant read-only access (s3:GetObject, s3:GetBucket*, s3:List*)
+bucket.grants.read(lambdaFunction);
+
+// Grant write access (s3:PutObject, s3:Abort*, s3:DeleteObject*)
+bucket.grants.write(lambdaFunction, 'uploads/*');  // optional key pattern
+
+// Grant read-write access
+bucket.grants.readWrite(lambdaFunction);
+
+// Grant delete access (s3:DeleteObject*)
+bucket.grants.delete(lambdaFunction, 'temp/*');  // optional key pattern
+
+// Grant put object permissions (s3:PutObject, s3:Abort*)
+bucket.grants.put(lambdaFunction);
+
+// Grant public read access — only valid when blockPublicAccess is NOT set to BLOCK_ALL
+bucket.grants.publicAccess('public/*', 's3:GetObject');
+```
+
+**New Props, Methods and ENUMs**
+| Construct | Prop | Value | Comment |
+|-----------|------|-------|---------|
+| `BucketProps` | `abacStatus` | `true` / `false` | Enables Attribute-Based Access Control using resource tags (v2.230.0+) |
+
+| Construct | New Method | Comment |
+|-----------|------------|---------|
+| `BucketGrants` | `read()` | Grant `s3:GetObject`, `s3:GetBucket*`, `s3:List*` (v2.230.0+) |
+| `BucketGrants` | `write()` | Grant `s3:PutObject`, `s3:Abort*`, `s3:DeleteObject*` (v2.230.0+) |
+| `BucketGrants` | `readWrite()` | Grant combined read and write permissions (v2.230.0+) |
+| `BucketGrants` | `delete()` | Grant `s3:DeleteObject*` (v2.230.0+) |
+| `BucketGrants` | `put()` | Grant `s3:PutObject`, `s3:Abort*` (v2.230.0+) |
+| `BucketGrants` | `publicAccess()` | Grant public read — throws if `blockPublicAccess` is set (v2.230.0+) |
+| `BucketGrants` | `replicationPermission()` | Grant replication permissions for source and destination buckets (v2.230.0+) |
+
 ### RDS Database Cluster
 
 ```typescript
@@ -1073,6 +1571,88 @@ const dbCluster = new rds.DatabaseCluster(this, 'Database', {
 
 // Optionally Grant access to compute like Fargate
 dbCluster.connections.allowFrom(fargateSG, ec2.Port.tcp(5432));
+```
+
+**CloudWatch Log Exports (v2.230.0+, 2025-07-18)**
+
+Enable CloudWatch log exports for RDS instances to monitor database activity. Use the `cloudwatchLogsExports` property to specify which log types to export. For `DatabaseInstance`, valid values include `instance` and `iam-db-auth-error` (in addition to engine-specific options).
+
+```typescript
+import * as rds from 'aws-cdk-lib/aws-rds';
+
+// DatabaseInstance with CloudWatch log exports
+const dbInstance = new rds.DatabaseInstance(this, 'Database', {
+  engine: rds.DatabaseInstanceEngine.postgres({ version: rds.PostgresEngineVersion.VER_17_7 }),
+  instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.LARGE),
+  credentials: rds.Credentials.fromGeneratedSecret('admin'),
+  vpc,
+  cloudwatchLogsExports: ['instance', 'iam-db-auth-error'],
+});
+```
+
+**Default Auth Scheme for RDS Proxy (v2.230.0+, 2025-07-18)**
+
+RDS Database Proxy now supports configuring a default IAM authentication scheme without requiring a Secrets Manager secret. When `defaultAuthScheme` is set to `DefaultAuthScheme.IAM_AUTH`, the `secrets` property is optional.
+
+```typescript
+import * as rds from 'aws-cdk-lib/aws-rds';
+
+// Create RDS Proxy with IAM authentication — no secrets required
+const proxy = new rds.DatabaseProxy(this, 'Proxy', {
+  proxyTarget: rds.ProxyTarget.fromCluster(dbCluster),
+  vpc,
+  defaultAuthScheme: rds.DefaultAuthScheme.IAM_AUTH,
+  iamAuth: true,
+});
+
+// Grant IAM connect permission to a role or function
+proxy.grantConnect(lambdaFunction, 'database-user');
+```
+
+**New Props, Methods and ENUMs**
+| Construct | Prop | Value | Comment |
+|-----------|--------------|---------|
+| `DatabaseProxyProps` | `defaultAuthScheme` | `DefaultAuthScheme.IAM_AUTH` | Use end-to-end IAM authentication. Makes `secrets` optional (v2.230.0+) |
+| `DatabaseProxyProps` | `defaultAuthScheme` | `DefaultAuthScheme.NONE` | Default — uses Secrets Manager credentials |
+| `DatabaseInstance` | `cloudwatchLogsExports` | `'instance'` | New log type: exports instance-level logs (v2.230.0+) |
+| `DatabaseInstance` | `cloudwatchLogsExports` | `'iam-db-auth-error'` | New log type: exports IAM DB authentication errors (v2.230.0+) |
+
+| Construct | New Method | Comment |
+|-----------|------------|---------|
+| `DatabaseCluster` | `metricVolumeReadIOPs()` | Cluster-level volume read IOPS CloudWatch metric (v2.230.0+) |
+| `DatabaseCluster` | `metricVolumeWriteIOPs()` | Cluster-level volume write IOPS CloudWatch metric (v2.230.0+) |
+| `DatabaseInstance` | `metricReadIOPS()` | Instance-level read IOPS CloudWatch metric (v2.230.0+) |
+| `DatabaseInstance` | `metricWriteIOPS()` | Instance-level write IOPS CloudWatch metric (v2.230.0+) |
+
+**Read/Write IOPS Metrics (v2.230.0+, 2025-07-18)**
+
+Access CloudWatch metrics for RDS read and write IOPS at both cluster and instance levels. Use `metricVolumeReadIOPs()` / `metricVolumeWriteIOPs()` for clusters and `metricReadIOPS()` / `metricWriteIOPS()` for instances.
+
+```typescript
+import * as rds from 'aws-cdk-lib/aws-rds';
+import { Duration } from 'aws-cdk-lib';
+
+// Cluster-level IOPS metrics
+const clusterReadIops = dbCluster.metricVolumeReadIOPs({
+  period: Duration.minutes(5),
+  statistic: 'Average',
+});
+
+const clusterWriteIops = dbCluster.metricVolumeWriteIOPs({
+  period: Duration.minutes(5),
+  statistic: 'Average',
+});
+
+// Instance-level IOPS metrics
+const instanceReadIops = dbInstance.metricReadIOPS({
+  period: Duration.minutes(5),
+  statistic: 'Average',
+});
+
+const instanceWriteIops = dbInstance.metricWriteIOPS({
+  period: Duration.minutes(5),
+  statistic: 'Average',
+});
 ```
 
 **Deprecated Props and Methods**
@@ -1200,6 +1780,60 @@ new sfn.StateMachine(this, 'StateMachineWithLambda', {
   timeout: Duration.minutes(10),
 });
 ```
+
+**JSONata Expressions in Map.ItemSelector (v2.230.0+, 2025-07-18)**
+
+The `Map` state now supports JSONata expressions for `ItemSelector` through the `jsonataItemSelector` property (a string). This is mutually exclusive with `itemSelector` (object). Set `queryLanguage: QueryLanguage.JSONATA` on the Map state to enable JSONata mode.
+
+```typescript
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+
+// Map state with JSONata ItemSelector
+const mapState = new sfn.Map(this, 'ProcessItems', {
+  maxConcurrency: 5,
+  queryLanguage: sfn.QueryLanguage.JSONATA,
+  // jsonataItemSelector is a string — mutually exclusive with itemSelector
+  jsonataItemSelector: '{% {"id": $states.input.id, "value": $states.input.value} %}',
+});
+
+mapState.itemProcessor(new sfn.Pass(this, 'ProcessItem'), {
+  mode: sfn.ProcessorMode.INLINE,
+});
+
+new sfn.StateMachine(this, 'StateMachineWithJsonata', {
+  definitionBody: sfn.DefinitionBody.fromChainable(mapState),
+});
+```
+
+**StateMachineGrants (v2.230.0+, 2025-07-18)**
+
+Use `StateMachineGrants` for fine-grained permission management on Step Functions state machines. Access grant methods through the `stateMachine.grants` property. These delegate to the same underlying IAM grants as the existing `stateMachine.grant*()` methods.
+
+```typescript
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+
+// Grant specific permissions using StateMachineGrants
+stateMachine.grants.startExecution(lambdaFunction);
+stateMachine.grants.startSyncExecution(lambdaFunction);
+stateMachine.grants.read(lambdaFunction);
+stateMachine.grants.taskResponse(lambdaFunction);
+stateMachine.grants.redriveExecution(lambdaFunction);
+stateMachine.grants.execution(lambdaFunction, 'states:DescribeExecution');
+stateMachine.grants.actions(lambdaFunction, 'states:StartExecution', 'states:StopExecution');
+```
+
+
+| Construct | Prop / Method / ENUM | New Value | Comment |
+|-----------|----------------------|-----------|---------|
+| `Map` | `jsonataItemSelector` | `string` | JSONata expression string for `ItemSelector`. Mutually exclusive with `itemSelector`. Requires `queryLanguage: QueryLanguage.JSONATA` (v2.230.0+) |
+| `Map` | `queryLanguage` | `QueryLanguage.JSONATA` | Enable JSONata query language for the Map state |
+| `StateMachineGrants` | `startExecution()` | Grant `states:StartExecution` (v2.230.0+) |
+| `StateMachineGrants` | `startSyncExecution()` | Grant `states:StartSyncExecution` (v2.230.0+) |
+| `StateMachineGrants` | `read()` | Grant `states:ListExecutions`, `states:DescribeExecution`, `states:GetExecutionHistory`, etc. (v2.230.0+) |
+| `StateMachineGrants` | `taskResponse()` | Grant `states:SendTaskSuccess`, `states:SendTaskFailure`, `states:SendTaskHeartbeat` (v2.230.0+) |
+| `StateMachineGrants` | `redriveExecution()` | Grant `states:RedriveExecution` (v2.230.0+) |
+| `StateMachineGrants` | `execution()` | Grant custom actions on execution ARNs (v2.230.0+) |
+| `StateMachineGrants` | `actions()` | Grant custom actions on the state machine ARN (v2.230.0+) |
 
 **Deprecated Props and Methods**
 | Construct | Deprecated Prop | Comment |

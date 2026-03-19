@@ -69,4 +69,24 @@ describe('bm25 inverted index', () => {
     expect(result.stats.candidateDocCount).toBe(0);
     expect(result.stats.scoredDocCount).toBe(0);
   });
+
+  it('indexes identifier variants so joined and split package queries still match', () => {
+    const index = buildIndex([
+      {
+        id: 'node-fetch/node-fetch',
+        name: 'node-fetch',
+        description: 'Fetch API for Node.js',
+        tags: ['http'],
+      },
+      {
+        id: 'auth0/identity',
+        name: 'Auth0 Identity',
+        description: 'Identity toolkit',
+        tags: ['auth'],
+      },
+    ]);
+
+    expect(searchWithStats('nodefetch', index).results[0].id).toBe('node-fetch/node-fetch');
+    expect(searchWithStats('auth 0', index).results[0].id).toBe('auth0/identity');
+  });
 });

@@ -51,10 +51,35 @@ function writeMeta(sourceName, meta) {
 
 function isSourceCacheFresh(sourceName) {
   const meta = readMeta(sourceName);
-  if (!meta.lastUpdated) return false;
+  if (!meta.lastUpdated && meta.lastUpdated !== 0) return false;
   const config = loadConfig();
   const age = (Date.now() - meta.lastUpdated) / 1000;
   return age < config.refresh_interval;
+}
+
+function isTimestampFresh(timestamp) {
+  if (timestamp === undefined || timestamp === null) return false;
+  const config = loadConfig();
+  const age = (Date.now() - timestamp) / 1000;
+  return age < config.refresh_interval;
+}
+
+function hasFreshSearchIndexState(sourceName) {
+  if (existsSync(getSourceSearchIndexPath(sourceName))) {
+    return true;
+  }
+
+  const meta = readMeta(sourceName);
+  return meta.searchIndexAvailable === false && isTimestampFresh(meta.searchIndexCheckedAt);
+}
+
+function shouldFetchRemoteRegistry(sourceName, force = false) {
+  if (force) return true;
+  return !(
+    isSourceCacheFresh(sourceName)
+    && existsSync(getSourceRegistryPath(sourceName))
+    && hasFreshSearchIndexState(sourceName)
+  );
 }
 
 async function fetchRemoteText(url) {
@@ -75,7 +100,7 @@ async function fetchRemoteText(url) {
  * Fetch registry for a single remote source.
  */
 async function fetchRemoteRegistry(source, force = false) {
-  if (!force && isSourceCacheFresh(source.name) && existsSync(getSourceRegistryPath(source.name))) {
+  if (!shouldFetchRemoteRegistry(source.name, force)) {
     return;
   }
 
@@ -92,15 +117,33 @@ async function fetchRemoteRegistry(source, force = false) {
   writeFileSync(getSourceRegistryPath(source.name), registryText);
 
   const searchIndexUrl = `${source.url}/search-index.json`;
+  const searchIndexCheckedAt = Date.now();
+  let searchIndexAvailable;
   try {
     const searchIndexText = await fetchRemoteText(searchIndexUrl);
     writeFileSync(getSourceSearchIndexPath(source.name), searchIndexText);
-  } catch {
+    searchIndexAvailable = true;
+  } catch (err) {
     // Avoid serving a stale local search index after a registry refresh.
     rmSync(getSourceSearchIndexPath(source.name), { force: true });
+    if (err.message?.startsWith('404 ')) {
+      searchIndexAvailable = false;
+    }
   }
 
-  writeMeta(source.name, { ...readMeta(source.name), lastUpdated: Date.now() });
+  const nextMeta = {
+    ...readMeta(source.name),
+    lastUpdated: Date.now(),
+  };
+  delete nextMeta.searchIndexAvailable;
+  delete nextMeta.searchIndexCheckedAt;
+
+  if (searchIndexAvailable !== undefined) {
+    nextMeta.searchIndexAvailable = searchIndexAvailable;
+    nextMeta.searchIndexCheckedAt = searchIndexCheckedAt;
+  }
+
+  writeMeta(source.name, nextMeta);
 }
 
 /**
@@ -217,7 +260,7 @@ export async function fetchDoc(source, docPath) {
   const content = await res.text();
 
   // Cache locally
-  const dir = cachedPath.substring(0, cachedPath.lastIndexOf('/'));
+  const dir = dirname(cachedPath);
   mkdirSync(dir, { recursive: true });
   writeFileSync(cachedPath, content);
 
@@ -357,7 +400,7 @@ export async function ensureRegistry() {
     // Auto-refresh stale remote registries (best-effort)
     for (const source of config.sources) {
       if (source.path) continue;
-      if (!isSourceCacheFresh(source.name)) {
+      if (shouldFetchRemoteRegistry(source.name)) {
         try { await fetchRemoteRegistry(source); } catch { /* use stale */ }
       }
     }

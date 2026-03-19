@@ -1,13 +1,180 @@
 import { loadSourceRegistry, loadSearchIndex } from './cache.js';
 import { loadConfig } from './config.js';
 import { normalizeLanguage } from './normalize.js';
-import { buildIndexFromDocuments, search as bm25Search } from './bm25.js';
+import { buildIndexFromDocuments, compactIdentifier, search as bm25Search, tokenize } from './bm25.js';
 
 let _merged = null;
 let _searchIndex = null;
 
 function getSearchLookupId(sourceName, entryId) {
   return `${sourceName}:${entryId}`;
+}
+
+function normalizeQuery(query) {
+  return String(query || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function splitCompactSegments(text) {
+  return [...new Set([
+    ...String(text || '').split('/').map((segment) => compactIdentifier(segment)),
+    ...String(text || '').split(/[\/_.\s-]+/).map((segment) => compactIdentifier(segment)),
+  ])].filter(Boolean);
+}
+
+function levenshteinDistance(a, b, maxDistance = Infinity) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  if (Math.abs(a.length - b.length) > maxDistance) return maxDistance + 1;
+
+  let previous = Array.from({ length: b.length + 1 }, (_, idx) => idx);
+  let current = new Array(b.length + 1);
+
+  for (let i = 1; i <= a.length; i++) {
+    current[0] = i;
+    let rowMin = current[0];
+
+    for (let j = 1; j <= b.length; j++) {
+      const substitutionCost = a[i - 1] === b[j - 1] ? 0 : 1;
+      current[j] = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + substitutionCost,
+      );
+      rowMin = Math.min(rowMin, current[j]);
+    }
+
+    if (rowMin > maxDistance) return maxDistance + 1;
+    [previous, current] = [current, previous];
+  }
+
+  return previous[b.length];
+}
+
+function scoreCompactCandidate(queryCompact, candidateCompact, weights) {
+  if (!queryCompact || !candidateCompact) return 0;
+  if (candidateCompact === queryCompact) return weights.exact;
+  if (queryCompact.length < 3) return 0;
+
+  const lengthPenalty = Math.abs(candidateCompact.length - queryCompact.length);
+  const lengthRatio = Math.min(candidateCompact.length, queryCompact.length)
+    / Math.max(candidateCompact.length, queryCompact.length);
+
+  if ((candidateCompact.startsWith(queryCompact) || queryCompact.startsWith(candidateCompact)) && lengthRatio >= 0.6) {
+    return Math.max(weights.prefix - lengthPenalty, 0);
+  }
+
+  if ((candidateCompact.includes(queryCompact) || queryCompact.includes(candidateCompact)) && lengthRatio >= 0.75) {
+    return Math.max(weights.contains - lengthPenalty, 0);
+  }
+
+  if (queryCompact.length < 5) return 0;
+
+  const maxDistance = queryCompact.length <= 5 ? 1 : queryCompact.length <= 8 ? 2 : 3;
+  const distance = levenshteinDistance(queryCompact, candidateCompact, maxDistance);
+  if (distance > maxDistance) return 0;
+
+  return Math.max(weights.fuzzy - (distance * 20) - lengthPenalty, 0);
+}
+
+function scoreEntryLexicalVariant(entry, queryCompact) {
+  if (queryCompact.length < 2) return 0;
+
+  const nameCompact = compactIdentifier(entry.name);
+  const idCompact = compactIdentifier(entry.id);
+  const idSegments = splitCompactSegments(entry.id);
+  const nameSegments = splitCompactSegments(entry.name);
+
+  let best = 0;
+
+  best = Math.max(best, scoreCompactCandidate(queryCompact, nameCompact, {
+    exact: 620,
+    prefix: 560,
+    contains: 520,
+    fuzzy: 500,
+  }));
+
+  best = Math.max(best, scoreCompactCandidate(queryCompact, idCompact, {
+    exact: 600,
+    prefix: 540,
+    contains: 500,
+    fuzzy: 470,
+  }));
+
+  for (let idx = 0; idx < idSegments.length; idx++) {
+    const segment = idSegments[idx];
+    const segmentScore = scoreCompactCandidate(queryCompact, segment, {
+      exact: 580,
+      prefix: 530,
+      contains: 490,
+      fuzzy: 460,
+    });
+    if (segmentScore === 0) continue;
+
+    let bonus = 0;
+    const isFirst = idx === 0;
+    const isLast = idx === idSegments.length - 1;
+    if (isFirst) bonus += 10;
+    if (isLast) bonus += 10;
+    if (queryCompact === idSegments[0]) bonus += 60;
+    if (queryCompact === idSegments[idSegments.length - 1]) bonus += 25;
+    if (idSegments.length > 1 && queryCompact === idSegments[0] && queryCompact === idSegments[idSegments.length - 1]) {
+      bonus += 40;
+    }
+
+    best = Math.max(best, segmentScore + bonus);
+  }
+
+  for (const segment of nameSegments) {
+    best = Math.max(best, scoreCompactCandidate(queryCompact, segment, {
+      exact: 560,
+      prefix: 520,
+      contains: 480,
+      fuzzy: 450,
+    }));
+  }
+
+  return best;
+}
+
+function scoreEntryLexicalBoost(entry, normalizedQuery, rescueTerms = []) {
+  const queryCompacts = [...new Set([
+    compactIdentifier(normalizedQuery),
+    ...rescueTerms.map((term) => compactIdentifier(term)),
+  ])].filter((queryCompact) => queryCompact.length >= 2);
+
+  let best = 0;
+  for (const queryCompact of queryCompacts) {
+    best = Math.max(best, scoreEntryLexicalVariant(entry, queryCompact));
+  }
+  return best;
+}
+
+function getMissingQueryTerms(normalizedQuery) {
+  if (!_searchIndex?.invertedIndex) {
+    return [];
+  }
+
+  return tokenize(normalizedQuery).filter((term) => !_searchIndex.invertedIndex[term]?.length);
+}
+
+function shouldRunGlobalLexicalScan(normalizedQuery, resultByKey) {
+  if (!_searchIndex || resultByKey.size === 0) {
+    return true;
+  }
+
+  if (!_searchIndex.invertedIndex) {
+    return false;
+  }
+
+  const queryTerms = tokenize(normalizedQuery);
+  if (queryTerms.length < 2) {
+    return false;
+  }
+
+  return getMissingQueryTerms(normalizedQuery).length > 0;
 }
 
 function namespaceSearchIndex(index, sourceName) {
@@ -158,6 +325,7 @@ export function getDisplayId(entry) {
  * Uses BM25 when a search index is available, falls back to keyword matching.
  */
 export function searchEntries(query, filters = {}) {
+  const normalizedQuery = normalizeQuery(query);
   const entries = applySourceFilter(getAllEntries());
 
   // Deduplicate: same id+source appearing as both doc and skill → show once
@@ -177,23 +345,26 @@ export function searchEntries(query, filters = {}) {
     entryById.set(getSearchLookupId(entry._source, entry.id), entry);
   }
 
-  let results;
+  if (!normalizedQuery) {
+    return applyFilters(deduped, filters).map((entry) => ({ ...entry, _score: 0 }));
+  }
+
+  const resultByKey = new Map();
 
   if (_searchIndex) {
     // BM25 search
-    const bm25Results = bm25Search(query, _searchIndex);
-    results = bm25Results
-      .map((r) => {
-        const entry = entryById.get(r.id);
-        return entry ? { entry, score: r.score } : null;
-      })
-      .filter(Boolean);
+    for (const match of bm25Search(normalizedQuery, _searchIndex)) {
+      const entry = entryById.get(match.id);
+      if (!entry) continue;
+      const key = getSearchLookupId(entry._source, entry.id);
+      resultByKey.set(key, { entry, score: match.score });
+    }
   } else {
     // Fallback: keyword matching
-    const q = query.toLowerCase();
+    const q = normalizedQuery.toLowerCase();
     const words = q.split(/\s+/);
 
-    results = deduped.map((entry) => {
+    for (const entry of deduped) {
       let score = 0;
 
       if (entry.id === q) score += 100;
@@ -210,11 +381,34 @@ export function searchEntries(query, filters = {}) {
         if (entry.tags?.some((t) => t.toLowerCase().includes(word))) score += 15;
       }
 
-      return { entry, score };
-    });
-
-    results = results.filter((r) => r.score > 0);
+      if (score > 0) {
+        const key = getSearchLookupId(entry._source, entry.id);
+        resultByKey.set(key, { entry, score });
+      }
+    }
   }
+
+  const lexicalCandidates = !shouldRunGlobalLexicalScan(normalizedQuery, resultByKey)
+    ? [...new Set([...resultByKey.values()].map(({ entry }) => entry))]
+    : deduped;
+  const rescueTerms = resultByKey.size > 0
+    ? getMissingQueryTerms(normalizedQuery).filter((term) => term.length >= 5)
+    : [];
+
+  for (const entry of lexicalCandidates) {
+    const boost = scoreEntryLexicalBoost(entry, normalizedQuery, rescueTerms);
+    if (boost === 0) continue;
+
+    const key = getSearchLookupId(entry._source, entry.id);
+    const current = resultByKey.get(key);
+    if (current) {
+      current.score += boost;
+    } else {
+      resultByKey.set(key, { entry, score: boost });
+    }
+  }
+
+  let results = [...resultByKey.values()];
 
   const filtered = applyFilters(results.map((r) => r.entry), filters);
   const filteredSet = new Set(filtered);
@@ -229,6 +423,7 @@ export function searchEntries(query, filters = {}) {
  * type: "doc" or "skill". If null, searches both.
  */
 export function getEntry(idOrNamespacedId, type = null) {
+  const normalizedId = normalizeQuery(idOrNamespacedId);
   const { docs, skills } = getMerged();
   let pool;
   if (type === 'doc') pool = applySourceFilter(docs);
@@ -236,16 +431,16 @@ export function getEntry(idOrNamespacedId, type = null) {
   else pool = applySourceFilter([...docs, ...skills]);
 
   // Check for source:id format (colon separates source from id)
-  if (idOrNamespacedId.includes(':')) {
-    const colonIdx = idOrNamespacedId.indexOf(':');
-    const sourceName = idOrNamespacedId.slice(0, colonIdx);
-    const id = idOrNamespacedId.slice(colonIdx + 1);
+  if (normalizedId.includes(':')) {
+    const colonIdx = normalizedId.indexOf(':');
+    const sourceName = normalizedId.slice(0, colonIdx);
+    const id = normalizedId.slice(colonIdx + 1);
     const entry = pool.find((e) => e._source === sourceName && e.id === id);
     return entry ? { entry, ambiguous: false } : { entry: null, ambiguous: false };
   }
 
   // Bare id (may contain slashes like author/name)
-  const matches = pool.filter((e) => e.id === idOrNamespacedId);
+  const matches = pool.filter((e) => e.id === normalizedId);
   if (matches.length === 0) return { entry: null, ambiguous: false };
   if (matches.length === 1) return { entry: matches[0], ambiguous: false };
 

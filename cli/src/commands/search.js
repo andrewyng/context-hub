@@ -57,9 +57,10 @@ export function registerSearchCommand(program) {
     .action((query, opts) => {
       const globalOpts = program.optsWithGlobals();
       const limit = parseInt(opts.limit, 10);
+      const normalizedQuery = typeof query === 'string' ? query.trim().replace(/\s+/g, ' ') : query;
 
       // No query: list all
-      if (!query) {
+      if (!normalizedQuery) {
         const entries = listEntries(opts).slice(0, limit);
         output({ results: entries, total: entries.length }, (data) => {
           if (data.results.length === 0) {
@@ -73,12 +74,12 @@ export function registerSearchCommand(program) {
       }
 
       // Exact id match: show detail
-      const result = getEntry(query);
+      const result = getEntry(normalizedQuery);
       if (result.ambiguous) {
         output(
           { error: 'ambiguous', alternatives: result.alternatives },
           () => {
-            console.log(chalk.yellow(`Multiple entries with id "${query}". Be specific:`));
+            console.log(chalk.yellow(`Multiple entries with id "${normalizedQuery}". Be specific:`));
             for (const alt of result.alternatives) {
               console.log(`  ${chalk.bold(alt)}`);
             }
@@ -94,12 +95,12 @@ export function registerSearchCommand(program) {
 
       // Fuzzy search
       const searchStart = Date.now();
-      const results = searchEntries(query, opts).slice(0, limit);
+      const results = searchEntries(normalizedQuery, opts).slice(0, limit);
       const duration_ms = Date.now() - searchStart;
       const resultIds = results.map((e) => e.id || e.name || 'unknown');
       trackEvent('search', {
-        query: query.slice(0, 1000),
-        query_length: query.length,
+        query: normalizedQuery.slice(0, 1000),
+        query_length: normalizedQuery.length,
         result_count: results.length,
         results: resultIds,
         duration_ms,
@@ -108,12 +109,12 @@ export function registerSearchCommand(program) {
         tags: opts.tags || undefined,
         lang: opts.lang || undefined,
       }).catch(() => {});
-      output({ results, total: results.length, query }, (data) => {
+      output({ results, total: results.length, query: normalizedQuery }, (data) => {
         if (data.results.length === 0) {
-          console.log(chalk.yellow(`No results for "${query}".`));
+          console.log(chalk.yellow(`No results for "${normalizedQuery}".`));
           return;
         }
-        console.log(chalk.bold(`${data.total} results for "${query}":\n`));
+        console.log(chalk.bold(`${data.total} results for "${normalizedQuery}":\n`));
         formatEntryList(data.results);
       }, globalOpts);
     });

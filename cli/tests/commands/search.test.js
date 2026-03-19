@@ -209,15 +209,23 @@ describe('search command', () => {
       expect(searchEntries).toHaveBeenCalledWith('widget', expect.anything());
     });
 
+    it('normalizes whitespace before lookup and search', async () => {
+      searchEntries.mockReturnValue([docEntry]);
+      await runSearch(['  widget   api  ']);
+      expect(getEntry).toHaveBeenCalledWith('widget api');
+      expect(searchEntries).toHaveBeenCalledWith('widget api', expect.anything());
+    });
+
     it('fires analytics event with correct properties', async () => {
       searchEntries.mockReturnValue([docEntry]);
       await runSearch(['widget', '--tags', 'ui']);
-      expect(trackEvent).toHaveBeenCalledWith('search', {
+      expect(trackEvent).toHaveBeenCalledWith('search', expect.objectContaining({
+        query: 'widget',
         query_length: 6,
         result_count: 1,
         has_tags: true,
         has_lang: false,
-      });
+      }));
     });
 
     it('does not fail when trackEvent rejects', async () => {

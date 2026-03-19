@@ -20,6 +20,7 @@ const DEFAULT_B = 0.75;
 
 // Field weights for multi-field scoring
 const FIELD_WEIGHTS = {
+  id: 4.0,
   name: 3.0,
   tags: 2.0,
   description: 1.0,
@@ -27,6 +28,22 @@ const FIELD_WEIGHTS = {
 
 function getDefaultParams() {
   return { k1: DEFAULT_K1, b: DEFAULT_B };
+}
+
+function isSearchableToken(token) {
+  return (token.length > 1 || /^\d+$/.test(token)) && !STOP_WORDS.has(token);
+}
+
+export function compactIdentifier(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function splitAlphaNumeric(text) {
+  return text
+    .replace(/([a-z])(\d)/g, '$1 $2')
+    .replace(/(\d)([a-z])/g, '$1 $2');
 }
 
 /**
@@ -39,7 +56,43 @@ export function tokenize(text) {
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, ' ')
     .split(/[\s-]+/)
-    .filter((t) => t.length > 1 && !STOP_WORDS.has(t));
+    .filter(isSearchableToken);
+}
+
+/**
+ * Tokenize identifiers more aggressively than free text so package ids
+ * still match joined/split variants like "nodefetch" and "auth 0".
+ */
+export function tokenizeIdentifier(text) {
+  if (!text) return [];
+
+  const tokens = new Set(tokenize(text));
+  const raw = String(text);
+  const compact = compactIdentifier(raw);
+  const segments = new Set([
+    ...raw.split('/').map((segment) => compactIdentifier(segment)),
+    ...raw.split(/[\/_.\s-]+/).map((segment) => compactIdentifier(segment)),
+  ]);
+
+  if (isSearchableToken(compact)) {
+    tokens.add(compact);
+  }
+
+  for (const token of tokenize(splitAlphaNumeric(compact))) {
+    tokens.add(token);
+  }
+
+  for (const segment of segments) {
+    if (!segment) continue;
+    if (isSearchableToken(segment)) {
+      tokens.add(segment);
+    }
+    for (const token of tokenize(splitAlphaNumeric(segment))) {
+      tokens.add(token);
+    }
+  }
+
+  return [...tokens];
 }
 
 function buildInvertedIndex(documents) {
@@ -47,6 +100,7 @@ function buildInvertedIndex(documents) {
 
   for (const [docIndex, doc] of documents.entries()) {
     const allTerms = new Set([
+      ...(doc.tokens.id || []),
       ...(doc.tokens.name || []),
       ...(doc.tokens.description || []),
       ...(doc.tokens.tags || []),
@@ -63,18 +117,20 @@ function buildInvertedIndex(documents) {
 
 export function buildIndexFromDocuments(documents, params = getDefaultParams()) {
   const dfMap = Object.create(null); // document frequency per term (across all fields)
-  const fieldLengths = { name: [], description: [], tags: [] };
+  const fieldLengths = { id: [], name: [], description: [], tags: [] };
 
   for (const doc of documents) {
+    const idTokens = doc.tokens.id || [];
     const nameTokens = doc.tokens.name || [];
     const descTokens = doc.tokens.description || [];
     const tagTokens = doc.tokens.tags || [];
 
+    fieldLengths.id.push(idTokens.length);
     fieldLengths.name.push(nameTokens.length);
     fieldLengths.description.push(descTokens.length);
     fieldLengths.tags.push(tagTokens.length);
 
-    const allTerms = new Set([...nameTokens, ...descTokens, ...tagTokens]);
+    const allTerms = new Set([...idTokens, ...nameTokens, ...descTokens, ...tagTokens]);
     for (const term of allTerms) {
       dfMap[term] = (dfMap[term] || 0) + 1;
     }
@@ -93,6 +149,7 @@ export function buildIndexFromDocuments(documents, params = getDefaultParams()) 
     params,
     totalDocs: N,
     avgFieldLengths: {
+      id: avg(fieldLengths.id),
       name: avg(fieldLengths.name),
       description: avg(fieldLengths.description),
       tags: avg(fieldLengths.tags),
@@ -114,6 +171,7 @@ export function buildIndex(entries) {
   const documents = [];
 
   for (const entry of entries) {
+    const idTokens = tokenizeIdentifier(entry.id);
     const nameTokens = tokenize(entry.name);
     const descTokens = tokenize(entry.description || '');
     const tagTokens = (entry.tags || []).flatMap((t) => tokenize(t));
@@ -121,6 +179,7 @@ export function buildIndex(entries) {
     documents.push({
       id: entry.id,
       tokens: {
+        id: idTokens,
         name: nameTokens,
         description: descTokens,
         tags: tagTokens,

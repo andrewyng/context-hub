@@ -630,19 +630,6 @@ api.addDomainName('CustomDomain', {
 });
 ```
 
-**New Props, Methods and ENUMs**
-| Construct | Prop | Value | Comment |
-|-----------|------|-------|---------|
-| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_3_2025_09` | TLS 1.3 only — requires `endpointAccessMode` |
-| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_3_FIPS_2025_09` | TLS 1.3 FIPS compliant — requires `endpointAccessMode` |
-| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_2_PQ_2025_09` | TLS 1.3 & 1.2 with post-quantum cryptography — requires `endpointAccessMode` |
-| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_2_PFS_PQ_2025_09` | TLS 1.3 & 1.2 with PFS and post-quantum — requires `endpointAccessMode` |
-| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_2025_EDGE` | TLS 1.3 for edge-optimized (CloudFront) endpoints |
-| `DomainNameOptions` | `endpointAccessMode` | `EndpointAccessMode.STRICT` | Required for all `TLS13_*` enhanced security policies. Recommended for production |
-| `DomainNameOptions` | `endpointAccessMode` | `EndpointAccessMode.BASIC` | Alternative to `STRICT` — use during migration or for specific architectures |
-| `LambdaIntegration` | `responseTransferMode` | `ResponseTransferMode.STREAM` | Streams response as received. Supported for `AWS_PROXY` integrations only |
-| `LambdaIntegration` | `responseTransferMode` | `ResponseTransferMode.BUFFERED` | Default — waits for complete response before transmission |
-
 **Response Streaming with Transfer Mode (v2.230.0+)**
 
 Enable response streaming to allow API Gateway to stream responses back as they're received from the integration (Lambda, HTTP endpoint, etc.) rather than buffering the complete response. Useful for large payloads or real-time streaming responses.
@@ -670,6 +657,19 @@ const httpStreamingMethod = api.root.addResource('stream').addMethod(
   })
 );
 ```
+
+**New Props, Methods and ENUMs**
+| Construct | Prop | Value | Comment |
+|-----------|------|-------|---------|
+| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_3_2025_09` | TLS 1.3 only — requires `endpointAccessMode` |
+| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_3_FIPS_2025_09` | TLS 1.3 FIPS compliant — requires `endpointAccessMode` |
+| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_2_PQ_2025_09` | TLS 1.3 & 1.2 with post-quantum cryptography — requires `endpointAccessMode` |
+| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_1_2_PFS_PQ_2025_09` | TLS 1.3 & 1.2 with PFS and post-quantum — requires `endpointAccessMode` |
+| `DomainNameOptions` | `securityPolicy` | `SecurityPolicy.TLS13_2025_EDGE` | TLS 1.3 for edge-optimized (CloudFront) endpoints |
+| `DomainNameOptions` | `endpointAccessMode` | `EndpointAccessMode.STRICT` | Required for all `TLS13_*` enhanced security policies. Recommended for production |
+| `DomainNameOptions` | `endpointAccessMode` | `EndpointAccessMode.BASIC` | Alternative to `STRICT` — use during migration or for specific architectures |
+| `LambdaIntegration` | `responseTransferMode` | `ResponseTransferMode.STREAM` | Streams response as received. Supported for `AWS_PROXY` integrations only |
+| `LambdaIntegration` | `responseTransferMode` | `ResponseTransferMode.BUFFERED` | Default — waits for complete response before transmission |
 
 **Deprecated Props and Methods**
 | Construct | Deprecated Prop | Comment |
@@ -918,27 +918,6 @@ tableWithStream.grantStream(streamConsumerFunction,
 tableWithStream.grantTableListStreams(streamConsumerFunction);
 ```
 
-**New Props, Methods and ENUMs**
-
-| New Construct | Comment |
-|---------------|---------|
-| `TableV2MultiAccountReplica` | Create DynamoDB replicas in other AWS accounts (v2.239.0+) |
-
-| Construct | Prop | Value | Comment |
-|-----------|------|-------|---------|
-| `GlobalSecondaryIndexPropsV2` | `partitionKeys` | `Attribute[]` | Array of up to 4 partition key attributes for compound GSI keys (v2.226.0+) |
-| `GlobalSecondaryIndexPropsV2` | `sortKeys` | `Attribute[]` | Array of up to 4 sort key attributes for compound GSI keys (v2.226.0+) |
-
-| Construct | New Method | Comment |
-|-----------|------------|---------|
-| `TableGrants` | `readData()` | Grant `GetItem`, `Query`, `Scan`, `BatchGetItem`, `ConditionCheckItem`, `DescribeTable` |
-| `TableGrants` | `writeData()` | Grant `PutItem`, `UpdateItem`, `DeleteItem`, `BatchWriteItem`, `ConditionCheckItem`, `DescribeTable` |
-| `TableGrants` | `readWriteData()` | Grant combined read and write permissions |
-| `TableGrants` | `actions()` | Grant specific DynamoDB actions |
-| `TableV2` | `grantStreamRead()` | Grant stream read permissions when `dynamoStream` is configured (v2.227.0+) |
-| `TableV2` | `grantStream()` | Grant specific stream actions when `dynamoStream` is configured (v2.227.0+) |
-| `TableV2` | `grantTableListStreams()` | Grant `ListStreams` permission when `dynamoStream` is configured (v2.227.0+) |
-
 **Cross-Account Global Table Replication (v2.239.0+)**
 
 Set up DynamoDB global tables with cross-account replication for multi-account, multi-region applications. Use `TableV2MultiAccountReplica` to create replicas in other AWS accounts.
@@ -1023,6 +1002,27 @@ replicationRole.addToPrincipalPolicy(
   })
 );
 ```
+
+**New Props, Methods and ENUMs**
+
+| New Construct | Comment |
+|---------------|---------|
+| `TableV2MultiAccountReplica` | Create DynamoDB replicas in other AWS accounts (v2.239.0+) |
+
+| Construct | Prop | Value | Comment |
+|-----------|------|-------|---------|
+| `GlobalSecondaryIndexPropsV2` | `partitionKeys` | `Attribute[]` | Array of up to 4 partition key attributes for compound GSI keys (v2.226.0+) |
+| `GlobalSecondaryIndexPropsV2` | `sortKeys` | `Attribute[]` | Array of up to 4 sort key attributes for compound GSI keys (v2.226.0+) |
+
+| Construct | New Method | Comment |
+|-----------|------------|---------|
+| `TableGrants` | `readData()` | Grant `GetItem`, `Query`, `Scan`, `BatchGetItem`, `ConditionCheckItem`, `DescribeTable` |
+| `TableGrants` | `writeData()` | Grant `PutItem`, `UpdateItem`, `DeleteItem`, `BatchWriteItem`, `ConditionCheckItem`, `DescribeTable` |
+| `TableGrants` | `readWriteData()` | Grant combined read and write permissions |
+| `TableGrants` | `actions()` | Grant specific DynamoDB actions |
+| `TableV2` | `grantStreamRead()` | Grant stream read permissions when `dynamoStream` is configured (v2.227.0+) |
+| `TableV2` | `grantStream()` | Grant specific stream actions when `dynamoStream` is configured (v2.227.0+) |
+| `TableV2` | `grantTableListStreams()` | Grant `ListStreams` permission when `dynamoStream` is configured (v2.227.0+) |
 
 **Deprecated Props and Methods**
 | Construct | Deprecated Prop | Comment |
@@ -1609,21 +1609,6 @@ const proxy = new rds.DatabaseProxy(this, 'Proxy', {
 proxy.grantConnect(lambdaFunction, 'database-user');
 ```
 
-**New Props, Methods and ENUMs**
-| Construct | Prop | Value | Comment |
-|-----------|--------------|---------|
-| `DatabaseProxyProps` | `defaultAuthScheme` | `DefaultAuthScheme.IAM_AUTH` | Use end-to-end IAM authentication. Makes `secrets` optional (v2.230.0+) |
-| `DatabaseProxyProps` | `defaultAuthScheme` | `DefaultAuthScheme.NONE` | Default — uses Secrets Manager credentials |
-| `DatabaseInstance` | `cloudwatchLogsExports` | `'instance'` | New log type: exports instance-level logs (v2.230.0+) |
-| `DatabaseInstance` | `cloudwatchLogsExports` | `'iam-db-auth-error'` | New log type: exports IAM DB authentication errors (v2.230.0+) |
-
-| Construct | New Method | Comment |
-|-----------|------------|---------|
-| `DatabaseCluster` | `metricVolumeReadIOPs()` | Cluster-level volume read IOPS CloudWatch metric (v2.230.0+) |
-| `DatabaseCluster` | `metricVolumeWriteIOPs()` | Cluster-level volume write IOPS CloudWatch metric (v2.230.0+) |
-| `DatabaseInstance` | `metricReadIOPS()` | Instance-level read IOPS CloudWatch metric (v2.230.0+) |
-| `DatabaseInstance` | `metricWriteIOPS()` | Instance-level write IOPS CloudWatch metric (v2.230.0+) |
-
 **Read/Write IOPS Metrics (v2.230.0+, 2025-07-18)**
 
 Access CloudWatch metrics for RDS read and write IOPS at both cluster and instance levels. Use `metricVolumeReadIOPs()` / `metricVolumeWriteIOPs()` for clusters and `metricReadIOPS()` / `metricWriteIOPS()` for instances.
@@ -1654,6 +1639,21 @@ const instanceWriteIops = dbInstance.metricWriteIOPS({
   statistic: 'Average',
 });
 ```
+
+**New Props, Methods and ENUMs**
+| Construct | Prop | Value | Comment |
+|-----------|--------------|---------|
+| `DatabaseProxyProps` | `defaultAuthScheme` | `DefaultAuthScheme.IAM_AUTH` | Use end-to-end IAM authentication. Makes `secrets` optional (v2.230.0+) |
+| `DatabaseProxyProps` | `defaultAuthScheme` | `DefaultAuthScheme.NONE` | Default — uses Secrets Manager credentials |
+| `DatabaseInstance` | `cloudwatchLogsExports` | `'instance'` | New log type: exports instance-level logs (v2.230.0+) |
+| `DatabaseInstance` | `cloudwatchLogsExports` | `'iam-db-auth-error'` | New log type: exports IAM DB authentication errors (v2.230.0+) |
+
+| Construct | New Method | Comment |
+|-----------|------------|---------|
+| `DatabaseCluster` | `metricVolumeReadIOPs()` | Cluster-level volume read IOPS CloudWatch metric (v2.230.0+) |
+| `DatabaseCluster` | `metricVolumeWriteIOPs()` | Cluster-level volume write IOPS CloudWatch metric (v2.230.0+) |
+| `DatabaseInstance` | `metricReadIOPS()` | Instance-level read IOPS CloudWatch metric (v2.230.0+) |
+| `DatabaseInstance` | `metricWriteIOPS()` | Instance-level write IOPS CloudWatch metric (v2.230.0+) |
 
 **Deprecated Props and Methods**
 | Construct | Deprecated Prop | Comment |

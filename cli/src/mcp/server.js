@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { ensureRegistry } from '../lib/cache.js';
 import { listEntries } from '../lib/registry.js';
 import { handleSearch, handleGet, handleList, handleAnnotate, handleFeedback } from './tools.js';
+import { attachStdioShutdownHandlers } from './stdio-lifecycle.js';
 
 // Prevent console.log from corrupting the stdio JSON-RPC protocol.
 // Any transitive dependency (e.g. posthog-node) that calls console.log
@@ -162,6 +163,9 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
   _stderr.write(`[chub-mcp] Unhandled rejection: ${reason}\n`);
 });
+
+// Exit promptly when MCP host disconnects stdio.
+attachStdioShutdownHandlers({ stderr: _stderr });
 
 // --- Start Server ---
 

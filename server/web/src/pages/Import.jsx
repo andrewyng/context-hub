@@ -686,6 +686,162 @@ function SingleImport() {
 }
 
 // ===== Batch Import Component =====
+function ImportHistory() {
+  const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [apiError, setApiError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadHistory() {
+      setLoading(true);
+      setApiError(null);
+      try {
+        const res = await fetch('/api/v1/import/history?limit=30');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load import history');
+        if (cancelled) return;
+        setHistory(data.imports || []);
+        if (data.imports?.[0]) {
+          const detailRes = await fetch(`/api/v1/import/history/${data.imports[0].id}`);
+          const detailData = await detailRes.json();
+          if (!detailRes.ok) throw new Error(detailData.error || 'Failed to load import history detail');
+          if (!cancelled) setSelected(detailData.import);
+        }
+      } catch (err) {
+        if (!cancelled) setApiError(err.message || 'Network error');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadHistory();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function selectRecord(id) {
+    setApiError(null);
+    try {
+      const res = await fetch(`/api/v1/import/history/${id}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load import history detail');
+      setSelected(data.import);
+    } catch (err) {
+      setApiError(err.message || 'Network error');
+    }
+  }
+
+  if (loading) {
+    return <div style={styles.successHint}>Loading import history...</div>;
+  }
+
+  return (
+    <div>
+      {apiError && <div style={styles.errorBox}>{apiError}</div>}
+      {!apiError && history.length === 0 && (
+        <div style={styles.successHint}>No import history yet.</div>
+      )}
+      <div style={styles.section}>
+        <h2 style={styles.sectionTitle}>Recent Imports</h2>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+          <table style={styles.resultTable}>
+            <thead>
+              <tr>
+                <th style={styles.resultTh}>Time</th>
+                <th style={styles.resultTh}>Mode</th>
+                <th style={styles.resultTh}>File</th>
+                <th style={styles.resultTh}>Status</th>
+                <th style={styles.resultTh}>Author</th>
+                <th style={styles.resultTh}>Imported</th>
+                <th style={styles.resultTh}>AI</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map(item => (
+                <tr key={item.id} onClick={() => selectRecord(item.id)} style={{ cursor: 'pointer', background: selected?.id === item.id ? 'rgba(108, 140, 255, 0.06)' : 'transparent' }}>
+                  <td style={styles.resultTd}>{new Date(item.timestamp).toLocaleString()}</td>
+                  <td style={styles.resultTd}>{item.mode}</td>
+                  <td style={styles.resultTdMono} title={item.request?.filename}>{item.request?.filename || '-'}</td>
+                  <td style={styles.resultTd}>{item.status}</td>
+                  <td style={styles.resultTd}>{item.request?.defaultAuthor || item.request?.author || '-'}</td>
+                  <td style={styles.resultTd}>{item.summary?.imported ?? 0}/{item.summary?.total ?? 0}</td>
+                  <td style={styles.resultTd}>{item.diagnostics?.aiUsed ? item.diagnostics?.model || 'yes' : '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selected && (
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>Import Detail</h2>
+          <div style={styles.previewCard}>
+            <div style={styles.successPath}>Run ID: {selected.id}</div>
+            <div style={styles.successPath}>Request: {selected.request?.filename || '-'} / {selected.mode}</div>
+            <div style={styles.successPath}>Status: {selected.status}</div>
+            <div style={styles.successHint}>AI: {selected.diagnostics?.aiUsed ? `${selected.diagnostics?.model || 'enabled'}` : 'disabled'} · Normalized backslash paths: {selected.diagnostics?.normalizedBackslashPaths ?? 0}</div>
+          </div>
+
+          {selected.results?.length > 0 && (
+            <div style={{ marginTop: 16, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+              <table style={styles.resultTable}>
+                <thead>
+                  <tr>
+                    <th style={styles.resultTh}>Source</th>
+                    <th style={styles.resultTh}>Original</th>
+                    <th style={styles.resultTh}>ID</th>
+                    <th style={styles.resultTh}>Type</th>
+                    <th style={styles.resultTh}>Path</th>
+                    <th style={styles.resultTh}>Why</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selected.results.map((item, index) => (
+                    <tr key={`${item.id}-${index}`}>
+                      <td style={styles.resultTdMono} title={item.sourcePath}>{item.sourcePath}</td>
+                      <td style={styles.resultTdMono} title={item.originalSourcePath}>{item.originalSourcePath}</td>
+                      <td style={styles.resultTd}>{item.id}</td>
+                      <td style={styles.resultTd}>{item.type}</td>
+                      <td style={styles.resultTdMono} title={item.path}>{item.path}</td>
+                      <td style={styles.resultTd}>{item.classificationReason || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {selected.errors?.length > 0 && (
+            <div style={{ marginTop: 16, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+              <table style={styles.resultTable}>
+                <thead>
+                  <tr>
+                    <th style={styles.resultTh}>File</th>
+                    <th style={styles.resultTh}>Original</th>
+                    <th style={styles.resultTh}>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selected.errors.map((item, index) => (
+                    <tr key={`${item.file}-${index}`}>
+                      <td style={styles.resultTdMono} title={item.file}>{item.file || '-'}</td>
+                      <td style={styles.resultTdMono} title={item.originalSourcePath}>{item.originalSourcePath || '-'}</td>
+                      <td style={{ ...styles.resultTd, color: '#f87171' }}>{item.error}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BatchImport() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -696,6 +852,7 @@ function BatchImport() {
   const [source, setSource] = useState('community');
   const [useAi, setUseAi] = useState(true);
   const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiModel, setAiModel] = useState('gpt-4o-mini');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [apiError, setApiError] = useState(null);
@@ -705,8 +862,10 @@ function BatchImport() {
     fetch('/api/v1/import/config')
       .then(r => r.json())
       .then(data => {
-        setAiAvailable(data.ai?.available || false);
-        if (!data.ai?.available) setUseAi(false);
+        const available = !!(data.ai?.available ?? data.ai?.configured);
+        setAiAvailable(available);
+        if (data.ai?.model) setAiModel(data.ai.model);
+        if (!available) setUseAi(false);
       })
       .catch(() => {});
   }, []);
@@ -813,7 +972,10 @@ function BatchImport() {
                   <tr>
                     <th style={styles.resultTh}>Source File</th>
                     <th style={styles.resultTh}>ID</th>
+                    <th style={styles.resultTh}>Type</th>
                     <th style={styles.resultTh}>Path</th>
+                    <th style={styles.resultTh}>Refs</th>
+                    <th style={styles.resultTh}>Examples</th>
                     <th style={styles.resultTh}>AI</th>
                   </tr>
                 </thead>
@@ -828,9 +990,16 @@ function BatchImport() {
                           onClick={e => { e.preventDefault(); navigate(`/doc/${r.id}`); }}
                         >{r.id}</a>
                       </td>
-                      <td style={styles.resultTdMono} title={r.path}>{r.path}</td>
                       <td style={styles.resultTd}>
-                        {r.aiGenerated ? <span style={styles.aiBadge}>AI Generated</span> : '-'}
+                        <span style={{ ...styles.badge, background: r.type === 'skill' ? 'rgba(236, 72, 153, 0.15)' : 'rgba(59, 130, 246, 0.15)', color: r.type === 'skill' ? '#ec4899' : '#60a5fa' }}>
+                          {r.type}
+                        </span>
+                      </td>
+                      <td style={styles.resultTdMono} title={r.path}>{r.path}</td>
+                      <td style={styles.resultTd}>{r.references?.length || 0}</td>
+                      <td style={styles.resultTd}>{r.examples?.length || 0}</td>
+                      <td style={styles.resultTd}>
+                        {r.aiGenerated ? <span style={styles.aiBadge}>AI Reorganized</span> : '-'}
                       </td>
                     </tr>
                   ))}
@@ -958,12 +1127,12 @@ function BatchImport() {
                     onChange={e => setUseAi(e.target.checked)}
                     style={{ cursor: aiAvailable ? 'pointer' : 'not-allowed' }}
                   />
-                  Use AI for missing frontmatter
+                  Use AI to reorganize and normalize documents
                 </label>
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                   {aiAvailable
-                    ? `AI enabled (${process.env.AI_MODEL || 'gpt-4o-mini'})`
-                    : 'AI not configured (set OPENAI_API_KEY)'}
+                    ? `AI enabled (${aiModel}) — documents will be reorganized into valid context-hub entries`
+                    : 'AI not configured (set API Key in Settings)'}
                 </span>
               </div>
             </div>
@@ -1019,9 +1188,18 @@ export default function Import() {
         >
           Batch (ZIP)
         </div>
+        <div
+          style={{
+            ...styles.tab,
+            ...(mode === 'history' ? styles.tabActive : {}),
+          }}
+          onClick={() => setMode('history')}
+        >
+          History
+        </div>
       </div>
 
-      {mode === 'single' ? <SingleImport /> : <BatchImport />}
+      {mode === 'single' ? <SingleImport /> : mode === 'batch' ? <BatchImport /> : <ImportHistory />}
     </div>
   );
 }

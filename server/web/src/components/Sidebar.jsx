@@ -24,21 +24,6 @@ const styles = {
     fontWeight: 700,
     color: 'var(--text-primary)',
     letterSpacing: '-0.3px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-  },
-  brandLogo: {
-    width: 28,
-    height: 28,
-    flexShrink: 0,
-  },
-  brandSub: {
-    display: 'block',
-    fontSize: 11,
-    color: 'var(--text-muted)',
-    fontWeight: 400,
-    marginTop: 2,
   },
   nav: {
     display: 'flex',
@@ -77,13 +62,7 @@ const styles = {
 export default function Sidebar() {
   return (
     <aside style={styles.sidebar}>
-      <div style={styles.brand}>
-        <img src="/logo.svg" alt="logo" style={styles.brandLogo} />
-        <div>
-          EASE Context Hub
-          <span style={styles.brandSub}>Console</span>
-        </div>
-      </div>
+      <div style={styles.brand}>Context Hub</div>
       <nav style={styles.nav}>
         {navItems.map(item => (
           <NavLink

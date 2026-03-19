@@ -7,9 +7,9 @@
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { repoPath } from './paths.js';
 
-const CONFIG_PATH = resolve(process.cwd(), 'server-config.json');
+const CONFIG_PATH = repoPath('server-config.json');
 
 // In-memory config — populated on first load
 let _config = null;
@@ -162,74 +162,172 @@ export async function testAiConnection() {
  * Generate frontmatter fields for a markdown document by analyzing its content.
  * Returns { name, description, language, tags } or null on failure.
  */
-export async function generateFrontmatter(content) {
+async function completeJsonPrompt(prompt, maxTokens = 300) {
   const { apiKey, baseUrl, model } = getAiValues();
 
   if (!apiKey) {
     throw new Error('AI service not configured. Set API Key in Settings or OPENAI_API_KEY env.');
   }
 
-  // Truncate content to avoid excessive token usage (keep first ~3000 chars)
-  const truncated = content.length > 3000 ? content.slice(0, 3000) + '\n... (truncated)' : content;
+  const requestVariants = [
+    {
+      model,
+      messages: [
+        { role: 'system', content: 'You are a documentation import assistant. Return only valid JSON, no markdown, no explanation.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.2,
+      max_tokens: maxTokens,
+    },
+    {
+      model,
+      messages: [
+        { role: 'system', content: 'You are a documentation import assistant. Return only valid JSON, no markdown, no explanation.' },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: maxTokens,
+    },
+  ];
 
-  const prompt = `Analyze the following markdown document and generate metadata for a documentation registry.
-
-Return ONLY a JSON object with these fields (no markdown, no explanation):
-- "name": a short lowercase identifier using hyphens (e.g. "chat-api", "auth-guide")
-- "description": a concise one-sentence description for search results
-- "language": the primary programming language shown in code examples, or empty string if language-agnostic (choose from: javascript, typescript, python, go, rust, java, kotlin, swift, csharp, ruby, php, shell)
-- "tags": comma-separated relevant tags for search filtering (3-5 tags)
-
-Document content:
-${truncated}`;
-
-  try {
+  let lastError = null;
+  for (const payload of requestVariants) {
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: 'You are a documentation metadata assistant. Return only valid JSON, no other text.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 300,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
       const errBody = await res.text();
       console.error(`[ai-client] API error ${res.status}: ${errBody}`);
-      throw new Error(`AI API returned ${res.status}`);
+      lastError = new Error(`AI API returned ${res.status}`);
+      if (res.status === 400) continue;
+      throw lastError;
     }
 
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content?.trim();
+    if (!text) {
+      lastError = new Error('Empty response from AI');
+      continue;
+    }
 
-    if (!text) throw new Error('Empty response from AI');
-
-    // Parse JSON from response (handle possible markdown code blocks)
     let jsonStr = text;
     const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (codeBlockMatch) {
       jsonStr = codeBlockMatch[1].trim();
     }
 
-    const result = JSON.parse(jsonStr);
+    return JSON.parse(jsonStr);
+  }
 
-    // Validate and normalize
+  throw lastError || new Error('AI API request failed');
+}
+
+export async function generateFrontmatter(content) {
+  const truncated = content.length > 3000 ? content.slice(0, 3000) + '\n... (truncated)' : content;
+
+  const prompt = `Analyze the following markdown document and generate metadata for a documentation registry.
+
+Return ONLY a JSON object with these fields:
+- "name": a short lowercase identifier using hyphens
+- "description": a concise one-sentence description for search results
+- "language": the primary programming language shown in code examples, or "text" if language-agnostic
+- "tags": comma-separated relevant tags for search filtering (3-5 tags)
+
+Document content:
+${truncated}`;
+
+  try {
+    const result = await completeJsonPrompt(prompt, 300);
     return {
       name: String(result.name || '').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
       description: String(result.description || ''),
-      language: String(result.language || ''),
+      language: String(result.language || 'text'),
       tags: String(result.tags || ''),
     };
   } catch (err) {
     console.error('[ai-client] generateFrontmatter failed:', err.message);
+    throw err;
+  }
+}
+
+export async function planBatchImport(files) {
+  const summarizedFiles = files.map(file => ({
+    path: file.path,
+    originalPath: file.originalPath,
+    title: file.title,
+    entryType: file.entryType,
+    kindHint: file.kindHint,
+    classificationReason: file.classificationReason,
+    classificationConfidence: file.classificationConfidence,
+    languageHint: file.languageHint,
+    excerpt: file.excerpt,
+  }));
+
+  const prompt = `You are planning how to import a set of markdown files into a strict context-hub registry.
+
+Return ONLY a JSON object in this exact shape:
+{
+  "entries": [
+    {
+      "type": "doc",
+      "author": "lowercase-author",
+      "name": "lowercase-entry-name",
+      "description": "one sentence",
+      "source": "community",
+      "language": "java",
+      "version": "1.0.0",
+      "mainFile": "original/path.md",
+      "supportFiles": [
+        { "path": "original/ref1.md", "role": "reference" },
+        { "path": "original/example1.md", "role": "example" }
+      ]
+    },
+    {
+      "type": "skill",
+      "author": "lowercase-author",
+      "name": "lowercase-entry-name",
+      "description": "one sentence",
+      "source": "community",
+      "mainFile": "original/path.md",
+      "supportFiles": [
+        { "path": "original/ref1.md", "role": "reference" }
+      ]
+    }
+  ]
+}
+
+Rules:
+- Preserve original content. You are only planning structure and metadata.
+- Never rewrite, split, merge, or paraphrase markdown body content.
+- Files with entryType "skill" and classificationConfidence "high" must stay skills.
+- Files with entryType "doc" and classificationConfidence "high" must stay docs.
+- Files with entryType null are supporting files unless there is very strong filename evidence they are the main entry.
+- Treat archive paths as normalized POSIX-style paths using `/`, even if original zip paths used backslashes.
+- sdk in the title is not enough by itself to force a doc classification.
+- Task-routing, troubleshooting, workflow, trigger, or operational playbook style main files should prefer skill over doc.
+- Prefer as few coherent entries as possible, but do not turn references/examples into standalone docs just because they contain useful text.
+- Put supporting material into supportFiles with role "reference" or "example".
+- Every entry must have exactly one mainFile.
+- For doc entries, language must be non-empty; use "text" if unknown.
+- For doc entries, version must be "1.0.0" if unknown.
+- Skill entries must NOT include language or version fields.
+- Prefer reusing path semantics from the original filenames and directories.
+- If the caller already provided an author, keep that author; do not replace it with "imported".
+- Only use "imported" as author when no author can be inferred and no caller author was supplied.
+
+Files:
+${JSON.stringify(summarizedFiles, null, 2)}`;
+
+  try {
+    const result = await completeJsonPrompt(prompt, 1600);
+    return result;
+  } catch (err) {
+    console.error('[ai-client] planBatchImport failed:', err.message);
     throw err;
   }
 }

@@ -121,7 +121,7 @@ export default function Dashboard() {
     <div>
       <div style={styles.header}>
         <h1 style={styles.title}>Dashboard</h1>
-        <p style={styles.subtitle}>EASE Context Hub server overview</p>
+        <p style={styles.subtitle}>Context Hub server overview</p>
       </div>
 
       <div style={styles.cards}>

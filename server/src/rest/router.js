@@ -19,6 +19,7 @@ import { handleImport } from './import-handler.js';
 import { handleBatchImport } from './batch-import-handler.js';
 import { handleGetAiSettings, handleUpdateAiSettings, handleTestAiConnection } from './settings-handler.js';
 import { getAiConfig } from '../lib/ai-client.js';
+import { getImportHistory, listImportHistory } from '../lib/import-history.js';
 
 // Configure multer for file uploads (in-memory storage)
 const upload = multer({
@@ -50,6 +51,19 @@ export function createApiRouter() {
   router.post('/import', upload.single('file'), handleImport);
   router.post('/import/batch', upload.single('file'), handleBatchImport);
   router.get('/import/config', (_req, res) => res.json({ ai: getAiConfig() }));
+  router.get('/import/history', (req, res) => {
+    const limit = Number.parseInt(req.query.limit, 10) || 20;
+    const mode = typeof req.query.mode === 'string' ? req.query.mode : undefined;
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    res.json({ status: 'success', imports: listImportHistory({ limit, mode, status }) });
+  });
+  router.get('/import/history/:id', (req, res) => {
+    const record = getImportHistory(req.params.id);
+    if (!record) {
+      return res.status(404).json({ status: 'error', error: 'Import history not found' });
+    }
+    res.json({ status: 'success', import: record });
+  });
   router.get('/settings/ai', handleGetAiSettings);
   router.put('/settings/ai', handleUpdateAiSettings);
   router.post('/settings/ai/test', handleTestAiConnection);

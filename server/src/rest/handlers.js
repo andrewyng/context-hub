@@ -22,6 +22,7 @@ import {
 import { resolve, join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, copyFileSync } from 'node:fs';
+import { repoPath, REPO_ROOT } from '../lib/paths.js';
 
 function simplifyEntry(entry) {
   const result = {
@@ -181,7 +182,7 @@ export async function handleGetFileByPath(req, res) {
       }
     }
 
-    const distPath = join(process.cwd(), 'cli', 'dist', filePath);
+    const distPath = repoPath('cli', 'dist', filePath);
     if (existsSync(distPath)) {
       return res.type('text/markdown').send(readFileSync(distPath, 'utf8'));
     }
@@ -205,7 +206,7 @@ export function handleGetTree(req, res) {
 
     // Also build tree from bundled dist if local sources are empty
     if (Object.keys(trees).length === 0) {
-      const distDir = join(process.cwd(), 'cli', 'dist');
+      const distDir = repoPath('cli', 'dist');
       trees['bundled'] = buildContentTree(distDir);
     }
 
@@ -238,15 +239,15 @@ export function handleBuild(req, res) {
     return res.status(409).json({ error: 'A build is already in progress' });
   }
 
-  const contentDir = req.body?.contentDir || join(process.cwd(), 'content');
-  const outputDir = req.body?.outputDir || join(process.cwd(), 'cli', 'dist');
-  const chubBin = join(process.cwd(), 'cli', 'bin', 'chub');
+  const contentDir = req.body?.contentDir || repoPath('content');
+  const outputDir = req.body?.outputDir || repoPath('cli', 'dist');
+  const chubBin = repoPath('cli', 'bin', 'chub');
 
   buildInProgress = true;
   const chunks = [];
 
   const child = spawn('node', [chubBin, 'build', contentDir, '-o', outputDir], {
-    cwd: process.cwd(),
+    cwd: REPO_ROOT,
     env: { ...process.env },
   });
 

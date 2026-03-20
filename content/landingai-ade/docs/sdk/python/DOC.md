@@ -69,9 +69,9 @@ Converts documents to structured markdown with visual grounding.
 ```
 .markdown          → str: full document as markdown
 .chunks[]          → Chunk: {id, type, markdown, grounding: {page, box}}
-.grounding         → dict: {id → Grounding} with bounding boxes and tableCell positions
-.splits[]          → Split: {chunks[], class, identifier, markdown, pages[]} (only if split="page")
-.metadata          → ParseMetadata: {filename, page_count, duration_ms, credit_usage, version, job_id, failed_pages}
+.grounding         → dict: {id → Grounding} with bounding boxes, confidence scores, and tableCell positions
+.splits[]          → Split: {chunks[], class, identifier, markdown, pages[]} — always present; contains a single "full" split by default, or per-page splits if split="page"
+.metadata          → ParseMetadata: {filename, org_id, page_count, duration_ms, credit_usage (float), version, job_id, failed_pages}
 ```
 
 ### Example
@@ -159,8 +159,8 @@ Extracts structured data from markdown using a JSON schema.
 
 ```
 .extraction        → dict: extracted key-value pairs matching schema
-.extraction_metadata → dict: {field → {references: [chunk_ids]}} for grounding
-.metadata          → Metadata: {credit_usage, duration_ms, filename, job_id, version, schema_violation_error}
+.extraction_metadata → dict: {field → {chunk_ids: [str], cell_ids?: [str]}} for grounding
+.metadata          → Metadata: {credit_usage, duration_ms, filename, job_id, org_id, version, schema_violation_error, fallback_model_version}
 ```
 
 ### Pydantic Schema Extraction
@@ -193,8 +193,8 @@ print(f"Invoice {invoice.invoice_number}: ${invoice.total_amount}")
 chunk_map = {c.id: c for c in parsed.chunks}
 
 for field, meta in response.extraction_metadata.items():
-    if meta.get("references"):
-        chunk = chunk_map.get(meta["references"][0])
+    if meta.get("chunk_ids"):
+        chunk = chunk_map.get(meta["chunk_ids"][0])
         if chunk:
             print(f"{field}: page {chunk.grounding.page}, type={chunk.type}")
 ```
@@ -229,7 +229,7 @@ Classifies and splits mixed documents by type.
 
 ```
 .splits[]          → Split: {classification, identifier, markdowns[], pages[]}
-.metadata          → Metadata: {credit_usage, duration_ms, filename, page_count}
+.metadata          → SplitMetadata: {filename, page_count, duration_ms, credit_usage, org_id, job_id, version}
 ```
 
 ### Split → Extract Pipeline
@@ -333,17 +333,15 @@ All exceptions inherit from `LandingAiadeError`:
 
 | Exception | HTTP Status | Description |
 |-----------|-------------|-------------|
-| `BadRequestError` | 400 | Invalid parameters |
-| `AuthenticationError` | 401 | Invalid API key |
-| `PermissionDeniedError` | 403 | Forbidden |
-| `NotFoundError` | 404 | Resource not found |
-| `UnprocessableEntityError` | 422 | Invalid file type or malformed schema |
-| `RateLimitError` | 429 | Too many requests |
-| `InternalServerError` | 5xx | Server error |
+| `BadRequestError` | 400 | Invalid request due to malformed input or unsupported version |
+| `AuthenticationError` | 401 | Missing or invalid API key |
+| `UnprocessableEntityError` | 422 | Input validation failed |
+| `RateLimitError` | 429 | Rate limit exceeded |
+| `InternalServerError` | 5xx | Server error during processing |
 | `APIConnectionError` | — | Network failure |
 | `APITimeoutError` | — | Request timeout |
 
-`APIStatusError` is the base for all HTTP errors and has a `status_code` attribute.
+`APIStatusError` is the base for all HTTP errors and has a `status_code` attribute. Note: HTTP 206 (Partial Content) is returned as a successful response with `schema_violation_error` or `failed_pages` in metadata. HTTP 402 (Payment Required) indicates insufficient credits. HTTP 413 (Payload Too Large) means the file exceeds the sync parse limit — use Parse Jobs API.
 
 ### Retry with Fallback to Jobs
 
@@ -359,7 +357,7 @@ def parse_with_retry(client, file_path, max_retries=3):
         except (APITimeoutError, APIStatusError) as e:
             if isinstance(e, APIStatusError) and e.status_code not in (413, 504):
                 raise
-            print("Timeout or too large — switching to parse jobs")
+            print("File too large or timeout — switching to parse jobs")
             job = client.parse_jobs.create(document=Path(file_path))
             return poll_job(client, job.job_id)
         except APIConnectionError:
@@ -440,6 +438,9 @@ The following sections provide the complete API context so this document is full
 #### Bounding Box
 All coordinates normalized 0–1: `{ left, top, right, bottom }`.
 
+#### Confidence Scores
+Top-level grounding entries may include `confidence` (float, 0.0–1.0) and `low_confidence_spans` (list of `{confidence, text, span}`). Not all entries have confidence (e.g., `table`/`tableCell` types may not).
+
 #### Table Cell Position
 `{ row, col, rowspan, colspan, chunk_id }` — zero-indexed.
 
@@ -451,35 +452,47 @@ All coordinates normalized 0–1: `{ left, top, right, bottom }`.
 
 ### Error Codes
 
-| Status | Error Type | Description | Solution |
-|--------|------------|-------------|----------|
-| 400 | `validation_error` | Invalid parameters | Check request format |
-| 401 | `authentication_error` | Invalid API key | Check VISION_AGENT_API_KEY |
-| 413 | `payload_too_large` | File too large | Use Parse Jobs API |
-| 422 | `unprocessable_entity` | Invalid file type or malformed schema | Validate file format and schema JSON |
-| 429 | `rate_limit_error` | Too many requests | Implement backoff |
-| 500 | `internal_error` | Server error | Retry with backoff |
-| 504 | `timeout_error` | Request timeout | Use Parse Jobs API |
+| Status | Name | Description | Solution |
+|--------|------|-------------|----------|
+| 200 | Success | Request completed successfully | Continue with normal operations |
+| 206 | Partial Content | Parse: some pages failed (`metadata.failed_pages`). Extract: schema violation (`metadata.schema_violation_error`) | Review failed pages or schema violations; partial data returned, credits consumed |
+| 400 | Bad Request | Invalid request due to malformed input or unsupported version | Review error message for specific issue |
+| 401 | Unauthorized | Missing or invalid API key | Check VISION_AGENT_API_KEY |
+| 402 | Payment Required | Account does not have enough credits | Verify correct API key; add credits |
+| 413 | Payload Too Large | File exceeds sync parse limit | Use Parse Jobs API |
+| 422 | Unprocessable Entity | Input validation failed | Review request parameters and schema JSON |
+| 429 | Too Many Requests | Rate limit exceeded | Implement exponential backoff |
+| 500 | Internal Server Error | Server error during processing | Retry with backoff |
+| 504 | Gateway Timeout | Request exceeded timeout limit (475 seconds) | Reduce document size or use Parse Jobs API |
 
 ### Supported File Types
 
 | Category | Formats | Notes |
 |----------|---------|-------|
-| **PDF** | PDF | Up to 100 pages; no password-protected files |
+| **PDF** | PDF | Up to 100 pages in Playground (see rate limits for API); no password-protected files |
 | **Images** | JPEG, JPG, PNG, APNG, BMP, DCX, DDS, DIB, GD, GIF, ICNS, JP2, PCX, PPM, PSD, TGA, TIF, TIFF, WEBP | |
 | **Text Documents** | DOC, DOCX, ODT | Converted to PDF before parsing |
 | **Presentations** | ODP, PPT, PPTX | Converted to PDF before parsing |
-| **Spreadsheets** | CSV, XLSX | Up to 10 MB in Playground; no sheet/column/row limits |
+| **Spreadsheets** | CSV, XLSX | Up to 10 MB in Playground; no limit in API |
 
 > **Note:** Word, PowerPoint, and OpenDocument files are converted to PDF server-side before parsing.
 
+> **Spreadsheets** return a different response type (`SpreadsheetParseResponse`) — uses `sheet_count`/`total_rows`/`total_cells` instead of `page_count`, splits use `sheets` instead of `pages`, and top-level `grounding` is not present.
+
 ### Model Versions
+
+| Model | Best For | Chunk Types |
+|-------|----------|-------------|
+| **`dpt-2-latest`** | Complex documents with logos, signatures, ID cards | text, table, figure, marginalia, logo, card, attestation, scan_code |
+| **`dpt-2-mini`** | Simple, digitally-native documents (faster, cheaper) | text, table, figure, marginalia |
+| **`dpt-1`** | ⚠️ **Deprecated March 31, 2026** — migrate to dpt-2 | text, table, figure, marginalia |
 
 | Operation | Current Version | Description |
 |-----------|----------------|-------------|
-| Parse | `dpt-2-latest` | Document parsing and OCR |
-| Extract | `extract-latest` | Schema-based extraction |
+| Extract | `extract-latest` (currently `extract-20251024`) | Schema-based extraction |
 | Split | `split-latest` | Document classification |
+
+**Version Pinning:** For production, use dated versions (e.g., `dpt-2-20251103`) for reproducibility.
 
 ---
 

@@ -3,7 +3,7 @@ name: package
 description: "Faraday HTTP client library for Ruby — composable middleware, adapters, and request/response handling"
 metadata:
   languages: "ruby"
-  versions: "2.12.2"
+  versions: "2.14.1"
   revision: 1
   updated-on: "2026-03-17"
   source: community
@@ -22,7 +22,7 @@ Use Faraday when you need composable middleware (retries, logging, auth). Build 
 
 ```ruby
 # Gemfile
-gem "faraday", "~> 2.12"
+gem "faraday", "~> 2.14"
 
 # Optional adapters
 gem "faraday-typhoeus"

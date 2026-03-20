@@ -3,7 +3,7 @@ name: package
 description: "FactoryBot test data factory library for Ruby — define, build, and create test fixtures"
 metadata:
   languages: "ruby"
-  versions: "6.5.1"
+  versions: "6.5.6"
   revision: 1
   updated-on: "2026-03-17"
   source: community
@@ -23,7 +23,7 @@ Use `factory_bot_rails` with Rails. Prefer `build` or `build_stubbed` over `crea
 ```ruby
 # Gemfile
 group :test do
-  gem "factory_bot_rails", "~> 6.5"  # Rails integration
+  gem "factory_bot_rails", "~> 6.5"  # Rails integration (includes factory_bot)
   # or for non-Rails:
   gem "factory_bot", "~> 6.5"
 end

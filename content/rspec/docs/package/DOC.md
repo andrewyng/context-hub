@@ -3,7 +3,7 @@ name: package
 description: "RSpec testing framework for Ruby — BDD-style tests with matchers, mocks, and shared examples"
 metadata:
   languages: "ruby"
-  versions: "3.13.0"
+  versions: "3.13.2"
   revision: 1
   updated-on: "2026-03-17"
   source: community

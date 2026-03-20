@@ -3,7 +3,7 @@ name: package
 description: "Sidekiq background job processor for Ruby — Redis-backed, multi-threaded job execution"
 metadata:
   languages: "ruby"
-  versions: "7.3.9"
+  versions: "7.3.10"
   revision: 1
   updated-on: "2026-03-17"
   source: community

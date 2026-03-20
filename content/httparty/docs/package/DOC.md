@@ -3,7 +3,7 @@ name: package
 description: "HTTParty HTTP client for Ruby — simple API for GET, POST, and REST API consumption"
 metadata:
   languages: "ruby"
-  versions: "0.22.0"
+  versions: "0.24.2"
   revision: 1
   updated-on: "2026-03-17"
   source: community
@@ -22,7 +22,7 @@ Use HTTParty for simple HTTP calls. Include it in a class with `base_uri` for re
 
 ```ruby
 # Gemfile
-gem "httparty", "~> 0.22"
+gem "httparty", "~> 0.24"
 ```
 
 ## Quick Requests

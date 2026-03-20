@@ -1,10 +1,6 @@
 ---
 name: document-extraction
 description: Use this skill for intelligent document processing and content extraction using LandingAI's Agentic Document Extraction (ADE). Trigger when users need to (1) Parse documents (PDFs, images, spreadsheets, presentations) into structured Markdown with layout understanding, (2) Extract specific structured data from documents using schemas (invoice fields, form data, table data, etc.), (3) Classify and separate multi-document batches by type (invoices vs receipts, statements vs forms, etc.), (4) Process large documents asynchronously (up to 1GB/1000 pages), (5) Get visual grounding (bounding boxes, page numbers) for extracted content — use when users mention bounding boxes, word locations, grounding, highlighting extracted content, or showing where data appears in a document. Use this skill when the task involves understanding document content for a set of documents. In particular this skill can help you write code that run on sets of documents. This will increase speed, and reduce the cost of loading the documents on the Agent context window because you can use a single script to extract the information needed.
-metadata:
-  revision: 1
-  updated-on: "2026-03-10"
-  source: maintainer
 ---
 
 # Document Extraction (ADE)
@@ -77,13 +73,18 @@ EOF
 
 If not key is found instruct the user to get an API key from [https://va.landing.ai/settings/api-key](https://va.landing.ai/settings/api-key)
 
-Create a `.env` file in your project directory and add your API key:
+Copy `.env-sample` to `.env` and add your API key:
 
+```bash
+cp .env-sample .env
+```
+
+Edit `.env` and add your key:
 ```
 VISION_AGENT_API_KEY=your_actual_api_key_here
 ```
 
-**Note:** Never commit `.env` files to version control. Advanced users can also set the environment variable directly: `export VISION_AGENT_API_KEY=<your-key>`
+**Note:** The `.env` file is gitignored for security. Advanced users can also set the environment variable directly: `export VISION_AGENT_API_KEY=<your-key>`
 
 **EU Endpoint:** If using the EU endpoint, set `environment="eu"` when initializing the client.
 
@@ -226,7 +227,7 @@ Choose the right model for your documents:
 
 **Recommendation:** Use `dpt-2-latest` unless you have simple documents where cost/speed is critical.
 
-**Version Pinning:** For production, use dated versions (e.g., `dpt-2-20251103`) for reproducibility.
+**Version Pinning:** For production, use dated versions (e.g., `dpt-2-20260302`) for reproducibility.
 
 ### Parse Large Files (Async)
 
@@ -386,10 +387,34 @@ with open("document_parsed.md", "w", encoding="utf-8") as f:
 response = client.parse(
     document=Path("document.pdf"),
     model="dpt-2-latest",
-    split="page",  # Optional: organize chunks by page
-    save_to="output/",  # Optional: auto-save response JSON
+    split="page",       # Optional: organize chunks by page
+    password="secret",   # Optional: decrypt protected files (ZDR only)
+    save_to="output/",   # Optional: auto-save response JSON
 )
 ```
+
+### Parse Password-Protected Files
+
+Organizations with [Zero Data Retention (ZDR)](https://docs.landing.ai/ade/zdr) enabled can parse password-protected files by passing the `password` parameter. Supported formats: PDF, DOC, DOCX, ODT, PPT, PPTX, XLSX.
+
+```python
+# Sync parse
+response = client.parse(
+    document=Path("encrypted.pdf"),
+    password="document_password",
+    model="dpt-2-latest"
+)
+
+# Async parse jobs
+job = client.parse_jobs.create(
+    document=Path("encrypted.pdf"),
+    password="document_password",
+    model="dpt-2-latest"
+)
+```
+
+> **Note:** Without ZDR the API returns HTTP 422. If the password is wrong the API
+> returns HTTP 422 with a decryption error. The parameter is ignored for unencrypted documents.
 
 ## Structured Data Extraction
 
@@ -746,7 +771,7 @@ Parse returns structured JSON with five top-level fields:
     "duration_ms": 1500,
     "credit_usage": 2.0,
     "job_id": "abc-123",
-    "version": "dpt-2-20251103",
+    "version": "dpt-2-20260302",
     "failed_pages": []
   }
 }
@@ -871,7 +896,7 @@ for elem_id, info in response.grounding.items():
 
 - **Use dpt-2-latest** for most documents (complex layouts, logos, signatures)
 - **Use dpt-2-mini** for simple, digitally-native documents (faster, cheaper)
-- **Pin versions in production** for reproducibility (e.g., `dpt-2-20251103`)
+- **Pin versions in production** for reproducibility (e.g., `dpt-2-20260302`)
 - **Use extract-latest** for extraction (automatically uses newest model)
 - **Do NOT use dpt-1** — deprecated March 31, 2026; migrate to dpt-2
 
@@ -935,194 +960,18 @@ if err:
 
 - **Prefer PDF** for native documents (no conversion needed)
 - **Use high-resolution images** (300+ DPI) for better OCR
-- **Remove password protection** from PDFs before parsing
+- **Password-protected files**: Use the `password` parameter (requires ZDR). Without ZDR, remove password protection before parsing
 - **Test conversion** for DOCX/PPTX files (layout may change)
 
 For complete file format reference, see [references/file-formats.md](references/file-formats.md)
 
 ## Use Cases
 
-### Invoice Processing
-
-```python
-class Invoice(BaseModel):
-    invoice_number: str
-    invoice_date: str
-    vendor_name: str
-    total_amount: float
-    line_items: list[LineItem]
-
-# Parse and extract
-parse_response = client.parse(document=Path("invoice.pdf"), model="dpt-2-latest")
-extract_response = client.extract(
-    schema=pydantic_to_json_schema(Invoice),
-    markdown=parse_response.markdown
-)
-```
-
-### Form Data Extraction
-
-```python
-class PatientIntake(BaseModel):
-    patient_name: str
-    date_of_birth: str
-    insurance_id: str
-    emergency_contact: str
-    allergies: list[str]
-    has_existing_conditions: bool
-
-# Extract from medical form
-```
-
-### Multi-Document Processing
-
-```python
-# Parse batch PDF
-parse_response = client.parse(document=Path("batch.pdf"), model="dpt-2-latest")
-
-# Split by document type
-split_response = client.split(
-    markdown=parse_response.markdown,
-    split_class=[
-        {"name": "Invoice", "identifier": "Invoice Number"},
-        {"name": "Receipt", "identifier": "Receipt Date"}
-    ]
-)
-
-# Extract from each split
-for split in split_response.splits:
-    if split.classification == "Invoice":
-        extract_response = client.extract(
-            schema=invoice_schema,
-            markdown=split.markdowns[0]
-        )
-```
-
-### Table Extraction
-
-```python
-# Parse spreadsheet
-response = client.parse(document=Path("data.xlsx"), model="dpt-2-latest")
-
-# Filter table chunks
-tables = [chunk for chunk in response.chunks if chunk.type == 'table']
-
-for table in tables:
-    print(f"Table on page {table.grounding.page}:")
-    print(table.markdown)  # HTML table
-```
-
-> **Multi-page tables:** When a table spans multiple pages, ADE emits
-> separate chunks per page and may represent some pages as plain text
-> instead of table chunks. See the
-> [Table Stitching](../document-workflows/references/table-stitching.md)
-> reference in the `document-workflows` skill for three approaches to
-> merge them into a single output.
-
-### Figure Extraction with Cropping
-
-Extract figures from PDFs as individual PNG files using bounding boxes:
-
-```python
-from dotenv import load_dotenv
-load_dotenv()
-
-import fitz  # PyMuPDF
-from landingai_ade import LandingAIADE
-from pathlib import Path
-
-client = LandingAIADE()
-
-# Step 1: Parse the PDF
-pdf_path = Path("document.pdf")
-response = client.parse(
-    document=pdf_path,
-    model="dpt-2-latest"
-)
-
-# Step 2: Filter figure chunks
-figure_chunks = [chunk for chunk in response.chunks if chunk.type == 'figure']
-print(f"Found {len(figure_chunks)} figures")
-
-# Step 3: Open PDF with PyMuPDF
-pdf_doc = fitz.open(pdf_path)
-
-# Step 4: Extract each figure (grounding.box is always present)
-for idx, chunk in enumerate(figure_chunks, start=1):
-    page_num = chunk.grounding.page
-    bbox = chunk.grounding.box
-
-    # Get the PDF page
-    page = pdf_doc[page_num]
-
-    # Convert normalized coordinates (0-1) to absolute pixel coordinates
-    x0 = bbox.left * page.rect.width
-    y0 = bbox.top * page.rect.height
-    x1 = bbox.right * page.rect.width
-    y1 = bbox.bottom * page.rect.height
-
-    # Create crop rectangle
-    crop_rect = fitz.Rect(x0, y0, x1, y1)
-
-    # Render at high resolution (2x zoom for quality)
-    zoom = 2.0
-    mat = fitz.Matrix(zoom, zoom)
-    pix = page.get_pixmap(matrix=mat, clip=crop_rect)
-
-    # Save as PNG
-    output_path = f"figure_{idx:02d}_page{page_num + 1}.png"
-    pix.save(output_path)
-    print(f"Figure {idx}: Saved as {output_path}")
-
-pdf_doc.close()
-```
-
-**Requirements:** Install PyMuPDF with `pip install pymupdf`
-
-**Key Points:**
-- Bounding boxes use normalized coordinates (0-1) that must be converted to pixels
-- Every chunk in the response is guaranteed to have `grounding.box` (chunks without grounding are excluded by the API)
-- Use higher zoom values (e.g., 2.0 or 3.0) for better image quality
-- Page numbers are zero-indexed in ADE
+See [references/use-cases.md](references/use-cases.md) for complete worked examples: invoice processing, form data extraction, multi-document classification, table extraction, and figure cropping with PyMuPDF.
 
 ## Troubleshooting
 
-### HTTP Error Codes
-
-| Code | Meaning | Common Causes | Action |
-|------|---------|---------------|--------|
-| **400** | Bad Request | `anyOf` sub-schema missing `type`/`anyOf` keyword; invalid parameter | Fix schema per error message |
-| **401** | Unauthorized | Missing or invalid `VISION_AGENT_API_KEY` | Check `.env` file and key validity |
-| **413** | Payload Too Large | File exceeds sync parse limit | Use Parse Jobs API for large files |
-| **422** | Unprocessable Entity | Invalid JSON schema; unsupported keywords; top-level type not `"object"` | Validate schema structure |
-| **429** | Rate Limited | Too many concurrent requests | Add retry with exponential backoff |
-| **206** | Partial Content | Some pages failed (parse) or schema violation (extract) | Check `metadata.failed_pages` or `metadata.schema_violation_error` |
-
-### Parse Failures
-
-- **Password-protected PDF**: Remove password protection
-- **Unsupported format**: Check [file formats reference](references/file-formats.md)
-- **File too large**: Use Parse Jobs API for large files
-
-### Low Extraction Accuracy
-
-- Add more detailed field descriptions
-- Use more specific field names
-- Match schema structure to document layout
-- Reduce schema complexity (< 30 properties)
-
-### Missing Fields
-
-- Check if field exists in document
-- Verify field description is clear
-- Model `extract-20251024` returns `null` for missing fields
-
-### Performance Issues
-
-- Use `dpt-2-mini` for simple documents
-- Enable Parse Jobs for large files
-- Process documents in parallel
-- Cache parse results for multiple extractions
+See [references/troubleshooting.md](references/troubleshooting.md) for HTTP error codes, parse failures, extraction accuracy issues, schema validation errors, and performance guidance.
 
 ## Links
 
@@ -1140,3 +989,5 @@ pdf_doc.close()
 - [Extraction Schema Patterns](references/extraction-schemas.md) - Detailed schema examples
 - [Chunk Types Reference](references/chunk-types.md) - Complete chunk type guide
 - [File Formats](references/file-formats.md) - Supported formats and considerations
+- [Use Cases](references/use-cases.md) - Worked examples for invoices, forms, tables, and figure extraction
+- [Troubleshooting](references/troubleshooting.md) - HTTP error codes and common issues

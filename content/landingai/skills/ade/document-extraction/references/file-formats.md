@@ -26,14 +26,7 @@ LandingAI ADE supports 20+ file formats across PDFs, images, documents, presenta
 - API: See [Rate Limits](https://docs.landing.ai/ade/ade-rate-limits)
 - Parse Jobs (async): Up to 1 GB or 6,000 pages
 
-### Not Supported
-- **Password-protected PDFs**: Parsing will fail with HTTP 422 error:
-  ```
-  Failed to split PDF into pages. Ensure it is a valid PDF file.
-  document closed or encrypted
-  ```
 
-**Workaround:** Remove password protection before parsing.
 
 ### Usage Example
 ```python
@@ -251,8 +244,8 @@ response = client.parse(
 ## Troubleshooting
 
 ### Error: "document closed or encrypted"
-**Cause:** Password-protected PDF
-**Solution:** Remove password protection or decrypt before parsing
+**Cause:** Password-protected document
+**Solution:** Pass `password="..."` parameter (requires ZDR enabled). Without ZDR, remove password protection before parsing.
 
 ### Poor OCR Results from Images
 **Possible Causes:**

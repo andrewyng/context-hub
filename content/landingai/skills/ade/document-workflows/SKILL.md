@@ -18,10 +18,6 @@ description: >
   Use document-workflows when composing those operations into pipelines,
   or when you need visualization, annotation, or word-level grounding on
   parsed documents.
-metadata:
-  revision: 1
-  updated-on: "2026-03-10"
-  source: maintainer
 ---
 
 # Document Workflows — ADE Pipeline Patterns
@@ -393,6 +389,8 @@ Extract a named section (e.g. "Introduction", "Abstract") from a parsed
 document's markdown. Two approaches — choose based on document diversity
 and whether the extra API cost is justified.
 
+**Decision:** If the diagnostic parse (Tool 2) shows consistent ATX headers (`## Introduction`, `## 2. Methods`) across all your documents, use Approach A. If you see any plain-text numbered headings (`1. Introduction`) or formatting variation across documents, skip Approach A entirely and go straight to Approach B.
+
 | Approach | When to use |
 |----------|-------------|
 | **A — regex** | Uniform, well-structured docs (academic papers, reports). Free, fast. |
@@ -743,6 +741,12 @@ def ade_to_rag(
 > multi-granularity strategies, ChromaDB, LangChain RetrievalQA, and
 > CSV export: see [rag-pipelines.md](references/rag-pipelines.md).
 
+**Advanced RAG patterns in [rag-pipelines.md](references/rag-pipelines.md):**
+
+- **Embedding computation** (blocks 18–19) — choosing between local (FastEmbed, free) and API (OpenAI, higher quality) embeddings, including batch sizing and rate limiting
+- **Hierarchical chunking** (block 20) — embed at multiple granularities (chunk, section, document) for hybrid retrieval
+- **Multi-granularity RAG** (block 21) — combine chunk-level precision with document-level context, routing queries to the right embedding level based on scope
+
 ---
 
 ## Visualization
@@ -819,6 +823,7 @@ if uploaded:
         ):
             st.text(ch.markdown[:500])
 ```
+<!-- Requires: pip install landingai-ade streamlit -->
 
 > **Full Streamlit app** with batch upload, extraction display, and
 > visualization tabs: adapt from the patterns in
@@ -855,3 +860,4 @@ Read these for full implementations when building a specific workflow:
 - **[rag-pipelines.md](references/rag-pipelines.md)** — Chunks to CSV, ChromaDB ingestion, FAISS + LangChain, and RAG query chains
 - **[database-integration.md](references/database-integration.md)** — DataFrame normalization, Snowflake upload, and CSV export patterns
 - **[visualization.md](references/visualization.md)** — Chunk image cropping, bounding box overlays, and word-level OCR grounding
+- **[table-stitching.md](references/table-stitching.md)** — Parse+Extract (robust), HTML parsing (fragile), and pandas approaches for merging multi-page tables into a single output

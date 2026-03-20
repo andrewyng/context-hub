@@ -335,7 +335,6 @@ All errors follow this format:
 | 400 | Bad Request | Invalid request due to malformed input, unsupported version, or client-side errors | Review error message for specific issue |
 | 401 | Unauthorized | Missing or invalid API key | Check that `VISION_AGENT_API_KEY` is present and valid |
 | 402 | Payment Required | Account does not have enough credits | Verify correct API key; add more credits to your account |
-| 413 | Payload Too Large | File exceeds sync parse limit | Use Parse Jobs API for large files |
 | 422 | Unprocessable Entity | Input validation failed | Review request parameters, file format, and schema JSON |
 | 429 | Too Many Requests | Rate limit exceeded | Wait before retrying; implement exponential backoff |
 | 500 | Internal Server Error | Server error during processing | Retry with backoff; if persistent, contact support@landing.ai |

@@ -1,9 +1,9 @@
 ---
 name: commerce-api
-description: "Naver Commerce API for Smart Store integration -- product management, order processing, and settlement with OAuth2 bcrypt-signature authentication"
+description: "Naver Commerce API for Smart Store product management, order processing, settlement, and seller operations with OAuth2 bcrypt-signature authentication"
 metadata:
   languages: "python"
-  versions: "v2"
+  versions: "1.0.0"
   revision: 1
   updated-on: "2026-03-20"
   source: community

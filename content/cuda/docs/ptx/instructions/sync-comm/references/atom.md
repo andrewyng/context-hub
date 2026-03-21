@@ -13,6 +13,11 @@
 - The memory semantics (e.g., acquire/release/relaxed) and the scope must satisfy synchronization requirements.
 - Choosing the wrong scope can lead to results that look correct but are concurrency-unstable.
 
+## Usage Notes
+
+- Use the narrowest valid scope (`cta` before `gpu`/`sys`) to reduce coherence traffic.
+- Prefer warp/block local aggregation before global atomics under high contention.
+
 ## Example (PTX Style)
 
 ```ptx

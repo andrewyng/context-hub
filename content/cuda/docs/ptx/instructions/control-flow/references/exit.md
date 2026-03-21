@@ -12,6 +12,11 @@
 - Before exiting, ensure that shared-state updates and synchronization requirements are satisfied.
 - Avoid issuing `exit` early at points that require all participants in a synchronization, otherwise the protocol may be mismatched.
 
+## Usage Notes
+
+- Use early `exit` only on paths that do not participate in later collective synchronization.
+- Prefer predicate-guarded compute skip when protocol consistency is more important than early termination.
+
 ## Example (PTX Style)
 
 ```ptx

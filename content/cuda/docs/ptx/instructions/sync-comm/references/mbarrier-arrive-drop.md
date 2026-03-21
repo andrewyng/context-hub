@@ -17,6 +17,11 @@ mbarrier.arrive_drop.noComplete{.release.cta}{.shared{::cta}}.b64 state, [addr],
 - If the `.noComplete` variant leads to the phase completing, the behavior is undefined.
 - In scenarios that use only `.shared::cluster` (not the current CTA), the destination operand must be `_`.
 
+## Usage Notes
+
+- Use `arrive_drop` when thread participation shrinks across pipeline phases.
+- Reconcile participant counts with `mbarrier.init` contract to avoid deadlocks.
+
 ## Official Source Links (Fact Check)
 
 - mbarrier.arrive_drop: https://docs.nvidia.com/cuda/parallel-thread-execution/#parallel-synchronization-and-communication-instructions-mbarrier-arrive-drop

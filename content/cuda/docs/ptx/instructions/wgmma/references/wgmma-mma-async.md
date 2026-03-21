@@ -21,6 +21,17 @@ wgmma.mma_async.sync.aligned.shape.dtype.tf32.tf32 d, a-desc, b-desc, scale-d, i
 - For floating-point variants, `imm-scale-a` / `imm-scale-b` only allow -1 or 1.
 - The `shape` / `dtype` / descriptor layout must match the official matrix fragment definitions.
 
+## Usage Notes
+
+- Keep descriptor generation and shape selection in one helper to avoid operand mismatch.
+- Pair each issued async MMA stage with explicit commit and wait boundaries before accumulator reads.
+
+## Common Failure Modes
+
+- Descriptor layout matches shape but not selected dtype variant.
+- `imm-scale-*` values are propagated from host config without variant validation.
+- Register consumption starts before wait-group completion for the corresponding stage.
+
 ## Official Source Links (Fact Check)
 
 - wgmma.mma_async: https://docs.nvidia.com/cuda/parallel-thread-execution/#asynchronous-warpgroup-level-matrix-instructions-wgmma-mma-async

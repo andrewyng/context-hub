@@ -1,25 +1,32 @@
-# PTX 指令专题：mul（floating-point）
+# PTX Instruction Note: mul (floating-point)
 
-`mul` 执行浮点乘法，常用于标量乘与矩阵内核基础算子。
+`mul` performs floating-point multiplication with PTX-defined type and rounding variants.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Floating Point Instructions: `mul`
+- Documentation section: Floating Point Instructions: `mul`
+- Related extension: Half precision `mul`
 
-## 核心约束
+## Key Constraints
 
-- 类型与舍入模式应显式指定。
-- 半精度/混合精度路径请核查目标架构支持。
+- Use valid type/rounding suffix combinations for the target variant.
+- Operand types must match the chosen instruction form.
+- Verify precision behavior when combining with mixed-precision accumulation.
 
-## 示例（PTX 风格）
+## Usage Notes
+
+- Prefer fused forms (`fma`) when multiply-add is immediately chained and numerical policy allows it.
+- Track denormal and FTZ behavior when reproducing CPU reference results.
+
+## Example (PTX style)
 
 ```ptx
 mul.rn.f32 d, a, b;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - mul: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-mul
 - Half precision mul: https://docs.nvidia.com/cuda/parallel-thread-execution/#half-precision-floating-point-instructions-mul
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

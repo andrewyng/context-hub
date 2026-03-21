@@ -1,28 +1,39 @@
-# PTX 指令专题：multimem.cp.reduce.async.bulk
+# PTX Instruction Note: multimem.cp.reduce.async.bulk
 
-`multimem.cp.reduce.async.bulk` 在多 GPU 目标内存上执行异步归约更新。
+`multimem.cp.reduce.async.bulk` performs asynchronous bulk copy-reduction to multi-memory targets.
 
-## 官方语法（节选）
+## Official Syntax (Excerpt)
 
 ```ptx
 multimem.cp.reduce.async.bulk.dst.src.completion_mechanism.redOp.type [dstMem], [srcMem], size;
 ```
 
-## 关键语义
+## Key Semantics
 
-- 对 `dstMem` 指向的多 GPU 内存范围执行元素级异步归约。
-- 使用 `.bulk_group` 完成机制。
-- 文档指出该路径按内存模型属于 weak memory 操作，并定义 `.relaxed.sys` 语义。
+- The operation is asynchronous and reduction-enabled across multi-memory destinations.
+- Completion semantics follow the selected completion mechanism for this variant family.
+- Memory ordering and visibility behavior follow PTX memory-consistency and async-operation rules.
 
-## 约束要点
+## Common Constraints
 
-- 数据类型与归约操作符必须匹配。
-- 部分浮点 `add` 子类型有 `.noftz` 要求。
+- Reduction operator and data type must be a legal ISA combination.
+- `size` and address ranges must match source/destination requirements.
+- Architecture restrictions apply; verify the target ISA and restrictions sections.
 
-## 官方来源链接（事实核验）
+## Usage Notes
+
+- Use this path when multi-memory reduction transport is required by system-level sharding design.
+- Validate completion mechanism selection against downstream consumer synchronization points.
+
+## Common Failure Modes
+
+- Reduction operator is valid in isolation but illegal for the selected multimem variant.
+- Completion mechanism is correct for copy but insufficient for consumer visibility requirements.
+
+## Official Source Links (fact check)
 
 - multimem.cp.reduce.async.bulk: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-multimem-cp-reduce-async-bulk
 - cp.reduce.async.bulk: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-cp-reduce-async-bulk
 - Memory consistency model: https://docs.nvidia.com/cuda/parallel-thread-execution/#memory-consistency-model
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

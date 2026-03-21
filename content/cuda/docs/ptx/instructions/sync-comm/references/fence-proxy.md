@@ -16,6 +16,17 @@ fence.proxy.to_proxykind::from_proxykind.acquire.scope [addr], size;
 - `fence.proxy.async` is used to synchronize between generic proxy and async proxy.
 - The documentation provides the version and target-architecture requirements for `fence.proxy.async`.
 
+## Usage Notes
+
+- Apply `fence.proxy` only where cross-proxy visibility is a real requirement.
+- Keep proxy-domain assumptions explicit in comments/protocol docs to avoid misuse.
+
+## Common Failure Modes
+
+- Generic-proxy ordering is assumed to cover async/tensormap proxy access without explicit fence rules.
+- Acquire/release direction is reversed for producer-consumer handoff.
+- Fence scope is too narrow for the actual sharing domain.
+
 ## Official Source Links (Fact Check)
 
 - membar / fence (including fence.proxy): https://docs.nvidia.com/cuda/parallel-thread-execution/#parallel-synchronization-and-communication-instructions-membar-fence

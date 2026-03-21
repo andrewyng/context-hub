@@ -7,6 +7,16 @@
 - The documentation explicitly states that you must use `wgmma.fence` before `wgmma.mma_async` to isolate the related register accesses; otherwise behavior is undefined.
 - It is typically combined with `wgmma.commit_group` / `wgmma.wait_group` to form a complete execution protocol.
 
+## Usage Notes
+
+- Insert `wgmma.fence` at stage boundaries where operand register ownership changes.
+- Keep fence placement identical across participating warpgroup threads.
+
+## Common Failure Modes
+
+- Omitting fence on one path in a conditionally structured pipeline.
+- Assuming `commit_group` alone is sufficient for register-handoff correctness.
+
 ## Usage Patterns (Illustrative)
 
 ```ptx

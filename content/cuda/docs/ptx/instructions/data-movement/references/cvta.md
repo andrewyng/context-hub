@@ -1,26 +1,35 @@
-# PTX 指令专题：cvta
+# PTX Instruction Note: cvta
 
-`cvta` 用于地址转换/标准化（convert address），在不同地址空间指针处理时非常关键。
+`cvta` is used for address conversion/normalization (`convert address`) and is critical for cross-address-space pointer handling.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Data Movement and Conversion Instructions: `cvta`
-- 常见于 generic pointer 与具体状态空间地址间的转换路径
+- Documentation section: Data Movement and Conversion Instructions: `cvta`
 
-## 核心约束
+## Key Constraints
 
-- 目标地址空间与输入地址必须匹配允许的转换方向。
-- 结果寄存器位宽需容纳目标地址表示。
+- Target state space and input address must match an allowed conversion direction.
+- Result register bit width must accommodate the target address representation.
 
-## 示例（PTX 风格）
+## Usage Notes
+
+- Use `cvta` at ABI boundaries where generic pointers must be normalized to explicit state spaces.
+- Keep pointer width explicit (`u32` vs `u64`) to avoid truncation on mixed-address workflows.
+
+## Common Failure Modes
+
+- Converting to an incorrect target state space and then reusing the pointer in unrelated load/store paths.
+- Address-width truncation when 64-bit addresses are forced into 32-bit intermediates.
+
+## Example (PTX style)
 
 ```ptx
 cvta.to.global.u64 rd, ra;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - cvta: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-cvta
 - State spaces: https://docs.nvidia.com/cuda/parallel-thread-execution/#state-spaces
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

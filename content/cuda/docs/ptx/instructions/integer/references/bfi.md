@@ -12,6 +12,11 @@
 - The insert-range parameters must be within the target bit-width range.
 - The combination of source field width and position must satisfy the variant definition.
 
+## Usage Notes
+
+- Use `bfi` to update packed headers/flags without disturbing unaffected bit fields.
+- Pair with `bfe` in encode/decode pipelines to keep bit-layout contracts symmetric.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

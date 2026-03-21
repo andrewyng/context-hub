@@ -1,25 +1,31 @@
-# PTX 指令专题：lg2
+# PTX Instruction Note: lg2
 
-`lg2` 计算以 2 为底的对数。
+`lg2` computes logarithm base 2 for PTX floating-point variants.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Floating Point Instructions: `lg2`
+- Documentation section: Floating Point Instructions: `lg2`
 
-## 核心约束
+## Key Constraints
 
-- 输入域和特殊值语义（0、负数、NaN）以官方定义为准。
-- 近似与精确语义请按变体区分使用。
+- Approximate forms are common; accuracy depends on the selected variant.
+- Domain handling for zero, negative, and exceptional inputs follows ISA rules.
+- Use reference validation when numerical stability is critical.
 
-## 示例（PTX 风格）
+## Usage Notes
+
+- Use `lg2` when your algorithm is naturally base-2 (for example entropy-like or bit-scale transforms).
+- Check behavior near zero and denormal ranges when downstream code assumes finite outputs.
+
+## Example (PTX style)
 
 ```ptx
 lg2.approx.f32 d, a;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - lg2: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-lg2
 - Floating point instructions: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

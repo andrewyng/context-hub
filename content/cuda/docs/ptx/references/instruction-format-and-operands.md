@@ -20,6 +20,12 @@ PTX instructions typically consist of a predicate, opcode, suffix, modifiers, an
 
 The PTX documentation clearly states that `cp.async` operations do not provide completion-order guarantees by default; explicit synchronization is required using `cp.async.wait_all` / `cp.async.wait_group` or mbarrier.
 
+## Common Failure Modes
+
+- Modifier ordering is syntactically valid but semantically wrong for the intended memory model.
+- Operand width and state-space assumptions diverge between template and instantiated code.
+- Async instructions are emitted without matching wait or barrier completion paths.
+
 ## Official Source Links (Fact Check)
 
 - Instruction Statements: https://docs.nvidia.com/cuda/parallel-thread-execution/#instruction-statements

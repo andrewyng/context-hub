@@ -2,7 +2,7 @@
 name: ptx-wgmma-instructions
 description: "PTX warpgroup-level matrix multiply-accumulate instructions and constraints for ISA 9.2."
 metadata:
-  languages: "ptx"
+  languages: "cpp"
   versions: "9.2"
   revision: 2
   updated-on: "2026-03-19"

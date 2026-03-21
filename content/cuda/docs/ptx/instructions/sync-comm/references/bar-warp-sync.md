@@ -12,6 +12,11 @@
 - The participation mask must match the threads that actually participate.
 - Should not be used as a substitute for synchronization primitives across warps/CTAs.
 
+## Usage Notes
+
+- Prefer `bar.warp.sync` for intra-warp phase boundaries with explicit member masks.
+- Recompute/propagate `membermask` carefully after divergent control flow.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

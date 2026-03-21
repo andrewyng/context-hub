@@ -1,21 +1,32 @@
-# PTX 指令专题：prefetch / prefetchu
+# PTX Instruction Note: prefetch / prefetchu
 
-`prefetch` / `prefetchu` 用于提前拉取数据到缓存层级，减少后续访问延迟。
+`prefetch` and `prefetchu` provide advisory cache prefetch behavior for eligible memory access patterns.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Data Movement and Conversion Instructions: `prefetch, prefetchu`
-- 常用于访存热点和规则访问模式优化
+- Documentation section: Data Movement and Conversion Instructions: `prefetch, prefetchu`
 
-## 使用建议
+## Key Constraints
 
-- 仅在访存模式可预测时收益明显。
-- 预取距离需要结合内核计算/访存比调优。
-- 与异步搬运（如 `cp.async`）不要混淆：二者语义不同。
+- Prefetch instructions are hints; they do not guarantee residency or strict ordering semantics.
+- Address form and state-space usage must match legal variants.
+- Overuse can add overhead without gain when locality is weak.
 
-## 官方来源链接（事实核验）
+## Usage Recommendations
+
+- Use for predictable forward-access streams where cache warmup is beneficial.
+- Confirm benefit with profiler metrics rather than assuming speedup.
+- Combine with coalesced access patterns; prefetch does not fix poor memory layout.
+
+## Example (PTX style, Illustrative)
+
+```ptx
+prefetch.global.L2 [addr];
+```
+
+## Official Source Links (fact check)
 
 - prefetch, prefetchu: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-prefetch-prefetchu
 - Data movement instruction set: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

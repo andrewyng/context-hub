@@ -12,6 +12,11 @@
 - The control mask determines the reorder sources and order.
 - Ensure the permute mode matches the input data layout.
 
+## Usage Notes
+
+- Prefer `prmt` for byte-lane rearrangement when scalar mask/shift sequences become instruction-heavy.
+- Keep test vectors for endianness-sensitive paths to catch layout mistakes early.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

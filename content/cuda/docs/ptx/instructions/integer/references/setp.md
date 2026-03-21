@@ -13,6 +13,11 @@
 - The result is written to a predicate register and can be used later as a predication condition.
 - For floating-point comparisons, pay attention to NaN-related comparison semantics.
 
+## Usage Notes
+
+- Use `setp + selp` for branchless value selection in divergence-sensitive paths.
+- Keep predicate lifetimes short and explicit to avoid accidental predicate reuse bugs.
+
 ## Example (PTX Style)
 
 ```ptx

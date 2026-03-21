@@ -1,25 +1,31 @@
-# PTX 指令专题：sin
+# PTX Instruction Note: sin
 
-`sin` 计算正弦函数，提供对应浮点变体。
+`sin` computes sine using PTX floating-point variants.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Floating Point Instructions: `sin`
+- Documentation section: Floating Point Instructions: `sin`
 
-## 核心约束
+## Key Constraints
 
-- 通常存在近似计算特性，精度与性能需平衡。
-- 数值敏感路径建议做误差基准测试。
+- Common forms are approximate; accuracy varies by variant and architecture.
+- Exceptional-value handling follows ISA-defined semantics.
+- Validate on production ranges for numerically sensitive workloads.
 
-## 示例（PTX 风格）
+## Usage Notes
+
+- Favor `sin` for moderate-accuracy signal paths; validate if gradients or phase error are sensitive.
+- Benchmark with realistic input distributions, not only uniform synthetic ranges.
+
+## Example (PTX style)
 
 ```ptx
 sin.approx.f32 d, a;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - sin: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-sin
 - Floating point instructions: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

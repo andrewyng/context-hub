@@ -1,27 +1,32 @@
-# PTX 指令专题：mov
+# PTX Instruction Note: mov
 
-`mov` 用于寄存器间传递、常量装载和部分特殊值转移，是最常用基础指令之一。
+`mov` transfers values between registers and selected special-register/constant forms.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Data Movement and Conversion Instructions: `mov`
-- 在寄存器重命名、数据重排和参数准备中高频出现
+- Documentation section: Data Movement and Conversion Instructions: `mov`
 
-## 核心约束
+## Key Constraints
 
-- 目的和源类型需要与 `mov` 变体兼容。
-- 某些特殊寄存器读取也通过 `mov` 完成。
+- Source and destination operand classes must match a legal `mov` variant.
+- Width/type suffixes must preserve valid bit-width semantics.
+- Special-register movement forms require supported register names and target ISA.
 
-## 示例（PTX 风格）
+## Usage Notes
+
+- Use `mov` for explicit register/value handoff when clarity is more important than implicit compiler rewrites.
+- Keep special-register reads localized to reduce accidental architectural coupling.
+
+## Example (PTX style)
 
 ```ptx
 mov.u32 r1, r2;
 mov.u32 r_tid, %tid.x;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - mov: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-mov
 - Special registers: https://docs.nvidia.com/cuda/parallel-thread-execution/#special-registers
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

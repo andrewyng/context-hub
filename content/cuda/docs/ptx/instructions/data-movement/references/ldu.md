@@ -1,21 +1,32 @@
-# PTX 指令专题：ldu
+# PTX Instruction Note: ldu
 
-`ldu` 是 PTX 文档定义的专用加载变体，用于特定读取语义场景。
+`ldu` provides a uniform load path for addresses that are expected to be uniform across threads.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Data Movement and Conversion Instructions: `ldu`
-- 与 `ld`/`ld.global.nc` 在适用场景和缓存行为上有所区分
+- Documentation section: Data Movement and Conversion Instructions: `ldu`
 
-## 使用建议
+## Key Constraints
 
-- 仅在明确满足该变体语义时使用。
-- 与目标架构支持、缓存路径和一致性要求联合评估。
+- Use only with legal `ldu` state-space/type combinations documented by ISA.
+- Intended uniform-access assumptions should match actual access behavior for best results.
+- Do not treat `ldu` as a generic replacement for all `ld` forms.
 
-## 官方来源链接（事实核验）
+## Usage Recommendations
+
+- Prefer `ldu` when operand addresses are naturally uniform within the execution group.
+- Validate performance impact with profiling because benefit is pattern-dependent.
+
+## Example (PTX style)
+
+```ptx
+ldu.global.u32 r1, [addr];
+```
+
+## Official Source Links (fact check)
 
 - ldu: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-ldu
 - ld: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-ld
 - ld.global.nc: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-ld-global-nc
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

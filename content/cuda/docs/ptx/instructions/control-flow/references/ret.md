@@ -12,6 +12,11 @@
 - The return path must be consistent with the function definition and calling convention.
 - In complex control flow, ensure that all paths can reach a valid return point.
 
+## Usage Notes
+
+- Keep return conventions explicit when mixing `.func` helpers and inlined call sites.
+- Validate that predicate-driven paths still preserve a legal return sequence.
+
 ## Example (PTX Style)
 
 ```ptx

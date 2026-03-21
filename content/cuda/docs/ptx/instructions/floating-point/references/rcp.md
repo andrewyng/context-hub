@@ -1,26 +1,32 @@
-# PTX 指令专题：rcp
+# PTX Instruction Note: rcp
 
-`rcp` 计算倒数，支持标准与近似变体。
+`rcp` computes reciprocal for the selected floating-point variant.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Floating Point Instructions: `rcp`
-- 相关扩展：`rcp.approx.ftz.f64`
+- Documentation section: Floating Point Instructions: `rcp`
+- Related extension: `rcp.approx.ftz.f64`
 
-## 核心约束
+## Key Constraints
 
-- 近似变体精度与 flush-to-zero 行为需按章节确认。
-- 对数值敏感路径建议结合参考实现验证误差。
+- Distinguish exact/rounded vs approximate variants based on requirements.
+- Zero and exceptional input behavior follows ISA-defined floating-point semantics.
+- Validate error tolerance before using approximate forms in iterative kernels.
 
-## 示例（PTX 风格）
+## Usage Notes
+
+- Use `rcp` to replace scalar division hot paths when reciprocal error is acceptable.
+- Reassess convergence/stability if approximate reciprocals feed iterative updates.
+
+## Example (PTX style)
 
 ```ptx
 rcp.rn.f32 d, a;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - rcp: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-rcp
 - rcp.approx.ftz.f64: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-rcp-approx-ftz-f64
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

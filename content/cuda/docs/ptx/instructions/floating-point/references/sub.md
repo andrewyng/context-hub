@@ -1,21 +1,33 @@
-# PTX 指令专题：sub（floating-point）
+# PTX Instruction Note: sub (floating-point)
 
-`sub` 执行浮点减法，语义与 `add` 类似但操作方向相反。
+`sub` performs floating-point subtraction with PTX-defined type and rounding variants.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Floating Point Instructions: `sub`
+- Documentation section: Floating Point Instructions: `sub`
+- Related sections: Half precision and mixed precision `sub` variants
 
-## 示例（PTX 风格）
+## Key Constraints
+
+- Use valid type/rounding suffix combinations for the selected variant.
+- Operand types must match the instruction form.
+- Special-value behavior follows ISA-defined floating-point semantics.
+
+## Usage Notes
+
+- Keep subtract order explicit in refactors because `a - b` vs `b - a` can alter cancellation behavior.
+- Re-evaluate tolerance thresholds when replacing `sub` with fused alternatives.
+
+## Example (PTX style)
 
 ```ptx
 sub.rn.f32 d, a, b;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - sub: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-sub
 - Half precision sub: https://docs.nvidia.com/cuda/parallel-thread-execution/#half-precision-floating-point-instructions-sub
 - Mixed precision sub: https://docs.nvidia.com/cuda/parallel-thread-execution/#mixed-precision-floating-point-instructions-sub
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

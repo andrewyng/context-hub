@@ -6,6 +6,17 @@
 
 - Documentation section: Logic and Shift Instructions: `or`
 
+## Key Constraints
+
+- Operand widths and type suffixes must match the selected variant.
+- Bit-layout assumptions should be documented before combining packed fields.
+- Use explicit constants with matching width to avoid implicit truncation confusion.
+
+## Usage Notes
+
+- Use `or` to compose flags and packed-bit fields after proper masking/shift steps.
+- Prefer readable staged composition over opaque one-line bit merges in critical code.
+
 ## Example (PTX Style)
 
 ```ptx

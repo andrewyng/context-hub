@@ -95,3 +95,57 @@ Use streams when:
 ## Related Topics
 
 - Error handling macro and diagnostics: `references/error-handling.md`
+- Memory hierarchy overview: `../memory-hierarchy/DOC.md`
+- Shared memory overview: `../shared-memory/DOC.md`
+- Synchronization overview: `../synchronization/DOC.md`
+- Coalescing overview: `../coalescing/DOC.md`
+- Occupancy tuning: `../occupancy/DOC.md`
+- Warp-level primitives: `../warp-primitives/DOC.md`
+- Execution model: `../execution-model/DOC.md`
+- Compute throughput: `../compute-throughput/DOC.md`
+- CUDA Core path: `../cuda-core/DOC.md`
+- CUDA Core optimization checklist: `../cuda-core-optimization-checklist/DOC.md`
+- Tensor Core usage: `../tensor-cores/DOC.md`
+- WMMA kernel patterns: `../wmma-kernel-patterns/DOC.md`
+- WMMA debugging checklist: `../wmma-debugging-checklist/DOC.md`
+- Tensor Core pipeline patterns: `../tensor-core-pipeline-patterns/DOC.md`
+- Tensor Core numerical validation: `../tensor-core-numerical-validation/DOC.md`
+- CUDA Core vs Tensor Core path selection: `../cuda-core-vs-tensor-core-path-selection/DOC.md`
+- Kernel bottleneck diagnosis workflow: `../kernel-bottleneck-diagnosis-workflow/DOC.md`
+- Memory-bound optimization playbook: `../memory-bound-kernel-optimization-playbook/DOC.md`
+- Compute-bound optimization playbook: `../compute-bound-kernel-optimization-playbook/DOC.md`
+- Launch-bound optimization playbook: `../launch-bound-optimization-playbook/DOC.md`
+- Nsight metrics interpretation cheatsheet: `../nsight-metrics-interpretation-cheatsheet/DOC.md`
+- Atomics and reductions: `../atomics-and-reductions/DOC.md`
+- Cooperative Groups: `../cooperative-groups/DOC.md`
+- Async copy: `../async-copy/DOC.md`
+- Thread Block Clusters: `../thread-block-clusters/DOC.md`
+- Streams and events: `../streams-and-events/DOC.md`
+- Memory fences and ordering: `../memory-fences-and-ordering/DOC.md`
+- CUDA Graphs: `../cuda-graphs/DOC.md`
+- Performance debugging: `../performance-debugging/DOC.md`
+- Launch bounds and registers: `../launch-bounds-and-registers/DOC.md`
+- Unified Memory: `../unified-memory/DOC.md`
+- Pinned memory and transfers: `../pinned-memory-and-transfers/DOC.md`
+- Multi-GPU and peer access: `../multi-gpu-and-peer-access/DOC.md`
+- Dynamic Parallelism: `../dynamic-parallelism/DOC.md`
+- Error handling and debug build: `../error-handling-and-debug-build/DOC.md`
+- cuBLAS/cuDNN integration patterns: `../cublas-cudnn-integration-patterns/DOC.md`
+- NVTX and profiling workflow: `../nvtx-and-profiling-workflow/DOC.md`
+- Numerics and precision: `../numerics-and-precision/DOC.md`
+- Randomness and reproducibility: `../randomness-and-reproducibility/DOC.md`
+- Fused kernel design patterns: `../fused-kernel-design-patterns/DOC.md`
+- Build and ABI compatibility: `../build-and-abi-compatibility/DOC.md`
+- Sparse and irregular kernels: `../sparse-and-irregular-kernels/DOC.md`
+- Collective communication patterns: `../collective-communication-patterns/DOC.md`
+- Benchmarking methodology: `../benchmarking-methodology/DOC.md`
+- Regression testing and CI: `../regression-testing-and-ci/DOC.md`
+- Data layout and alignment: `../data-layout-and-alignment/DOC.md`
+- Cache behavior and access policy: `../cache-behavior-and-access-policy/DOC.md`
+- Persistent kernels and work queues: `../persistent-kernels-and-work-queues/DOC.md`
+- Production readiness checklist: `../production-readiness-checklist/DOC.md`
+- Kernel API design guidelines: `../kernel-api-design-guidelines/DOC.md`
+- Shape specialization and autotuning: `../input-shape-specialization-and-autotuning/DOC.md`
+- Fallback strategies and capability detection: `../fallback-strategies-and-capability-detection/DOC.md`
+- Incident response and rollback playbook: `../incident-response-and-rollback-playbook/DOC.md`
+- PTX shared-memory async path: `../ptx/instructions/data-movement/references/cp-async.md`

@@ -1,20 +1,31 @@
-# PTX 指令专题：st.bulk
+# PTX Instruction Note: st.bulk
 
-`st.bulk` 用于 bulk 存储路径，适合批量数据写入场景。
+`st.bulk` is the bulk-store instruction family for larger transfer paths in supported state-space combinations.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Data Movement and Conversion Instructions: `st.bulk`
-- 与常规 `st` 相比更偏向批量/吞吐优化路径
+- Documentation section: Data Movement and Conversion Instructions: `st.bulk`
 
-## 使用建议
+## Key Constraints
 
-- 仅在访问模式与目标架构适配时使用。
-- 与同步/可见性要求配套设计，避免读写阶段重叠。
+- Source data type, destination state space, and size operands must match legal forms.
+- Bulk-store usage should respect architecture-specific restrictions and completion semantics.
+- Use explicit synchronization where subsequent consumers depend on completion.
 
-## 官方来源链接（事实核验）
+## Usage Recommendations
+
+- Prefer `st.bulk` for structured large transfers where the ISA form is supported.
+- Validate that store granularity and alignment match your buffer layout.
+
+## Example (PTX style, Illustrative)
+
+```ptx
+st.bulk.shared::cluster.u32 [addr], r1, bytes;
+```
+
+## Official Source Links (fact check)
 
 - st.bulk: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-st-bulk
 - st: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-st
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

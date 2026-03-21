@@ -8,6 +8,23 @@ In the current PTX structure, WGMMA is a high-frequency entry point at the imple
 - WGMMA depends on the `wgmma.fence` + `commit_group` + `wait_group` protocol.
 - Async paths involve async proxies and require matching fence/wait semantics.
 
+## Usage Notes
+
+- Use tcgen05 gating to decide whether WGMMA templates are eligible before launch configuration tuning.
+- Keep one protocol contract per pipeline stage to avoid mixing WGMMA and non-WGMMA completion logic.
+
+## Common Failure Modes
+
+- Choosing a WGMMA template first and discovering tcgen05 incompatibility late in the pipeline.
+- Reusing wait-group thresholds across kernels with different stage depth and tile size.
+- Assuming fence semantics are interchangeable across all async producer-consumer chains.
+
+## Integration Checklist
+
+- Gate tcgen05 capability before WGMMA template selection.
+- Validate fence/commit/wait sequencing under representative stage depth.
+- Confirm accumulator-read boundaries are protected by matching wait semantics.
+
 ## Official Source Links (Fact Check)
 
 - TensorCore 5th Generation: https://docs.nvidia.com/cuda/parallel-thread-execution/#tcgen05-instructions

@@ -12,6 +12,11 @@
 - The input bit width determines the counting range.
 - The result type must be able to hold the maximum count.
 
+## Usage Notes
+
+- Common for bitset density metrics, mask compaction prepasses, and voting summaries.
+- Validate accumulator width if multiple `popc` results are aggregated.
+
 ## Example (PTX Style)
 
 ```ptx

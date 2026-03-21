@@ -19,6 +19,12 @@ PTX consistency model is defined by “semantics + scope + proxy”. Asynchronou
 - Establish the relationship between “transfer completion” and “visibility to consumers” using the specified mechanisms.
 - When mixing `atom`/`fence`/`mbarrier`, draw the happens-before relationships before writing code.
 
+## Common Failure Modes
+
+- Using correct scope with wrong semantics (`relaxed` where release/acquire is required).
+- Assuming async-copy completion implies ordering for unrelated memory operations.
+- Combining proxy domains without explicit proxy fence rules.
+
 ## Official Source Links (Fact Check)
 
 - Memory Consistency Model: https://docs.nvidia.com/cuda/parallel-thread-execution/#memory-consistency-model

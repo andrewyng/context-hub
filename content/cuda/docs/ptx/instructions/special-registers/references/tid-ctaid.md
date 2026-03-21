@@ -14,6 +14,16 @@ mov.u32 r_cta, %ctaid.x;
 - `%tid` / `%ctaid` are read-only special registers.
 - The dimension components (`.x/.y/.z`) must match how the kernel is organized.
 
+## Common Failure Modes
+
+- Assuming 1D launch indexing while kernels are configured as 2D/3D.
+- Mixing CTA-level and global index formulas across helper functions.
+- Recomputing indices with mismatched integer width when problem size exceeds 32-bit ranges.
+
+## Indexing Reminder
+
+- Build global index formulas with explicit dimension strides (`blockDim` and `gridDim`) to avoid shape-dependent bugs.
+
 ## Official Source Links (Fact Check)
 
 - Special Registers: https://docs.nvidia.com/cuda/parallel-thread-execution/#special-registers

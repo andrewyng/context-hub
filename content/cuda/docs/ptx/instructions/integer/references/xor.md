@@ -6,6 +6,17 @@
 
 - Documentation section: Logic and Shift Instructions: `xor`
 
+## Key Constraints
+
+- Operand width/type suffixes must match legal ISA variants.
+- For parity/checksum style paths, define whether truncation at each stage is acceptable.
+- Avoid mixing signed arithmetic assumptions with pure bitwise transformations.
+
+## Usage Notes
+
+- Use `xor` for parity checks, mask toggles, and cheap difference markers.
+- In lock-free protocols, avoid overloading `xor` logic with unclear state encoding.
+
 ## Example (PTX Style)
 
 ```ptx

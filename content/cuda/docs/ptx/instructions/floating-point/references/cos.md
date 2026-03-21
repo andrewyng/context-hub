@@ -1,20 +1,31 @@
-# PTX 指令专题：cos
+# PTX Instruction Note: cos
 
-`cos` 计算余弦函数，是三角函数路径常用指令。
+`cos` computes cosine using PTX-defined floating-point variants.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Floating Point Instructions: `cos`
+- Documentation section: Floating Point Instructions: `cos`
 
-## 示例（PTX 风格）
+## Key Constraints
+
+- Common forms are approximate variants; check precision requirements before use.
+- Input domain handling and internal range behavior are ISA-defined.
+- Use reference checks for numerically sensitive kernels.
+
+## Usage Notes
+
+- Use transcendental intrinsics selectively in hot loops because throughput is typically lower than basic arithmetic.
+- Pre-normalize input range where possible to improve numerical stability of approximate forms.
+
+## Example (PTX style)
 
 ```ptx
 cos.approx.f32 d, a;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - cos: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-cos
 - Floating point instructions: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

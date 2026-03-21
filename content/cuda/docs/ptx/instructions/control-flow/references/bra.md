@@ -11,6 +11,14 @@
 - Branch divergence can affect warp execution efficiency.
 - The target label must be within a valid control-flow range.
 
+## Usage Notes
+- Prefer `setp + bra` patterns that keep divergent regions short.
+- Keep branch targets structurally simple so join behavior is easy to audit.
+
+## Common Failure Modes
+- Predicate values are stale because producer instructions were reordered or conditionally skipped.
+- Divergent branch regions grow too large and create avoidable warp-serial execution.
+
 ## Example (PTX Style)
 
 ```ptx

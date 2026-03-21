@@ -2,7 +2,7 @@
 name: ptx-special-registers
 description: "PTX special registers reference for ISA 9.2 with common usage patterns."
 metadata:
-  languages: "ptx"
+  languages: "cpp"
   versions: "9.2"
   revision: 2
   updated-on: "2026-03-19"

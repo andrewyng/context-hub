@@ -11,6 +11,16 @@
 - The shift amount and mode must follow the variant definition.
 - Commonly used for wide-data rearrangement and efficient shift sequences.
 
+## Usage Notes
+
+- Use `wrap` forms for rotate-like behavior and `clamp` forms for bounded lane extraction behavior.
+- Prefer `shf` over manual shift/or sequences when modeling cross-word shifts.
+
+## Common Failure Modes
+
+- `wrap` and `clamp` semantics are confused, causing incorrect bit propagation.
+- Shift-count origin is not normalized and produces architecture-dependent behavior in edge cases.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

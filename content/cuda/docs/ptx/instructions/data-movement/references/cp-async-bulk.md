@@ -1,29 +1,32 @@
-# PTX 指令专题：cp.async.bulk
+# PTX Instruction Note: cp.async.bulk
 
-`cp.async.bulk` 是 bulk 异步拷贝指令，支持 mbarrier 完成机制，适合较大块数据搬运。
+`cp.async.bulk` is a bulk async copy instruction with mbarrier-based completion, suitable for larger transfers.
 
-## 官方语法（代表形式）
+## Official Syntax (Representative Form)
 
 ```ptx
 cp.async.bulk.shared::cta.global.mbarrier::complete_tx::bytes [dstMem], [srcMem], size, [mbar];
 cp.async.bulk.shared::cluster.global.mbarrier::complete_tx::bytes [dstMem], [srcMem], size, [mbar];
 ```
 
-## 关键语义
+## Key Semantics
 
-- 指令在 async proxy 执行，属于 weak memory operation。
-- 可通过 `.mbarrier::complete_tx::bytes` 指定完成机制。
-- complete-tx 在 mbarrier 上携带 `completeCount=字节数`。
+- The instruction executes on the async proxy and is a weak memory operation.
+- Completion can be configured via `.mbarrier::complete_tx::bytes`.
+- complete-tx carries `completeCount=bytes` on the mbarrier.
+- The documentation states completion is followed by an implicit generic-async proxy fence.
+- You still need async-group or mbarrier waits before consuming the data.
 
-## 可见性与顺序
+## Key Constraints
 
-- 文档说明其完成后跟随 implicit generic-async proxy fence。
-- 仍需使用 async-group 或 mbarrier 机制等待完成后再消费数据。
+- Source/destination state spaces must match the selected bulk variant form.
+- `size` and operand alignment must satisfy ISA requirements for the target architecture.
+- Completion tracking must be explicit before downstream consumers read results.
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - cp.async.bulk: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-cp-async-bulk
 - Asynchronous data movement: https://docs.nvidia.com/cuda/parallel-thread-execution/#asynchronous-data-movement-and-conversion-instructions
 - Memory consistency model: https://docs.nvidia.com/cuda/parallel-thread-execution/#memory-consistency-model
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

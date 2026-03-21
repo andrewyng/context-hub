@@ -1,26 +1,31 @@
-# PTX 指令专题：cvt.pack
+# PTX Instruction Note: cvt.pack
 
-`cvt.pack` 用于把多个转换结果打包到更紧凑的数据表示中。
+`cvt.pack` converts and packs multiple source elements into a compact destination representation.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Data Movement and Conversion Instructions: `cvt.pack`
-- 常用于低位宽数据通路和向量化紧凑存储
+- Documentation section: Data Movement and Conversion Instructions: `cvt.pack`
 
-## 核心约束
+## Key Constraints
 
-- 输入元素类型、目标打包类型和舍入语义必须匹配。
-- packed 结果常用于后续向量化 load/store 或 MMA 输入准备。
+- Source element types, destination packed type, and rounding/saturation modifiers must form a legal variant.
+- Packing order and lane composition follow ISA-defined operand ordering.
+- Use saturation/rounding modifiers explicitly when narrowing precision.
 
-## 示例（PTX 风格，示意）
+## Usage Notes
+
+- Use `cvt.pack` to reduce instruction count when packing quantized outputs.
+- Validate lane ordering assumptions before integrating with vectorized unpack paths.
+
+## Example (PTX style)
 
 ```ptx
 cvt.pack.sat.u8.s32.b32 d, a, b, c;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - cvt.pack: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-cvt-pack
 - cvt: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-cvt
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

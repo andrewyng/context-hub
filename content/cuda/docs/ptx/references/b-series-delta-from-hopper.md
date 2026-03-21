@@ -16,6 +16,12 @@ This page records the key PTX differences to focus on when migrating from Hopper
 3. Check whether restricted types on `sm_120a` are triggered.
 4. Perform minimal runnable regression tests for WGMMA / tcgen05 / TMA paths.
 
+## Common Failure Modes
+
+- Porting instruction syntax while leaving Hopper-specific gating assumptions unchanged.
+- Validating only dense compute paths and missing sparse/alternate-FP restrictions.
+- Applying one fallback policy across `sm_100*` and `sm_120*` without feature-level checks.
+
 ## Official Source Links (Fact Check)
 
 - PTX ISA Notes: https://docs.nvidia.com/cuda/parallel-thread-execution/#ptx-isa-notes

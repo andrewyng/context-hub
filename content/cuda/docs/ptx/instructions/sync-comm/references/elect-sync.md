@@ -11,6 +11,14 @@
 
 - Use when you need a single thread to execute management logic (e.g., writing shared metadata).
 - Combine with synchronization primitives such as `bar` / `mbarrier` to ensure phase consistency.
+- Ensure all participating threads execute with a consistent `membermask`.
+- Pair leader-election paths with explicit broadcast or shared-memory publication when followers consume leader results.
+
+## Common Failure Modes
+
+- Leader path writes metadata without synchronization before follower reads.
+- Different `membermask` values are used across divergent paths in the same warp.
+- Elected-lane assumptions are hard-coded and break under changed active-lane patterns.
 
 ## Example (PTX Style, Illustrative)
 

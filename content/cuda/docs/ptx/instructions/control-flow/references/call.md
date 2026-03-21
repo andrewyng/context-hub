@@ -13,6 +13,11 @@
 - Register/return value semantics along the calling path must be consistent.
 - Under conditional execution, avoid control-flow inconsistencies that could lead to undefined behavior.
 
+## Usage Notes
+
+- Prefer `call.uni` only when uniform control-flow assumptions are guaranteed.
+- Re-evaluate register pressure and inlining tradeoffs when introducing helper calls in hot kernels.
+
 ## Example (PTX Style)
 
 ```ptx

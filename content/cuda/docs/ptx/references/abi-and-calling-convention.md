@@ -15,6 +15,16 @@ PTX abstracts the ABI and calling convention at the `.entry` and `.func` levels;
 - Inline PTX that ignores calling conventions can violate register constraints.
 - Inconsistent symbol definitions across multiple files during linking.
 
+## Usage Notes
+
+- Keep `.entry` and `.func` signatures in shared templates to prevent declaration drift.
+- Validate parameter layout assumptions when integrating inline PTX with compiler-generated code.
+
+## Verification Checklist
+
+- Check symbol names and `.param` ordering across declarations and definitions.
+- Confirm call sites use operand types consistent with callee parameter types.
+
 ## Official Source Links (Fact Check)
 
 - Abstracting the ABI: https://docs.nvidia.com/cuda/parallel-thread-execution/#abstracting-the-abi

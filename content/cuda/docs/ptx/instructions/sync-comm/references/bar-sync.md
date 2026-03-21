@@ -18,6 +18,14 @@ bar.sync 1, 64;
 
 - Synchronize only the set of threads that participate in the same barrier protocol.
 - Cannot replace specialized completion-wait mechanisms for `cp.async` / `wgmma`.
+- Keep barrier identifier usage deterministic across all participating threads.
+- Prefer full-CTA barriers unless a subset barrier protocol is explicitly designed and verified.
+
+## Common Failure Modes
+
+- Barrier id is reused by overlapping protocols in the same kernel phase.
+- Some participant threads bypass the barrier due to conditional control flow.
+- Barrier placement is correct for compute but misses shared-memory producer-consumer boundaries.
 
 ## Official Source Links (Fact Check)
 

@@ -12,6 +12,11 @@
 - The 8-bit immediate truth table defines the boolean function.
 - The type suffix must match the input bit widths.
 
+## Usage Notes
+
+- Use `lop3` to compress multi-stage boolean logic into one instruction where possible.
+- Keep LUT constants named and documented, because readability drops quickly with raw immediates.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

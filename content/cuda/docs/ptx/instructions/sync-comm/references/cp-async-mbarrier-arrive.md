@@ -18,6 +18,14 @@ cp.async.mbarrier.arrive{.noinc}{.shared{::cta}}.b64 [addr];
 
 - Use it to incorporate `cp.async` completion events into a unified mbarrier protocol.
 - Keep it consistent with the participation count used by `mbarrier.init` to avoid count mismatches.
+- Pair with explicit wait/check points before consumer loads from the staged region.
+- Keep each async pipeline stage on a clear phase contract to avoid cross-stage completion confusion.
+
+## Common Failure Modes
+
+- Completion events are wired to the wrong barrier instance in multi-stage pipelines.
+- Stage counters are updated without matching `arrive` expectations.
+- Consumer paths assume arrival implies full protocol completion without wait checks.
 
 ## Official Source Links (Fact Check)
 

@@ -13,6 +13,11 @@
 - lane indices and width parameters must follow the variant definition.
 - Confirm that the target architecture supports this synchronized shuffle semantic before use.
 
+## Usage Notes
+
+- Use `shfl.sync` for warp-local broadcast and tree reductions to reduce shared-memory traffic.
+- Keep lane mapping logic explicit when mixing `bfly`, `up`, `down`, and indexed shuffle forms.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

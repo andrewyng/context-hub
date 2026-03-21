@@ -6,6 +6,17 @@
 
 - Documentation section: Logic and Shift Instructions: `not`
 
+## Key Constraints
+
+- Destination width must match the intended inversion domain.
+- Inversion of packed fields should be followed by masking when only partial bits are valid.
+- Do not treat `not` as arithmetic negation; semantics are bitwise inversion.
+
+## Usage Notes
+
+- Use `not` for complement masks and branchless bit-condition rewrites.
+- Pair with `and` to isolate relevant inverted ranges in packed representations.
+
 ## Example (PTX Style)
 
 ```ptx

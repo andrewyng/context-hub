@@ -12,6 +12,17 @@ This page focuses on the `.kind` families for tcgen05-related MMA and their engi
 - Treat `.kind` as a first-class capability parameter at the code-generation level.
 - Enforce an explicit `scale_vec_size` for `mxf4nvf4` (per the official rules).
 
+## Usage Notes
+
+- Carry `.kind` through scheduling, metadata generation, and validation stages as one parameter.
+- Keep fallback templates keyed by `.kind` to avoid silent conversion to unsupported combinations.
+
+## Common Failure Modes
+
+- Selecting `.kind` by benchmark speed only, without validating legal type combinations.
+- Forgetting to propagate `.kind` choice into sparse/scale metadata generation.
+- Using shared fallback code paths that silently change `.kind`-dependent numerics.
+
 ## Official Source Links (Fact Check)
 
 - TensorCore 5th Generation: https://docs.nvidia.com/cuda/parallel-thread-execution/#tcgen05-instructions

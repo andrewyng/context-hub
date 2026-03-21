@@ -12,6 +12,11 @@
 - Signed/unsigned division semantics differ.
 - On performance-critical paths, evaluate `div` latency and consider alternative strategies.
 
+## Usage Notes
+
+- In tight loops, replace division by compile-time constants with multiply/shift transforms when valid.
+- Keep explicit preconditions for divisor domain to avoid hidden exceptional-path costs.
+
 ## Example (PTX Style)
 
 ```ptx

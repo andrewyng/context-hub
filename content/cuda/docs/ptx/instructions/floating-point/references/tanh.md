@@ -1,26 +1,32 @@
-# PTX 指令专题：tanh
+# PTX Instruction Note: tanh
 
-`tanh` 计算双曲正切，适用于激活函数等非线性路径。
+`tanh` computes hyperbolic tangent using PTX floating-point variants.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Floating Point Instructions: `tanh`
-- 相关扩展：Half precision `tanh`
+- Documentation section: Floating Point Instructions: `tanh`
+- Related extension: Half precision `tanh`
 
-## 核心约束
+## Key Constraints
 
-- 不同精度下的数值误差要结合模型容忍度评估。
-- 边界输入的饱和行为以官方定义为准。
+- Typical forms are approximate and should be validated for model-specific tolerances.
+- Saturation and exceptional input behavior follow ISA-defined semantics.
+- Use reference comparisons for numerically sensitive paths.
 
-## 示例（PTX 风格）
+## Usage Notes
+
+- Use `tanh` where bounded output is required and approximation error is acceptable.
+- Check gradient-sensitive training/inference paths separately from forward-only tolerance checks.
+
+## Example (PTX style)
 
 ```ptx
 tanh.approx.f32 d, a;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - tanh: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-tanh
 - Half precision tanh: https://docs.nvidia.com/cuda/parallel-thread-execution/#half-precision-floating-point-instructions-tanh
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

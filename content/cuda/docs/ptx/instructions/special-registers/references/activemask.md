@@ -12,6 +12,12 @@
 - The mask value reflects the set of active threads at the current execution point.
 - If used after branch divergence, ensure the mask semantics are well understood.
 
+## Usage Notes
+
+- Read `activemask` as late as possible on the path that consumes it.
+- Keep `membermask` derivation stable when chaining `shfl.sync` and `vote.sync`.
+- Avoid reusing masks captured before divergence points.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

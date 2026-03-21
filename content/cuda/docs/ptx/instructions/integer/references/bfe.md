@@ -12,6 +12,11 @@
 - The start bit and length parameters must satisfy the bit-width range.
 - The signed/unsigned extraction semantics are determined by the variant suffix.
 
+## Usage Notes
+
+- Prefer `bfe` over ad hoc mask/shift chains when decoding packed metadata fields.
+- Keep `pos/len` constants explicit and centralized to avoid layout drift bugs.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

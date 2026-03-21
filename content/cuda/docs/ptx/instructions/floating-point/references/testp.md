@@ -1,25 +1,31 @@
-# PTX 指令专题：testp
+# PTX Instruction Note: testp
 
-`testp` 用于测试浮点数的类别/属性并生成谓词结果。
+`testp` evaluates floating-point class/property predicates and writes a predicate result.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Floating Point Instructions: `testp`
+- Documentation section: Floating Point Instructions: `testp`
 
-## 核心约束
+## Key Constraints
 
-- 测试条件依具体修饰符定义（如有限性、NaN 等）。
-- 结果写入谓词寄存器，常配合分支或 `selp`。
+- Predicate selector (`nan`, `finite`, and related forms) controls the test semantics.
+- Destination is a predicate register and is typically consumed by branch/selection instructions.
+- Type suffix and selector must match a legal ISA form.
 
-## 示例（PTX 风格，示意）
+## Usage Notes
+
+- Use `testp` to isolate exceptional-value handling into explicit predicate paths.
+- Pair with `selp` for branchless fallback selection when divergence is undesirable.
+
+## Example (PTX style)
 
 ```ptx
 testp.nan.f32 p, a;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - testp: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-testp
 - Floating point instructions: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

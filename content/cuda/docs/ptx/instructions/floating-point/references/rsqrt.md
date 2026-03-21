@@ -1,26 +1,32 @@
-# PTX 指令专题：rsqrt
+# PTX Instruction Note: rsqrt
 
-`rsqrt` 计算平方根倒数，是归一化等路径的常用算子。
+`rsqrt` computes reciprocal square root for the selected floating-point variant.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Floating Point Instructions: `rsqrt`
-- 相关扩展：`rsqrt.approx.ftz.f64`
+- Documentation section: Floating Point Instructions: `rsqrt`
+- Related extension: `rsqrt.approx.ftz.f64`
 
-## 核心约束
+## Key Constraints
 
-- 对精度敏感场景要评估近似误差。
-- 输入边界（0/负数/NaN）语义应遵循官方定义。
+- Approximate forms are common and should be validated against error budgets.
+- Negative and exceptional inputs follow ISA-defined semantics.
+- Choose variant precision to match normalization or solver stability needs.
 
-## 示例（PTX 风格）
+## Usage Notes
+
+- Use `rsqrt` in normalization-heavy kernels to reduce divide and square-root pressure.
+- Pair approximate forms with one refinement step when tighter relative error is required.
+
+## Example (PTX style)
 
 ```ptx
 rsqrt.approx.f32 d, a;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - rsqrt: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-rsqrt
 - rsqrt.approx.ftz.f64: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-rsqrt-approx-ftz-f64
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

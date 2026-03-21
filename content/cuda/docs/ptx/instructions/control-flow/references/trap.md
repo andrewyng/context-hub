@@ -11,6 +11,13 @@
 
 - Trigger it only under clearly defined error conditions.
 - Use it cautiously on production paths to avoid impacting throughput.
+- Pair `trap` with a clear diagnostics policy so failures are reproducible.
+- Avoid embedding `trap` in speculative fast paths that may execute under benign edge conditions.
+
+## Common Failure Modes
+
+- Leaving debug-only `trap` paths enabled in production builds.
+- Emitting `trap` without enough context to diagnose the triggering condition.
 
 ## Example (PTX Style)
 

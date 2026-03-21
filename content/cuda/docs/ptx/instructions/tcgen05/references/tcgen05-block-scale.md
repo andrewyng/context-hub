@@ -13,6 +13,16 @@ This page covers `scale_vec_size` constraints in tcgen05-related `block_scale` p
 - Do static validation using the triplet “kind + stype + scale_vec_size”.
 - Check legal combinations before compilation to avoid runtime undefined behavior.
 
+## Usage Notes
+
+- Keep scale tensor layout and selector interpretation documented next to kernel templates.
+- Validate block-scale metadata generation on host side before launching compute kernels.
+
+## Common Failure Modes
+
+- Correct compute opcode with invalid scale metadata layout.
+- `scale_vec_size` chosen from template defaults without checking `.kind` constraints.
+
 ## Official Source Links (Fact Check)
 
 - TensorCore 5th Generation: https://docs.nvidia.com/cuda/parallel-thread-execution/#tcgen05-instructions

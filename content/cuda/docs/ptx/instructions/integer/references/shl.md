@@ -11,6 +11,16 @@
 - The shift amount should be within the legal range for the bit width.
 - For computations related to signed semantics, carefully verify overflow behavior.
 
+## Usage Notes
+
+- Treat `shl` as a bit operation, not a safe arithmetic multiply substitute under overflow-sensitive logic.
+- Keep shift-count provenance explicit when inputs may exceed legal ranges.
+
+## Common Failure Modes
+
+- Shift counts exceed legal bit width assumptions and produce unexpected masked behavior.
+- Arithmetic intent is encoded with `shl` where overflow handling is actually required.
+
 ## Example (PTX Style)
 
 ```ptx

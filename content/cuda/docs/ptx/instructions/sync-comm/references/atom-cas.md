@@ -11,6 +11,20 @@
 
 - Build a lock-free update path by combining CAS with retry loops.
 - Clearly specify scope and semantic modifiers to avoid cross-thread visibility issues.
+- Ensure the target address is naturally aligned for the selected data width.
+- Keep producer/consumer memory-order assumptions consistent with the selected atom semantics.
+
+## Common Failure Modes
+
+- CAS retry loops omit backoff under heavy contention and stall forward progress.
+- `expected` value reuse is incorrect after failed CAS attempts.
+- Scope/semantic modifiers do not match producer-consumer visibility requirements.
+
+## Example (PTX style)
+
+```ptx
+atom.cas.gpu.global.u32 old, [addr], expected, desired;
+```
 
 ## Official Source Links (Fact Check)
 

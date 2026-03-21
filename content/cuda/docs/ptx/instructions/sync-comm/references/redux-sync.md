@@ -13,6 +13,11 @@
 - The data type and reduction operator must match the instruction variant.
 - The overall synchronization protocol must still be satisfied with subsequent consumer paths.
 
+## Usage Notes
+
+- Use `redux.sync` for compact warp-scope reductions when shared-memory staging is unnecessary.
+- Keep mask construction stable across control-flow paths to avoid partial participation bugs.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

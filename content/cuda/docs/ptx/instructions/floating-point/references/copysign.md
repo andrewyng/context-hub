@@ -1,20 +1,31 @@
-# PTX 指令专题：copysign
+# PTX Instruction Note: copysign
 
-`copysign` 返回带有第二操作数符号位的第一操作数值。
+`copysign` returns the magnitude of the first operand with the sign bit of the second operand.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Floating Point Instructions: `copysign`
+- Documentation section: Floating Point Instructions: `copysign`
 
-## 示例（PTX 风格）
+## Key Constraints
+
+- Operand and destination types must match the selected variant.
+- This is a sign-bit transform, not a fused arithmetic operation.
+- Special-value behavior follows ISA-defined floating-point semantics.
+
+## Usage Notes
+
+- Use `copysign` for branchless sign injection while preserving magnitude.
+- Keep NaN and signed-zero behavior aligned with your numerical policy.
+
+## Example (PTX style)
 
 ```ptx
 copysign.f32 d, a, b;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - copysign: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-copysign
 - Floating point instructions: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

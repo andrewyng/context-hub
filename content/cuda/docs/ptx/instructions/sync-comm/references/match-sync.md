@@ -12,6 +12,11 @@
 - The comparison value types must match the requirements of the specific variant.
 - The participation mask must match the execution path to avoid distorted results.
 
+## Usage Notes
+
+- Use for warp-level key grouping before subgroup-local reductions or dispatch.
+- Validate mask consistency in debug builds for paths with complex divergence.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

@@ -13,6 +13,18 @@ This page distills the restriction entries in the PTX documentation that are dir
 - Maintain a separate “disabled types list” for `sm_120a`.
 - First perform dedicated testing on `sm_120a` for a new kernel, then expand to `sm_120f`.
 
+## Common Failure Modes
+
+- Assuming `sm_120f` support implies `sm_120a` parity for all type paths.
+- Missing fallback coverage for restricted alternate-FP and sub-byte routes.
+- Validating only throughput and skipping correctness checks on restricted configurations.
+
+## Verification Checklist
+
+- Confirm restricted-type disables are active on `sm_120a`.
+- Confirm fallback kernels preserve numerical contract and output layout.
+- Re-run protocol validation for async tensor paths under restricted modes.
+
 ## Official Source Links (Fact Check)
 
 - Target ISA Notes: https://docs.nvidia.com/cuda/parallel-thread-execution/#target-isa-notes

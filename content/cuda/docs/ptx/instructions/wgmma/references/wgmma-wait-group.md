@@ -15,6 +15,16 @@ wgmma.wait_group.sync.aligned N;
 - The documentation states that if you access the accumulator / related input registers without waiting for the group that contains the target `wgmma.mma_async`, the behavior is undefined.
 - `.sync` and `.aligned` have the same execution-consistency requirements as `commit_group`.
 
+## Usage Notes
+
+- Tune `N` according to pipeline depth and register-pressure limits.
+- Place `wait_group` immediately before accumulator consumption boundaries.
+
+## Common Failure Modes
+
+- Using `N` from a different kernel stage depth and reading incomplete accumulators.
+- Waiting too early and collapsing overlap between async compute stages.
+
 ## Official Source Links (Fact Check)
 
 - wgmma.wait_group: https://docs.nvidia.com/cuda/parallel-thread-execution/#asynchronous-warpgroup-level-matrix-instructions-wgmma-wait-group

@@ -13,6 +13,11 @@
 - The strategy for handling invalid indices should be clearly defined in higher-level logic.
 - Conditional paths must keep warp-level control-flow consistency manageable.
 
+## Usage Notes
+
+- Use `brx.idx` for dense dispatch tables where branch targets are static and well-audited.
+- Include a default-safe path for out-of-range indices before deployment on variable inputs.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

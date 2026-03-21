@@ -2,7 +2,7 @@
 name: ptx-floating-point-instructions
 description: "PTX floating-point instructions, rounding behavior, and type constraints in ISA 9.2."
 metadata:
-  languages: "ptx"
+  languages: "cpp"
   versions: "9.2"
   revision: 2
   updated-on: "2026-03-19"
@@ -12,43 +12,45 @@ metadata:
 
 # PTX Floating-Point
 
-本页聚焦 PTX 浮点路径、舍入语义和常见陷阱。
+This page focuses on PTX floating-point paths, rounding semantics, and common pitfalls.
 
-## 常见指令
+## Common Instructions
 
 - `add` / `sub` / `mul`
 - `fma`
 - `div`
 - `sqrt`
 
-## 语法示例（PTX 风格）
+## Syntax Example (PTX style)
 
 ```ptx
 fma.rn.f32 d, a, b, c;
 sqrt.rn.f32 d, a;
 ```
 
-## 约束与坑点
+## Constraints and Pitfalls
 
-- 必须明确舍入修饰（如 `.rn`）。
-- 半精度/混合精度路径受目标架构影响较大。
-- 特殊值（NaN/Inf）行为以官方章节语义为准。
+- Rounding suffixes and type suffixes must match legal ISA forms.
+- Approximate transcendental forms can differ from high-precision library references.
+- NaN/Inf and exceptional-value behavior should be treated according to ISA semantics.
 
-## 使用建议
+## Usage Recommendations
 
-- 推理/训练内核分开验证数值精度。
-- 混合精度链路建议加参考实现比对误差。
+- Validate precision-sensitive kernels against a reference implementation.
+- Distinguish approximate and exact variants when setting numerical tolerances.
+- Keep mixed-precision policies explicit (input type, compute type, accumulation type).
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - Floating Point Instructions: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions
 - fma: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-fma
 - sqrt: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-sqrt
 - Half Precision instructions: https://docs.nvidia.com/cuda/parallel-thread-execution/#half-precision-floating-point-instructions
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19
 
-## 单指令专题
+## Single-Instruction References
+
 - `references/add.md`
 - `references/sub.md`
 - `references/mul.md`

@@ -12,6 +12,11 @@
 - For empty input (e.g., all zeros), the result semantics follow the variant definition.
 - The type/bit-width must match the suffix and the destination register.
 
+## Usage Notes
+
+- Use `bfind` for fast position lookup in sparse-bit masks and encoding routines.
+- Guard zero-input handling explicitly when downstream logic assumes a valid bit index.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

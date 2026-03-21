@@ -15,6 +15,12 @@ The PTX programming model describes thread organization, execution hierarchy, st
 - When writing asynchronous copies or asynchronous MMA, you must explicitly wait for completion mechanisms (group or mbarrier).
 - Do not infer cross-thread visibility from the apparent sequential execution behavior in a single thread.
 
+## Common Failure Modes
+
+- Selecting block-wide synchronization where cluster or system scope is required.
+- Assuming async producer completion implies consumer visibility without explicit protocol completion.
+- Mixing scope assumptions across helper kernels in the same pipeline.
+
 ## Official Source Links (Fact Check)
 
 - Programming Model: https://docs.nvidia.com/cuda/parallel-thread-execution/#programming-model

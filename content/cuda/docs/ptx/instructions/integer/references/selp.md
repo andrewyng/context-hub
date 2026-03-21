@@ -13,6 +13,11 @@
 - The source/destination types must match the `selp` suffix.
 - When strict numeric semantics are required, ensure that the value types are fully consistent.
 
+## Usage Notes
+
+- Use `selp` to remove short divergent branches when both candidate values are already available.
+- Keep expensive side-effecting work outside `selp` paths because values are produced before selection.
+
 ## Example (PTX Style)
 
 ```ptx

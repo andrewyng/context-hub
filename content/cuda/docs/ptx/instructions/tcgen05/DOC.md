@@ -2,7 +2,7 @@
 name: ptx-tcgen05-instructions
 description: "PTX TensorCore 5th Generation (tcgen05) entry and B-series related constraints."
 metadata:
-  languages: "ptx"
+  languages: "cpp"
   versions: "9.2"
   revision: 1
   updated-on: "2026-03-19"

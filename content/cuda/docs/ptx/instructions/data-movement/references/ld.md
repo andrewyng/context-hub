@@ -1,29 +1,34 @@
-# PTX 指令专题：ld
+# PTX Instruction Note: ld
 
-`ld` 用于从指定状态空间加载数据到寄存器，是 PTX 中最基础的数据读取指令。
+`ld` is the base PTX load instruction family across global/shared/local/constant state spaces.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Data Movement and Conversion Instructions: `ld`
-- 存在多种状态空间与缓存修饰变体（如 `.global`、`.shared` 等）
+- Documentation section: Data Movement and Conversion Instructions: `ld`
 
-## 核心约束
+## Key Constraints
 
-- 地址状态空间必须和 `ld` 变体匹配。
-- 目的寄存器类型需要和加载数据类型兼容。
-- 缓存修饰和一致性语义要与目标架构支持相符。
+- Address state space and instruction variant must match.
+- Destination register type/width must match the loaded element format.
+- Variant modifiers (cache, scope, vector width) must satisfy ISA-specific constraints.
 
-## 示例（PTX 风格）
+## Usage Notes
+
+- Use coherent `ld` forms by default; switch to specialized variants only with measured justification.
+- Align load width and vectorization with producer layout to preserve coalescing efficiency.
+- Keep cache modifiers consistent across hot paths to reduce unpredictable locality behavior.
+
+## Example (PTX style)
 
 ```ptx
 ld.global.u32 r1, [addr];
 ld.shared.f32 f1, [saddr];
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - ld: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-ld
 - ld.global.nc: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-ld-global-nc
 - ldu: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-ldu
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

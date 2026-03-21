@@ -12,6 +12,11 @@
 - The input/output bit widths must match the instruction variant.
 - It only changes bit ordering; it does not extend arithmetic semantics.
 
+## Usage Notes
+
+- Useful for bit-reversed indexing patterns and bitstream transformations.
+- Keep post-transform masking explicit when only subsets of bits are semantically valid.
+
 ## Example (PTX Style)
 
 ```ptx

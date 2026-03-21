@@ -1,21 +1,32 @@
-# PTX 指令专题：ex2
+# PTX Instruction Note: ex2
 
-`ex2` 计算 `2^x`，与 `lg2` 常成对出现。
+`ex2` computes `2^x` for PTX floating-point variants.
 
-## 官方定位
+## Official Positioning
 
-- 文档章节：Floating Point Instructions: `ex2`
-- 相关扩展：Half precision `ex2`
+- Documentation section: Floating Point Instructions: `ex2`
+- Related extension: Half precision `ex2`
 
-## 示例（PTX 风格）
+## Key Constraints
+
+- Common forms are approximate and may differ from high-precision library output.
+- Select type suffixes that match downstream numeric requirements.
+- Validate error behavior on representative production ranges.
+
+## Usage Notes
+
+- Use `ex2` for base-2 exponentiation paths to avoid extra base conversion overhead.
+- Recheck stability when `ex2` output is immediately fed into normalization or softmax-like pipelines.
+
+## Example (PTX style)
 
 ```ptx
 ex2.approx.f32 d, a;
 ```
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - ex2: https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-ex2
 - Half precision ex2: https://docs.nvidia.com/cuda/parallel-thread-execution/#half-precision-floating-point-instructions-ex2
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

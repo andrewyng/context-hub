@@ -6,6 +6,17 @@
 
 - Documentation section: Logic and Shift Instructions: `and`
 
+## Key Constraints
+
+- Operand width/type suffixes must match (`.b16/.b32/.b64` forms as applicable).
+- Inputs must already be normalized to the intended bit-width domain.
+- Mask constants should use explicit width to avoid unintended sign/width propagation.
+
+## Usage Notes
+
+- Use `and` for deterministic mask extraction before shifts or comparisons.
+- In packed-field code, pair with `shl/shr/bfe` to keep bit positions explicit.
+
 ## Example (PTX Style)
 
 ```ptx

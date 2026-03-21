@@ -2,7 +2,7 @@
 name: ptx-sync-comm-instructions
 description: "PTX synchronization and communication instructions with scope-aware usage in ISA 9.2."
 metadata:
-  languages: "ptx"
+  languages: "cpp"
   versions: "9.2"
   revision: 2
   updated-on: "2026-03-19"

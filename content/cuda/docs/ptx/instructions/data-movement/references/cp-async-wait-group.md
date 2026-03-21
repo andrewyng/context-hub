@@ -1,29 +1,35 @@
-# PTX 指令专题：cp.async.wait_group / cp.async.wait_all
+# PTX Instruction Note: cp.async.wait_group / cp.async.wait_all
 
-`cp.async.wait_group` / `cp.async.wait_all` 用于等待 `cp.async` 组完成。
+`cp.async.wait_group` / `cp.async.wait_all` is used to wait for `cp.async` groups to complete.
 
-## 官方语法
+## Official Syntax
 
 ```ptx
 cp.async.wait_group N;
 cp.async.wait_all;
 ```
 
-## 关键语义
+## Key Semantics
 
-- `wait_group N`：等待直到最近的 pending 组不超过 N，且更早组全部完成。
-- 当 `N=0` 时，等待此前所有 cp.async 组完成。
-- 文档明确：该等待仅对 `cp.async` 完成有效，不保证其他内存操作的顺序/可见性。
+- `wait_group N`: waits until at most N recent pending groups remain, and all earlier groups complete.
+- When `N=0`, waits for all prior `cp.async` groups to complete.
+- This wait only applies to `cp.async` completion; it does not provide ordering/visibility for other memory operations.
 
-## 使用建议
+## Usage Recommendations
 
-- 在消费 shared 目的数据前先执行等待。
-- 不要把它当作通用 fence；仅用于 `cp.async` 完成语义。
+- Execute the wait before consuming destination shared-memory data.
+- Do not treat this as a general fence; it only applies to `cp.async` completion semantics.
 
-## 官方来源链接（事实核验）
+## Common Failure Modes
+
+- Waiting on the wrong stage depth (`N`) and reading tiles that are not yet complete.
+- Mixing unrelated async pipelines into one wait protocol and causing phase confusion.
+- Assuming `wait_group` replaces other synchronization steps needed by the overall algorithm.
+
+## Official Source Links (fact check)
 
 - cp.async.wait_group / wait_all: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-cp-async-wait-group-cp-async-wait-all
 - cp.async: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-cp-async
 - Asynchronous operations: https://docs.nvidia.com/cuda/parallel-thread-execution/#asynchronous-operations
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19

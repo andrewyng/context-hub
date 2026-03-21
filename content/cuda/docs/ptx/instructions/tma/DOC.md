@@ -2,7 +2,7 @@
 name: ptx-tma-instructions
 description: "PTX Tensor Memory Accelerator related instructions and usage constraints in ISA 9.2."
 metadata:
-  languages: "ptx"
+  languages: "cpp"
   versions: "9.2"
   revision: 2
   updated-on: "2026-03-19"
@@ -12,43 +12,44 @@ metadata:
 
 # PTX TMA
 
-TMA（Tensor Memory Accelerator）路径主要通过 `cp.async.bulk.tensor` 族指令完成张量搬运。
+Tensor Memory Accelerator (TMA) instructions move tensor tiles asynchronously with explicit completion protocols.
 
-## 官方语法摘录（关键）
+## Representative Syntax
 
 ```ptx
 cp.async.bulk.tensor.1d.shared::cta.global.mbarrier::complete_tx::bytes.tile [dstMem], [tensorMap, {tc}], [mbar];
 ```
 
-> 说明：上面是官方章节中的代表性形式，实际可选维度/修饰符很多，需按具体子节匹配。
+This is a representative form. Actual variants add dimension, source/destination state-space, completion mechanism, and multicast/reduction modifiers.
 
-## 官方语义要点
+## Key Semantics
 
-- `cp.async.bulk.tensor` 使用 mbarrier-based completion 机制。
-- 完成时会在指定 mbarrier 上执行 complete-tx（字节数为 completeCount）。
-- 该路径按文档属于 weak memory operation，并在相关说明中给出 release/cluster 语义。
+- TMA operations are asynchronous and require explicit completion handling before consumer use.
+- Completion may use mbarrier-based `complete_tx` or bulk-group wait mechanisms depending on variant.
+- Memory visibility and ordering follow PTX asynchronous-operation rules and proxy semantics.
 
-## 常见约束
+## Common Constraints
 
-- `tensorMap` 描述符和坐标参数必须合法。
-- `.cta_group` 行为与 mbarrier 所在 CTA 关系有关。
-- cluster multicast 变体要求正确 `ctaMask`。
+- `tensorMap` descriptors and coordinate operands must be valid for the selected dimension/layout form.
+- Variant-specific modifiers (for example multicast/reduce forms) require matching operand lists.
+- Alignment, shape, and state-space combinations must match ISA restrictions for the target architecture.
 
-## 使用建议
+## Usage Recommendations
 
-- 先验证“功能正确”（边界、对齐、维度映射），再优化带宽。
-- 与 WGMMA 联动时，明确“搬运完成 -> 计算可读”的同步边界。
+- First validate correctness with a single-stage movement/compute loop.
+- Add staged pipelining only after synchronization boundaries are explicit and correct.
+- Keep a fallback path for architectures or types that do not support your chosen TMA variant.
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - cp.async.bulk.tensor: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-cp-async-bulk-tensor
 - Tensor Map: https://docs.nvidia.com/cuda/parallel-thread-execution/#tensor-map
 - mbarrier: https://docs.nvidia.com/cuda/parallel-thread-execution/#parallel-synchronization-and-communication-instructions-mbarrier
 - Asynchronous operations: https://docs.nvidia.com/cuda/parallel-thread-execution/#asynchronous-operations
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19
 
-## 单指令专题
+## Single-Instruction References
 
 - `references/cp-async-bulk-tensor.md`
 - `references/cp-reduce-async-bulk.md`

@@ -13,6 +13,11 @@
 - Concurrency semantics depend on the specified memory semantics and scope.
 - It must be used together with consumer-side synchronization primitives to ensure visibility.
 
+## Usage Notes
+
+- Use `red` when you only need in-place accumulation and do not require the previous value.
+- Combine with hierarchical reduction (warp/block first) to reduce global contention.
+
 ## Example (PTX Style)
 
 ```ptx

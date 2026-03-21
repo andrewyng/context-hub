@@ -2,11 +2,28 @@
 
 tcgen05 is the entry point chapter for TensorCore 5th Generation in PTX 9.2, covering capabilities and constraints related to new-generation matrix computations.
 
-## What You Need to Pay Attention To
+## Core Capability Axes
 
-- Which types/shape/qualifiers are available on the new architecture.
-- Which capabilities are enabled only on `sm_100` and `sm_120`.
-- When working together with WGMMA/TMA, which synchronization protocols are mandatory.
+- Which data types, MMA kinds, and qualifiers are legal on the target architecture.
+- Which capability subsets are gated by `sm_100*` and `sm_120*` families.
+- Which async protocols are mandatory when composed with WGMMA/TMA paths.
+
+## Usage Notes
+
+- Treat tcgen05 as a capability map, then bind concrete instruction templates after gating.
+- Keep architecture, type, and protocol checks in one validation layer to avoid drift.
+
+## Common Failure Modes
+
+- Selecting a legal MMA shape with an illegal type/scale combination.
+- Assuming support transfers across architecture variants without checking target notes.
+- Reusing async synchronization recipes that are valid for WGMMA but incomplete for tcgen05 composition.
+
+## Quick Start Checklist
+
+- Confirm architecture capability before selecting instruction templates.
+- Validate `kind`/type/scale combinations before code generation.
+- Verify async protocol completion before accumulator consumption.
 
 ## Official Source Links (Fact Check)
 

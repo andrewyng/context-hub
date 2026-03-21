@@ -12,6 +12,11 @@
 - The participating mask must match the actual set of active threads.
 - When the vote result drives control flow, avoid mask mismatches that can cause semantic deviations.
 
+## Usage Notes
+
+- Use `vote.sync.any/all` for fast warp agreement checks before expensive work.
+- Keep mask derivation adjacent to the vote site for easier correctness auditing.
+
 ## Example (PTX Style, Illustrative)
 
 ```ptx

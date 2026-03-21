@@ -12,6 +12,17 @@ This page focuses on usage constraints for common alternate FP types on the tcge
 - Build a separate numerical regression baseline for alternate FP paths.
 - Bind the type-support matrix and architecture thresholds to the same configuration source.
 
+## Usage Notes
+
+- Keep alternate-FP enablement behind explicit feature flags in kernel selection logic.
+- Store tolerance thresholds per type family instead of sharing one global tolerance.
+
+## Common Failure Modes
+
+- Alternate-FP kernels pass shape checks but fail hidden type-combination rules.
+- Tolerances copied from FP16/BF16 baselines under-report alternate-FP drift.
+- Architecture gating is checked for compute ops but missed for related async transfer paths.
+
 ## Official Source Links (Fact Check)
 
 - TensorCore 5th Generation: https://docs.nvidia.com/cuda/parallel-thread-execution/#tcgen05-instructions

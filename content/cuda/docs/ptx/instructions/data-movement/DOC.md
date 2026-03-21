@@ -1,20 +1,20 @@
 ---
 name: ptx-data-movement-instructions
-description: "PTX data movement instructions, addressing rules, and cache-related modifiers in ISA 9.2."
+description: "PTX data movement instructions in ISA 9.2, including ld/st/ldu, cvt/cvt.pack/cvta, cp.async paths, and prefetch hints."
 metadata:
-  languages: "ptx"
+  languages: "cpp"
   versions: "9.2"
   revision: 2
   updated-on: "2026-03-19"
   source: official
-  tags: "cuda,ptx,load,store,memory"
+  tags: "cuda,ptx,load,store,memory,cp.async,cp.async.bulk,ld,ldu,ld.global.nc,st,st.async,st.bulk,cvt,cvt.pack,cvta,mov,prefetch,prefetchu,data-movement"
 ---
 
 # PTX Data Movement
 
-本页覆盖同步和异步数据搬运，包括 `ld/st` 与 `cp.async` 系列。
+This page covers PTX load/store, conversion, and async movement patterns that dominate memory-side kernel behavior.
 
-## 官方语法摘录（关键）
+## Representative Syntax
 
 ```ptx
 cp.async.ca.shared{::cta}.global{.level::cache_hint}{.level::prefetch_size} [dst], [src], cp-size{, src-size}{, cache-policy};
@@ -23,13 +23,7 @@ cp.async.wait_group N;
 cp.async.wait_all;
 ```
 
-## 官方语义要点
-
-- `cp.async` 为 non-blocking，`src` 在 `.global`，`dst` 在 `.shared`。
-- `src-size < cp-size` 时，目的剩余字节会被 zero-fill。
-- 未显式同步时，不同 `cp.async` 之间无完成顺序保证。
-
-## 最小使用模式
+## Minimal Async Copy Pattern
 
 ```ptx
 cp.async.ca.shared.global [smem_ptr], [gmem_ptr], 16;
@@ -37,13 +31,13 @@ cp.async.commit_group;
 cp.async.wait_group 0;
 ```
 
-## 约束与坑点
+## Constraints and Pitfalls
 
-- `src-size > cp-size` 为未定义行为。
-- 不能用普通 barrier/fence 替代 `cp.async` 完成等待机制。
-- cache hint/prefetch 仅在支持变体下可用。
+- Source/destination state spaces must match the instruction form.
+- Async copy completion must be explicitly synchronized before consumer access.
+- Conversion/load/store variants have operand width and alignment constraints.
 
-## 官方来源链接（事实核验）
+## Official Source Links (fact check)
 
 - Data Movement and Conversion Instructions: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions
 - cp.async: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-cp-async
@@ -51,9 +45,9 @@ cp.async.wait_group 0;
 - cp.async.wait_group/wait_all: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-cp-async-wait-group-cp-async-wait-all
 - ld: https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-ld
 
-最后核对日期：2026-03-19
+Last verified date: 2026-03-19
 
-## 单指令专题
+## Single-Instruction References
 
 - `references/cp-async.md`
 - `references/cp-async-bulk.md`

@@ -257,7 +257,7 @@ fn require(name: Option<String>) -> Result<String, &'static str> {
 }
 ```
 
-**Pitfall:** Every function returning `Result` must end with `Ok(value)`.
+**Pitfall:** The final expression in a function returning `Result` must evaluate to a `Result<...>` — often `Ok(value)`, but it can be any `Result` expression (e.g., a call that returns `Result`, or an early `return Err(...)` / `?` propagation).
 
 ## Ownership and Borrowing
 
@@ -353,8 +353,12 @@ std::thread::spawn(move || {
 use std::sync::mpsc;
 
 let (tx, rx) = mpsc::channel();
-std::thread::spawn(move || { tx.send(42).unwrap(); });
-let val = rx.recv().unwrap();
+let handle = std::thread::spawn(move || -> Result<(), mpsc::SendError<i32>> {
+    tx.send(42)?;
+    Ok(())
+});
+let val = rx.recv().map_err(|e| std::io::Error::other(e))?;
+handle.join().expect("thread panicked").map_err(|e| std::io::Error::other(e))?;
 ```
 
 ## Edition 2024 Changes

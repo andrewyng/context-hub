@@ -102,6 +102,19 @@ describe('resolveDocPath', () => {
     expect(result.available).toEqual(['python', 'javascript']);
   });
 
+  it('auto-selects language when only one variant exists', () => {
+    const entry = {
+      name: 'single-lang',
+      languages: [
+        { language: 'python', versions: [{ version: '1.0', path: 'p/python', files: ['DOC.md'] }], recommendedVersion: '1.0' },
+      ],
+      _sourceObj: { name: 'default', url: 'http://example.com' },
+    };
+    const result = resolveDocPath(entry, null, null);
+    expect(result.needsLanguage).toBeUndefined();
+    expect(result.path).toBe('p/python');
+  });
+
   it('selects the correct language', () => {
     const entry = {
       name: 'multi-lang',

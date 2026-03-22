@@ -7,3 +7,4 @@ dist/
 coverage/
 .chub/
 *.tgz
+runbook-template_v_3_template.md

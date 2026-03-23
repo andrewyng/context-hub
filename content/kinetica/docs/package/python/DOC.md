@@ -58,9 +58,9 @@ pip3 install gpudb
 ```python
 import gpudb
 
-db = gpudb.GPUdb("http://localhost:9191", username = "<username>", password = "<password>")
+kdb = gpudb.GPUdb("http://localhost:9191", username = "<username>", password = "<password>")
 
-result = db.show_system_status()
+result = kdb.show_system_status()
 print(result)
 ```
 
@@ -73,7 +73,7 @@ opts = gpudb.GPUdb.Options()
 opts.username = "<username>"
 opts.password = "<password>"
 
-db = gpudb.GPUdb("http://localhost:9191", options = opts)
+kdb = gpudb.GPUdb("http://localhost:9191", options = opts)
 ```
 
 ### HTTPS connection with SSL cert bypass
@@ -87,7 +87,7 @@ opts.password = "<password>"
 opts.skip_ssl_cert_verification = True
 opts.logging_level = "DEBUG"
 
-db = gpudb.GPUdb("https://your-server:8082/gpudb-0", options = opts)
+kdb = gpudb.GPUdb("https://your-server:8082/gpudb-0", options = opts)
 ```
 
 ### High-availability with multiple URLs
@@ -101,7 +101,7 @@ opts = gpudb.GPUdb.Options()
 opts.username = "<username>"
 opts.password = "<password>"
 
-db = gpudb.GPUdb(["https://cluster1:8082/gpudb-0", "https://cluster2:8082/gpudb-0"], options = opts)
+kdb = gpudb.GPUdb(["https://cluster1:8082/gpudb-0", "https://cluster2:8082/gpudb-0"], options = opts)
 ```
 
 ### Context manager usage
@@ -113,8 +113,8 @@ opts = gpudb.GPUdb.Options()
 opts.username = "<username>"
 opts.password = "<password>"
 
-with gpudb.GPUdb("http://localhost:9191", options = opts) as db:
-    result = db.show_system_status()
+with gpudb.GPUdb("http://localhost:9191", options = opts) as kdb:
+    result = kdb.show_system_status()
     print(result)
 ```
 
@@ -122,16 +122,11 @@ with gpudb.GPUdb("http://localhost:9191", options = opts) as db:
 
 ### Create a type and table with `GPUdbTable`
 
-`GPUdbTable` is the high-level table abstraction. Pass a column definition list
-and a table name to create the table:
+`GPUdbTable` is the high-level table abstraction. Pass a column definition list,
+a table name, and a database connection to create the table:
 
 ```python
 import gpudb
-
-opts = gpudb.GPUdb.Options()
-opts.username = "<username>"
-opts.password = "<password>"
-db = gpudb.GPUdb("http://localhost:9191", options = opts)
 
 columns = [
     ["city", "string", "char64"],
@@ -142,14 +137,14 @@ columns = [
     ["avg_temp", "double"],
 ]
 
-table = gpudb.GPUdbTable(columns, "weather", db = db)
+table = gpudb.GPUdbTable(columns, "weather", db = kdb)
 ```
 
 To reference an existing table, pass named parameters, eliminating the column
 list:
 
 ```python
-existing_table = gpudb.GPUdbTable(name = "weather", db = db)
+existing_table = gpudb.GPUdbTable(name = "weather", db = kdb)
 ```
 
 ### Insert records
@@ -201,7 +196,7 @@ for record in table[0:10]:
 Use the low-level `GPUdb` interface with JSON encoding:
 
 ```python
-response = db.get_records(
+response = kdb.get_records(
     table_name="weather",
     offset=0,
     limit=10,
@@ -213,30 +208,6 @@ import json
 for rec_json in response["records_json"]:
     rec = json.loads(rec_json)
     print(rec["city"], rec["avg_temp"])
-```
-
-### Filter records
-
-`GPUdbTable.filter()` returns a new `GPUdbTable` view:
-
-```python
-west_view = table.filter("x < 0")
-print(f"Western hemisphere cities: {west_view.size()}")
-
-nw_view = west_view.filter("y > 0")
-print(f"Northwestern cities: {nw_view.size()}")
-```
-
-Filter by list of values:
-
-```python
-view = table.filter_by_list({"country": ["USA", "Brazil"]})
-```
-
-Filter by a column's minimum & maximum value:
-
-```python
-view = table.filter_by_range("x", 0, 180)
 ```
 
 ### Aggregate and group by
@@ -271,7 +242,7 @@ table.delete_records(["x < -50 and y < -50", "y > 50"])
 ### Drop (clear) a table
 
 ```python
-db.clear_table("weather", options = {"no_error_if_not_exists": "true"})
+kdb.clear_table("weather", options = {"no_error_if_not_exists": "true"})
 ```
 
 ## Distributed (Multi-Head) Ingestion
@@ -284,8 +255,6 @@ the primary key also, in which case an implicit index is applied:
 ```python
 import gpudb
 
-db = gpudb.GPUdb("http://localhost:9191", username = "<username>", password = "<password>")
-
 columns = [
     ["city", "string", "char64"],
     ["state", "string", "char2", "shard_key"],
@@ -297,7 +266,7 @@ columns = [
 table = gpudb.GPUdbTable(
     columns,
     "sharded_weather",
-    db = db,
+    db = kdb,
     use_multihead_io = True,
     multihead_ingest_batch_size = 10000
 )
@@ -319,7 +288,7 @@ shard key column must either have an explicit index applied or be the primary
 key also, in which case an implicit index is applied:
 
 ```python
-table = gpudb.GPUdbTable(None, "sharded_weather", db = db, use_multihead_io = True)
+table = gpudb.GPUdbTable(None, "sharded_weather", db = kdb, use_multihead_io = True)
 result = table.get_records_by_key(["TX"])
 ```
 
@@ -333,7 +302,7 @@ Requires `pip install "gpudb[dataframe]"`.
 from gpudb.gpudb_dataframe import DataFrameUtils
 
 df = DataFrameUtils.sql_to_df(
-    db = db,
+    db = kdb,
     sql = "SELECT * FROM weather WHERE country = 'USA'",
     batch_size = 5000,
     show_progress = True,
@@ -344,7 +313,7 @@ print(df.head())
 ### Table to DataFrame
 
 ```python
-df = DataFrameUtils.table_to_df(db = db, table_name = "test", show_progress = True)
+df = DataFrameUtils.table_to_df(db = kdb, table_name = "test", show_progress = True)
 ```
 
 ### DataFrame to table
@@ -361,7 +330,7 @@ df = pd.DataFrame({
 
 table = DataFrameUtils.df_to_table(
     df = df,
-    db = db,
+    db = kdb,
     table_name = "cities_from_df",
     clear_table = True,
     show_progress = True,
@@ -434,91 +403,6 @@ async def main():
     await con.close()
 
 asyncio.run(main())
-```
-
-## Table Monitors
-
-Table monitors watch for insert, update, and delete operations on a table in real time using ZMQ.
-
-### Extend `GPUdbTableMonitor.Client`
-
-```python
-from gpudb import GPUdbTableMonitor
-
-class MyMonitor(GPUdbTableMonitor.Client):
-    def __init__(self, db, table_name):
-        callbacks = [
-            GPUdbTableMonitor.Callback(
-                GPUdbTableMonitor.Callback.Type.INSERT_DECODED,
-                self.on_insert,
-                self.on_error,
-            ),
-            GPUdbTableMonitor.Callback(
-                GPUdbTableMonitor.Callback.Type.DELETED,
-                self.on_delete,
-                self.on_error,
-            ),
-            GPUdbTableMonitor.Callback(
-                GPUdbTableMonitor.Callback.Type.UPDATED,
-                self.on_update,
-                self.on_error,
-            ),
-        ]
-        super().__init__(db, table_name, callback_list=callbacks)
-
-    def on_insert(self, record):
-        print(f"Inserted: {record}")
-
-    def on_delete(self, count):
-        print(f"Deleted {count} records")
-
-    def on_update(self, count):
-        print(f"Updated {count} records")
-
-    def on_error(self, message):
-        print(f"Error: {message}")
-
-
-monitor = MyMonitor(db, "weather")
-monitor.start_monitor()
-# ... application runs ...
-monitor.stop_monitor()
-```
-
-### Callback types
-
-| Callback Type    | Event Argument | Description                               |
-|:-----------------|:---------------|:------------------------------------------|
-| `INSERT_DECODED` | `dict`         | Inserted record decoded as a Python dict  |
-| `INSERT_RAW`     | `bytes`        | Inserted record in raw binary format      |
-| `DELETED`        | `int`          | Number of records deleted                 |
-| `UPDATED`        | `int`          | Number of records updated                 |
-| `TABLE_ALTERED`  | `str`          | Name of the altered table                 |
-| `TABLE_DROPPED`  | `str`          | Name of the dropped table                 |
-
-## SQL Context
-
-Build SQL context objects for use with Kinetica's context-aware query features:
-
-```python
-from gpudb import GPUdbSqlContext, GPUdbTableClause, GPUdbSamplesClause
-
-table_ctx = GPUdbTableClause(
-    table = "my_table",
-    comment = "Description of the table",
-    col_comments = {"id": "Primary key", "name": "User name"},
-    rules = ["Join this table using the id column"],
-)
-
-samples_ctx = GPUdbSamplesClause(samples=[
-    ("How many users are there?", "SELECT COUNT(*) FROM my_table;"),
-])
-
-context_sql = GPUdbSqlContext(
-    name = "my_context",
-    tables = [table_ctx],
-    samples = samples_ctx,
-).build_sql()
 ```
 
 ## Configuration And Connection Notes
@@ -594,13 +478,9 @@ db.set_client_logger_level(logging.DEBUG)
 - `7.2.3.7` is the current release as of March 11, 2026.
 - Python 3.8 through 3.14 are supported. Python 3.14 support was added in this release.
 - Since `7.2.3.6`, the default HA failover mode is `SEQUENTIAL` instead of `RANDOM`.
-- Since `7.2.3.6`, the `sqlparse` dependency was updated to `0.5.4`.
-- Since `7.2.3.5`, `primary_url` replaces the deprecated `primary_host` connection option. `FailbackOptions` is now accessible via `gpudb.FailbackOptions`.
 - Since `7.2.3.4`, the DBAPI supports the full range of `GPUdb.Options` connection options.
 - Since `7.2.3.3`, the DBAPI supports `default_schema` and custom `http_headers`.
 - Since `7.2.3.2`, 12-byte decimals and unsigned long array types are supported.
-- Since `7.2.2.13`, the HTTP library switched from `httpx` to `requests`. Insert/update counts are available on multi-head ingest calls via `table.latest_insert_records_count` and `table.total_insert_records_count`.
-- Since `7.2.2.12`, `GPUdbSqlIterator` correctly handles batch sizes exceeding the server's `max_get_records_size`.
 
 ## Official Sources
 
@@ -611,4 +491,3 @@ db.set_client_logger_level(logging.DEBUG)
 - PyPI package page: `https://pypi.org/project/gpudb/`
 - GitHub issues: `https://github.com/kineticadb/kinetica-api-python/issues`
 - Community Slack: `https://join.slack.com/t/kinetica-community/shared_invite/zt-1bt9x3mvr-uMKrXlSDXfy3oU~sKi84qg`
-

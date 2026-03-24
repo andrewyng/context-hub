@@ -1,6 +1,6 @@
 ---
 name: agent-module-mcp
-description: "Agent-native knowledge infrastructure providing vertical-specific, deterministic knowledge bases via MCP. Agents retrieve validated, structured knowledge — reducing token spend, hallucinations, and lifecycle failures. 15 verticals planned (Travel, FinServ, Healthcare RCM, Real Estate, Logistics, and more). Ethics module (23 modules, EU AI Act mapped) included with every membership."
+description: "Agent-native knowledge infrastructure providing vertical-specific, deterministic knowledge bases via MCP. Agents retrieve validated, structured knowledge — reducing token spend, hallucinations, and lifecycle failures. 15 verticals planned (Travel, FinServ, Healthcare RCM, Real Estate, Logistics, and more). Comprehensive EU AI Act compliance module library included with every membership. See GET /api/status for current count."
 metadata:
   languages: "javascript,python,typescript"
   versions: "0.9.11"
@@ -18,7 +18,7 @@ Agent Module is a **knowledge retrieval service** built specifically for autonom
 - Deterministic outputs — same query returns consistent structured data
 - Pre-chunked for agent consumption — no parsing, no summarization, no hallucination surface
 - Vertical-specific — each knowledge base is domain-engineered, not generic
-- Ethics module (23 modules, all mapped to EU AI Act) bundled free with every paid membership
+- Comprehensive EU AI Act compliance module library (all mapped to specific articles) bundled free with every paid membership
 - Free 24-hour ethics trial — no membership required (`POST /api/trial`)
 
 ---
@@ -201,7 +201,7 @@ await fetch('https://api.agent-module.dev/api/telemetry', {
 | Vertical | Status | Details |
 |---|---|---|
 | A2A Communication | ✅ Demo (permanently free) | 3 modules, full 4-layer traversal, no key required |
-| Ethics | ✅ Live (23 modules) | Bundled free with every paid membership. Free 24hr trial: `POST /api/trial` |
+| Ethics | ✅ Live | Comprehensive EU AI Act module library. Bundled free with every paid membership. Free 24hr trial: `POST /api/trial`. See `check_status` for current count. |
 | Travel | 🔜 Demo index only | Full content Q2 2026 |
 | Real Estate | 🔜 Demo index only | Full content Q2 2026 |
 | + 13 more verticals | 🔜 Coming soon | Register demand: `POST /api/interest` |

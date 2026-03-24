@@ -3,7 +3,7 @@ name: agent-module-mcp
 description: "Agent-native knowledge infrastructure providing vertical-specific, deterministic knowledge bases via MCP. Agents retrieve validated, structured knowledge — reducing token spend, hallucinations, and lifecycle failures. 15 verticals planned (Travel, FinServ, Healthcare RCM, Real Estate, Logistics, and more). Comprehensive EU AI Act compliance module library included with every membership. See GET /api/status for current count."
 metadata:
   languages: "javascript,python,typescript"
-  versions: "0.9.11"
+  versions: "0.9.12"
   source: maintainer
   tags: "knowledge-graph,mcp,agent-infrastructure,deterministic,vertical,rag-alternative,ethics,eu-ai-act,multi-rail-payments"
   updated-on: "2026-03-24"

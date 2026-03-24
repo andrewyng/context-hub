@@ -60,10 +60,32 @@ cli/
     index.js            # CLI setup (Commander)
     commands/           # Command implementations
     lib/                # Core utilities
-  tests/                # Vitest tests
+  tests/                # Unit tests (Vitest)
+    commands/           # Command unit tests
+    lib/                # Library unit tests
+    mcp/                # MCP-related unit tests
+  test/                 # E2E/integration tests
+    e2e.test.js         # End-to-end CLI tests
+    fixtures/           # Test fixtures
+    lib/                # Test utilities
 content/                # Public content registry source
 docs/                   # Design docs
 ```
+
+### Test Directory Rationale
+
+The project uses two test directories with distinct scopes:
+
+- **`cli/tests/`** — Unit tests using Vitest
+  - Fast, isolated tests with mocked dependencies
+  - Tests individual functions and modules
+  
+- **`cli/test/`** — E2E/integration tests
+  - Spawns the actual `chub` binary via `execFileSync`
+  - Tests full command pipelines end-to-end
+  - Uses real file system operations
+
+This separation makes the testing scope explicit: unit tests for fast feedback during development, E2E tests for validating complete workflows.
 
 ## Content Contributions
 

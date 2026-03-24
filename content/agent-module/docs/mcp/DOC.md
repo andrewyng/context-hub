@@ -1,12 +1,12 @@
 ---
 name: agent-module-mcp
-description: "Agent-native knowledge infrastructure providing vertical-specific, deterministic knowledge bases via MCP. Agents retrieve validated, structured knowledge — reducing token spend, hallucinations, and lifecycle failures. 15 verticals planned (Travel, FinServ, Healthcare RCM, Real Estate, Logistics, and more). Ethics module (22 modules, EU AI Act mapped) included with every membership."
+description: "Agent-native knowledge infrastructure providing vertical-specific, deterministic knowledge bases via MCP. Agents retrieve validated, structured knowledge — reducing token spend, hallucinations, and lifecycle failures. 15 verticals planned (Travel, FinServ, Healthcare RCM, Real Estate, Logistics, and more). Ethics module (23 modules, EU AI Act mapped) included with every membership."
 metadata:
   languages: "javascript,python,typescript"
-  versions: "0.9.7"
+  versions: "0.9.11"
   source: maintainer
-  tags: "knowledge-graph,mcp,agent-infrastructure,deterministic,vertical,rag-alternative,ethics,eu-ai-act"
-  updated-on: "2026-03-17"
+  tags: "knowledge-graph,mcp,agent-infrastructure,deterministic,vertical,rag-alternative,ethics,eu-ai-act,multi-rail-payments"
+  updated-on: "2026-03-24"
 ---
 # Agent Module — MCP Integration Guide
 
@@ -18,7 +18,7 @@ Agent Module is a **knowledge retrieval service** built specifically for autonom
 - Deterministic outputs — same query returns consistent structured data
 - Pre-chunked for agent consumption — no parsing, no summarization, no hallucination surface
 - Vertical-specific — each knowledge base is domain-engineered, not generic
-- Ethics module (22 modules, all mapped to EU AI Act) bundled free with every paid membership
+- Ethics module (23 modules, all mapped to EU AI Act) bundled free with every paid membership
 - Free 24-hour ethics trial — no membership required (`POST /api/trial`)
 
 ---
@@ -62,6 +62,13 @@ X-Agent-Module-Key: am_live_xxxxxxxxxxxxxxxx
 - 1,000 calls/day
 - 10,000 calls/month
 - Overage: $0.002/call
+
+**Payment rails (agent-native):**
+- **Stripe** — subscription ($19/mo inaugural, volume step-down up to 5 keys)
+- **Skyfire** — per-use ($0.002/call via `skyfire-pay-id` header) or subscription
+- **x402** — per-use USDC on Base ($0.002/call)
+
+No subscription required for per-use access. Agents can pay per retrieval.
 
 ---
 
@@ -194,7 +201,7 @@ await fetch('https://api.agent-module.dev/api/telemetry', {
 | Vertical | Status | Details |
 |---|---|---|
 | A2A Communication | ✅ Demo (permanently free) | 3 modules, full 4-layer traversal, no key required |
-| Ethics | ✅ Live (22 modules) | Bundled free with every paid membership. Free 24hr trial: `POST /api/trial` |
+| Ethics | ✅ Live (23 modules) | Bundled free with every paid membership. Free 24hr trial: `POST /api/trial` |
 | Travel | 🔜 Demo index only | Full content Q2 2026 |
 | Real Estate | 🔜 Demo index only | Full content Q2 2026 |
 | + 13 more verticals | 🔜 Coming soon | Register demand: `POST /api/interest` |

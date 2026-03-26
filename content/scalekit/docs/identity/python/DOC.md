@@ -424,6 +424,30 @@ curl -X PUT "${SCALEKIT_ENV_URL}/api/v1/connections/conn_789/disable" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}"
 ```
 
+## Domain Management
+
+Domains link email address suffixes to organizations, enabling automatic SSO routing by `domain_hint`.
+
+```python
+# Register a domain for an organization
+domain = scalekit_client.domain.create_domain('acmecorp.com')
+
+# List all domains
+domains = scalekit_client.domain.list_domains()
+
+# Get a specific domain
+domain = scalekit_client.domain.get_domain('acmecorp.com')
+
+# Delete a domain
+scalekit_client.domain.delete_domain('acmecorp.com')
+```
+
+**REST equivalent:**
+```bash
+curl -X GET "${SCALEKIT_ENV_URL}/api/v1/organizations/{organization_id}/domains" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
+```
+
 ## Webhook Verification
 
 Scalekit sends HMAC-signed webhooks for events like `user.created`, `connection.enabled`, `directory.synced`. Verify the signature before processing:

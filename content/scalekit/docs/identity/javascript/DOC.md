@@ -435,7 +435,7 @@ await scalekitClient.domain.deleteDomain('acmecorp.com');
 
 **REST equivalent:**
 ```bash
-curl -X GET "${SCALEKIT_ENV_URL}/api/v1/domains" \
+curl -X GET "${SCALEKIT_ENV_URL}/api/v1/organizations/{organization_id}/domains" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}"
 ```
 

@@ -1,6 +1,6 @@
 # Production Notes for Agent Completions
 
-These notes summarize sanitized observed behavior from a successful production-style request to Langdock's Agents Completions API. Treat them as implementation guidance, not stronger contract guarantees than the official docs.
+These notes summarize sanitized observed behavior from a successful production-style request to Langdock's Agents Completions API in a batch analysis workflow with structured JSON output requirements. Treat them as implementation guidance, not stronger contract guarantees than the official docs.
 
 ## Observed Structured Output Caveat
 
@@ -51,3 +51,4 @@ For batch analysis pipelines, make the response path defensive:
 - retry transient failures separately from schema-validation failures.
 
 This matters because a single formatting surprise can otherwise break a large batch run.
+

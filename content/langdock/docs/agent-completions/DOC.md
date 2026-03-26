@@ -41,27 +41,39 @@ https://<deployment-url>/api/public/agent/v1/chat/completions
 
 ## Minimal Request
 
-```bash
-curl -X POST "https://api.langdock.com/agent/v1/chat/completions" \
-  -H "Authorization: Bearer $LANGDOCK_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
+```python
+import requests
+
+url = "https://api.langdock.com/agent/v1/chat/completions"
+
+payload = {
     "agentId": "agent_123",
     "messages": [
-      {
-        "id": "msg_1",
-        "role": "user",
-        "parts": [
-          {
-            "type": "text",
-            "text": "Summarize this document."
-          }
-        ]
-      }
+        {
+            "id": "msg_1",
+            "role": "user",
+            "parts": [
+                {
+                    "type": "text",
+                    "text": "Hello, how can you help me?",
+                }
+            ],
+        }
     ],
-    "stream": false
-  }'
+    "stream": True,
+}
+
+headers = {
+    "Authorization": "Bearer <token>",
+    "Content-Type": "application/json",
+}
+
+response = requests.post(url, json=payload, headers=headers, timeout=60)
+response.raise_for_status()
+print(response.text)
 ```
+
+The important part is the payload shape: `agentId`, `messages`, and message `parts` follow Langdock's Vercel AI SDK-compatible format rather than OpenAI chat-completions message objects.
 
 ## Request Shape
 
@@ -215,3 +227,4 @@ These headers are useful for logging, rate-limit handling, and debugging which u
 - https://docs.langdock.com/de/api-endpoints/api-introduction
 - https://docs.langdock.com/de/api-endpoints/agent/agent
 - https://docs.langdock.com/de/api-endpoints/agent/attachments
+

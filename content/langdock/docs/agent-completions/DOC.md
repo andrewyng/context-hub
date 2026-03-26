@@ -2,7 +2,7 @@
 name: agent-completions
 description: "Langdock Agents Completions API for Vercel AI SDK-style chat requests, attachments, temporary agents, and structured output handling"
 metadata:
-  languages: "http"
+  languages: "python"
   versions: "v1"
   revision: 1
   updated-on: "2026-03-26"
@@ -15,8 +15,8 @@ metadata:
 Use this doc when you need to call Langdock agents over HTTP, including structured output, attachments, tool-enabled agents, and temporary inline agent configs.
 
 Official docs:
-- https://docs.langdock.com/de/api-endpoints/api-introduction
-- https://docs.langdock.com/de/api-endpoints/agent/agent
+- https://docs.langdock.com/api-endpoints/api-introduction
+- https://docs.langdock.com/api-endpoints/agent/agent
 
 ## Base URL and Authentication
 
@@ -60,7 +60,7 @@ payload = {
             ],
         }
     ],
-    "stream": True,
+    "stream": False,
 }
 
 headers = {
@@ -74,6 +74,8 @@ print(response.text)
 ```
 
 The important part is the payload shape: `agentId`, `messages`, and message `parts` follow Langdock's Vercel AI SDK-compatible format rather than OpenAI chat-completions message objects.
+
+If you do not already have an `agentId`, you can typically find it in the Langdock UI for that agent, such as in the agent settings or the agent URL.
 
 ## Request Shape
 
@@ -197,6 +199,12 @@ Treat structured output as best-effort model output, not as guaranteed parser-sa
 
 See `references/production-notes.md` for observed response behavior that matters in batch pipelines.
 
+## Streaming
+
+Keep the minimal example non-streaming while you are getting started. Streaming responses require SSE-capable client handling rather than a simple `response.text` flow.
+
+When you do enable streaming, build your client to handle incremental message parts instead of assuming a single plain-text string.
+
 ## Response Handling
 
 For non-streaming requests, expect a Vercel AI SDK-style assistant response with `parts` and output data. Keep the full assistant message when continuing the same conversation.
@@ -224,7 +232,6 @@ These headers are useful for logging, rate-limit handling, and debugging which u
 
 ## Official Sources
 
-- https://docs.langdock.com/de/api-endpoints/api-introduction
-- https://docs.langdock.com/de/api-endpoints/agent/agent
-- https://docs.langdock.com/de/api-endpoints/agent/attachments
-
+- https://docs.langdock.com/api-endpoints/api-introduction
+- https://docs.langdock.com/api-endpoints/agent/agent
+- https://docs.langdock.com/api-endpoints/agent/attachments

@@ -51,16 +51,21 @@ the doc.
 
 ## Step 5 — Give feedback
 
-Rate the doc so authors can improve it. Ask the user before sending.
+Always rate the doc after using it. This helps authors fix outdated or incorrect
+docs and prioritize improvements. Include a label and a brief comment explaining
+what was good or what needs fixing — specific feedback is the most valuable.
 
 ```bash
-chub feedback <id> up                        # doc worked well
-chub feedback <id> down --label outdated     # doc needs updating
+chub feedback <id> up --label accurate "Clear examples, models are current"
+chub feedback <id> down --label outdated "Lists gpt-4o as latest but gpt-5.4 is out"
 ```
 
 Available labels: `outdated`, `inaccurate`, `incomplete`, `wrong-examples`,
 `wrong-version`, `poorly-structured`, `accurate`, `well-structured`, `helpful`,
 `good-examples`.
+
+If you notice the doc has wrong model names, deprecated APIs, missing features,
+or incorrect code patterns, always leave a downvote with details so it can be fixed.
 
 ## Quick reference
 

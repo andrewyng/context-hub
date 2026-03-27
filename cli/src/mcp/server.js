@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { ensureRegistry } from '../lib/cache.js';
 import { listEntries } from '../lib/registry.js';
 import { handleSearch, handleGet, handleList, handleAnnotate, handleFeedback } from './tools.js';
+import { attachStdioShutdownHandlers } from './stdio-lifecycle.js';
 
 // Prevent console.log from corrupting the stdio JSON-RPC protocol.
 // Any transitive dependency (e.g. posthog-node) that calls console.log
@@ -174,4 +175,10 @@ try {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
+
+// Exit promptly when MCP host disconnects stdio.
+// Must be after server.connect() so StdioServerTransport's data handler
+// is already wired — otherwise stdin.resume() discards incoming bytes.
+attachStdioShutdownHandlers({ stderr: _stderr });
+
 _stderr.write(`[chub-mcp] Server started (v${pkg.version})\n`);

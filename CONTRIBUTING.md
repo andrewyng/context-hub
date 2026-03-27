@@ -21,7 +21,7 @@ npm install
 
 ```bash
 node cli/bin/chub --help
-node cli/bin/chub build sample-content/ --validate-only
+node cli/bin/chub build content/ --validate-only
 ```
 
 ### Running Tests
@@ -41,7 +41,7 @@ npm run test:coverage # with coverage
 2. Make your changes
 3. Add or update tests as needed
 4. Ensure all tests pass: `cd cli && npm test`
-5. Validate the build: `node cli/bin/chub build sample-content/ --validate-only`
+5. Validate the build: `node cli/bin/chub build content/ --validate-only`
 6. Submit a pull request
 
 ### Code Style
@@ -61,7 +61,7 @@ cli/
     commands/           # Command implementations
     lib/                # Core utilities
   tests/                # Vitest tests
-sample-content/         # Test fixtures
+content/                # Public content registry source
 docs/                   # Design docs
 ```
 

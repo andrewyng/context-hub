@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { showWelcomeIfNeeded } from '../../src/lib/welcome.js';
+
+const TEST_DIR = join('/tmp', 'test-chub');
 
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
@@ -8,9 +11,10 @@ vi.mock('node:fs', () => ({
   mkdirSync: vi.fn(),
 }));
 
-vi.mock('../../src/lib/config.js', () => ({
-  getChubDir: () => '/tmp/test-chub',
-}));
+vi.mock('../../src/lib/config.js', async () => {
+  const { join } = await import('node:path');
+  return { getChubDir: () => join('/tmp', 'test-chub') };
+});
 
 describe('showWelcomeIfNeeded', () => {
   let consoleSpy;
@@ -46,7 +50,7 @@ describe('showWelcomeIfNeeded', () => {
     expect(output).toContain('Welcome to Context Hub (chub)!');
     expect(output).toContain('Terms of Service');
     expect(output).toContain('feedback: false');
-    expect(output).toContain('/tmp/test-chub/config.yaml');
+    expect(output).toContain(join(TEST_DIR, 'config.yaml'));
   });
 
   it('creates marker file after showing message', () => {
@@ -56,9 +60,9 @@ describe('showWelcomeIfNeeded', () => {
 
     // Called twice: once for marker check, once for dir check
     expect(existsSync).toHaveBeenCalledTimes(2);
-    expect(mkdirSync).toHaveBeenCalledWith('/tmp/test-chub', { recursive: true });
+    expect(mkdirSync).toHaveBeenCalledWith(TEST_DIR, { recursive: true });
     expect(writeFileSync).toHaveBeenCalledWith(
-      '/tmp/test-chub/.welcome_shown',
+      join(TEST_DIR, '.welcome_shown'),
       expect.any(String),
       'utf8'
     );

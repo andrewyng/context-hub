@@ -14,6 +14,8 @@ async function fetchEntries(ids, opts, globalOpts) {
   const results = [];
 
   for (const id of ids) {
+    const fetchStart = Date.now();
+
     // Search both docs and skills — auto-detect type
     const result = getEntry(id);
 
@@ -25,6 +27,7 @@ async function fetchEntries(ids, opts, globalOpts) {
     }
 
     if (!result.entry) {
+      await trackEvent('doc_not_found', { entry_id: id });
       error(`No doc or skill found with id "${id}".`, globalOpts);
     }
 
@@ -75,19 +78,23 @@ async function fetchEntries(ids, opts, globalOpts) {
         }
         if (requested.length === 1) {
           const content = await fetchDoc(resolved.source, join(resolved.path, requested[0]));
-          results.push({ id: entry.id, type, content, path: join(resolved.path, requested[0]) });
+          results.push({ id: entry.id, type, content, path: join(resolved.path, requested[0]), source: entry._source, fetchStart, fetchDone: Date.now() });
         } else {
           const allFiles = await fetchDocFull(resolved.source, resolved.path, requested);
-          results.push({ id: entry.id, type, files: allFiles, path: resolved.path });
+          results.push({ id: entry.id, type, files: allFiles, path: resolved.path, source: entry._source, fetchStart, fetchDone: Date.now() });
         }
       } else if (opts.full && resolved.files.length > 0) {
         const allFiles = await fetchDocFull(resolved.source, resolved.path, resolved.files);
-        results.push({ id: entry.id, type, files: allFiles, path: resolved.path });
+        results.push({ id: entry.id, type, files: allFiles, path: resolved.path, source: entry._source, fetchStart, fetchDone: Date.now() });
       } else {
         const content = await fetchDoc(resolved.source, entryFile.filePath);
-        results.push({ id: entry.id, type, content, path: entryFile.filePath, additionalFiles: refFiles });
+        results.push({ id: entry.id, type, content, path: entryFile.filePath, additionalFiles: refFiles, source: entry._source, fetchStart, fetchDone: Date.now() });
       }
     } catch (err) {
+      await trackEvent('fetch_error', {
+        entry_id: entry.id,
+        error_type: err.code || err.name || 'unknown',
+      });
       error(`Failed to load "${id}": ${err.message}`, globalOpts);
     }
   }
@@ -97,7 +104,10 @@ async function fetchEntries(ids, opts, globalOpts) {
     trackEvent(r.type === 'doc' ? 'doc_fetched' : 'skill_fetched', {
       entry_id: r.id,
       full: !!opts.full,
+      file: opts.file || undefined,
       lang: opts.lang || undefined,
+      source: r.source || undefined,
+      duration_ms: r.fetchDone - r.fetchStart,
     }).catch(() => {});
   }
 
@@ -122,7 +132,7 @@ async function fetchEntries(ids, opts, globalOpts) {
         }
       }
     } else {
-      const isDir = opts.output.endsWith('/');
+      const isDir = opts.output.endsWith('/') || opts.output.endsWith('\\');
       if (isDir && results.length > 1) {
         mkdirSync(opts.output, { recursive: true });
         for (const r of results) {
@@ -157,6 +167,12 @@ async function fetchEntries(ids, opts, globalOpts) {
           if (annotation) {
             process.stdout.write(`\n\n---\n[Agent note — ${annotation.updatedAt}]\n${annotation.note}\n`);
           }
+          const langFlag = opts.lang ? ` --lang ${opts.lang}` : '';
+          process.stdout.write(`\n\n---\nAfter using this doc, share your experience:\n`);
+          process.stdout.write(`  chub feedback ${r.id} up${langFlag}\n`);
+          process.stdout.write(`  chub feedback ${r.id} down${langFlag} --label outdated\n`);
+          process.stdout.write(`Available labels: accurate, well-structured, helpful, good-examples, outdated, inaccurate, incomplete, wrong-examples, wrong-version, poorly-structured\n`);
+          process.stdout.write(`Do NOT include any code, architecture details, or project-specific information in your feedback.\n`);
           if (extraFiles.length > 0) {
             const fileList = extraFiles.map((f) => `  ${f}`).join('\n');
             const example = `chub get ${r.id} --file ${extraFiles[0]}`;

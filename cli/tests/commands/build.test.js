@@ -1,16 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const CLI_BIN = join(import.meta.dirname, '..', '..', 'bin', 'chub');
 const FIXTURES = join(import.meta.dirname, '..', '..', 'test', 'fixtures');
+const BUILD_TEST_TIMEOUT = 15000;
+const itBuild = (name, fn) => it(name, { timeout: BUILD_TEST_TIMEOUT }, fn);
+const TEST_ENV = { ...process.env, CHUB_TELEMETRY: '0', CHUB_FEEDBACK: '0' };
 
 describe('chub build', () => {
-  it('validates test fixtures and finds docs and skills', () => {
+  itBuild('validates test fixtures and finds docs and skills', () => {
     const result = execFileSync(
       process.execPath,
       [CLI_BIN, 'build', FIXTURES, '--validate-only', '--json'],
-      { encoding: 'utf8' },
+      { encoding: 'utf8', env: TEST_ENV },
     );
 
     const parsed = JSON.parse(result.trim());
@@ -21,11 +26,11 @@ describe('chub build', () => {
     expect(parsed.skills).toBeGreaterThanOrEqual(1);
   });
 
-  it('finds expected docs and skills in fixtures', () => {
+  itBuild('finds expected docs and skills in fixtures', () => {
     const result = execFileSync(
       process.execPath,
       [CLI_BIN, 'build', FIXTURES, '--validate-only', '--json'],
-      { encoding: 'utf8' },
+      { encoding: 'utf8', env: TEST_ENV },
     );
 
     const parsed = JSON.parse(result.trim());
@@ -34,13 +39,31 @@ describe('chub build', () => {
     expect(parsed.skills).toBe(1);
   });
 
-  it('exits with error for nonexistent directory', () => {
+  itBuild('writes a search index with an inverted index', () => {
+    const outputDir = mkdtempSync(join(tmpdir(), 'chub-build-'));
+
+    try {
+      execFileSync(
+        process.execPath,
+        [CLI_BIN, 'build', FIXTURES, '--json', '-o', outputDir],
+        { encoding: 'utf8', env: TEST_ENV },
+      );
+
+      const searchIndex = JSON.parse(readFileSync(join(outputDir, 'search-index.json'), 'utf8'));
+      expect(searchIndex).toHaveProperty('invertedIndex');
+      expect(searchIndex.invertedIndex).toHaveProperty('widget');
+    } finally {
+      rmSync(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  itBuild('exits with error for nonexistent directory', () => {
     let threw = false;
     try {
       execFileSync(
         process.execPath,
         [CLI_BIN, 'build', '/tmp/nonexistent-dir-xyz-12345', '--validate-only', '--json'],
-        { encoding: 'utf8', stdio: 'pipe' },
+        { encoding: 'utf8', stdio: 'pipe', env: TEST_ENV },
       );
     } catch (err) {
       threw = true;

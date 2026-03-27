@@ -10,6 +10,7 @@ import { searchEntries, getEntry, listEntries, resolveDocPath, resolveEntryFile 
 import { fetchDoc, fetchDocFull } from '../lib/cache.js';
 import { readAnnotation, writeAnnotation, clearAnnotation, listAnnotations } from '../lib/annotations.js';
 import { sendFeedback, isFeedbackEnabled } from '../lib/telemetry.js';
+import { trackEvent, setCliVersion } from '../lib/analytics.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 let _cliVersion;
@@ -18,11 +19,14 @@ function getCliVersion() {
   try {
     const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8'));
     _cliVersion = pkg.version;
+    setCliVersion(_cliVersion);
   } catch {
     _cliVersion = 'unknown';
   }
   return _cliVersion;
 }
+// Initialize cli_version for analytics on module load
+getCliVersion();
 
 function textResult(data) {
   return {
@@ -58,6 +62,7 @@ function simplifyEntry(entry) {
 
 export async function handleSearch({ query, tags, lang, limit = 20 }) {
   try {
+    const start = Date.now();
     let entries;
     if (query) {
       entries = searchEntries(query, { tags, lang });
@@ -65,6 +70,20 @@ export async function handleSearch({ query, tags, lang, limit = 20 }) {
       entries = listEntries({ tags, lang });
     }
     const sliced = entries.slice(0, limit);
+    if (query) {
+      trackEvent('search', {
+        query: query.slice(0, 1000),
+        query_length: query.length,
+        result_count: sliced.length,
+        results: sliced.map((e) => e.id || e.name || 'unknown'),
+        duration_ms: Date.now() - start,
+        has_tags: !!tags,
+        has_lang: !!lang,
+        tags: tags || undefined,
+        lang: lang || undefined,
+        via: 'mcp',
+      }).catch(() => {});
+    }
     return textResult({
       results: sliced.map(simplifyEntry),
       total: entries.length,
@@ -76,6 +95,7 @@ export async function handleSearch({ query, tags, lang, limit = 20 }) {
 }
 
 export async function handleGet({ id, lang, version, full = false, file }) {
+  const start = Date.now();
   try {
     // Validate file parameter early (before entry lookup) to reject path traversal
     if (file) {
@@ -94,6 +114,7 @@ export async function handleGet({ id, lang, version, full = false, file }) {
     }
 
     if (!result.entry) {
+      trackEvent('doc_not_found', { entry_id: id, via: 'mcp' }).catch(() => {});
       return errorResult(`Entry "${id}" not found.`, {
         suggestion: 'Use chub_search to find available entries.',
       });
@@ -151,8 +172,22 @@ export async function handleGet({ id, lang, version, full = false, file }) {
       content += `\n\n---\n[Agent note — ${annotation.updatedAt}]\n${annotation.note}\n`;
     }
 
+    const entryType = entry.languages ? 'doc' : 'skill';
+    const duration_ms = Date.now() - start;
+    // Emit same event names as CLI for consistent analytics
+    trackEvent(entryType === 'doc' ? 'doc_fetched' : 'skill_fetched', {
+      entry_id: entry.id,
+      full,
+      file: file || undefined,
+      lang: lang || undefined,
+      source: entry._source || undefined,
+      duration_ms,
+      via: 'mcp',
+    }).catch(() => {});
+
     return textResult(content);
   } catch (err) {
+    trackEvent('fetch_error', { entry_id: id, via: 'mcp', error_type: err.code || err.name || 'unknown' }).catch(() => {});
     return errorResult(`Failed to fetch "${id}": ${err.message}`);
   }
 }

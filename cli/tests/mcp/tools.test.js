@@ -1,5 +1,29 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { handleSearch, handleGet, handleList, handleAnnotate, handleFeedback } from '../../src/mcp/tools.js';
+import * as analytics from '../../src/lib/analytics.js';
+
+const originalChubDir = process.env.CHUB_DIR;
+let tempChubDir;
+
+beforeAll(() => {
+  tempChubDir = mkdtempSync(join(tmpdir(), 'chub-mcp-test-'));
+  process.env.CHUB_DIR = tempChubDir;
+});
+
+afterAll(() => {
+  if (originalChubDir === undefined) {
+    delete process.env.CHUB_DIR;
+  } else {
+    process.env.CHUB_DIR = originalChubDir;
+  }
+
+  if (tempChubDir) {
+    rmSync(tempChubDir, { recursive: true, force: true });
+  }
+});
 
 /**
  * Helper to parse the JSON text from an MCP tool result.
@@ -199,6 +223,90 @@ describe('chub_annotate (handleAnnotate)', () => {
     expect(result.isError).toBe(true);
     const data = parseResult(result);
     expect(data.error).toContain('too long');
+  });
+});
+
+describe('telemetry', () => {
+  let trackSpy;
+
+  afterEach(() => {
+    trackSpy?.mockRestore();
+  });
+
+  it('emits search event with correct schema for MCP search', async () => {
+    trackSpy = vi.spyOn(analytics, 'trackEvent').mockResolvedValue();
+    await handleSearch({ query: 'stripe', tags: 'payments', lang: 'js', limit: 5 });
+
+    const searchCall = trackSpy.mock.calls.find(([event]) => event === 'search');
+    expect(searchCall).toBeDefined();
+    const [event, props] = searchCall;
+    expect(event).toBe('search');
+    expect(props).toHaveProperty('query', 'stripe');
+    expect(props).toHaveProperty('query_length', 6);
+    expect(props).toHaveProperty('result_count');
+    expect(props).toHaveProperty('results');
+    expect(props).toHaveProperty('has_tags', true);
+    expect(props).toHaveProperty('has_lang', true);
+    expect(props).toHaveProperty('tags', 'payments');
+    expect(props).toHaveProperty('lang', 'js');
+    expect(props).toHaveProperty('duration_ms');
+    expect(props).toHaveProperty('via', 'mcp');
+    // Should NOT have error_message
+    expect(props).not.toHaveProperty('error_message');
+  });
+
+  it('does not emit search event when no query', async () => {
+    trackSpy = vi.spyOn(analytics, 'trackEvent').mockResolvedValue();
+    await handleSearch({ limit: 5 });
+
+    const searchCall = trackSpy.mock.calls.find(([event]) => event === 'search');
+    expect(searchCall).toBeUndefined();
+  });
+
+  it('emits doc_not_found for missing entry', async () => {
+    trackSpy = vi.spyOn(analytics, 'trackEvent').mockResolvedValue();
+    await handleGet({ id: 'does-not-exist/xyz-99999' });
+
+    const call = trackSpy.mock.calls.find(([event]) => event === 'doc_not_found');
+    expect(call).toBeDefined();
+    expect(call[1]).toHaveProperty('entry_id', 'does-not-exist/xyz-99999');
+    expect(call[1]).toHaveProperty('via', 'mcp');
+    expect(call[1]).not.toHaveProperty('error_message');
+  });
+
+  it('emits doc_fetched/skill_fetched on successful get', async () => {
+    trackSpy = vi.spyOn(analytics, 'trackEvent').mockResolvedValue();
+
+    // Find a fetchable entry
+    const searchResult = await handleSearch({ limit: 1 });
+    const entries = parseResult(searchResult);
+    if (entries.results.length === 0) return;
+
+    const entry = entries.results[0];
+    const lang = entry.languages?.[0];
+    await handleGet({ id: entry.id, lang });
+
+    const fetchCall = trackSpy.mock.calls.find(
+      ([event]) => event === 'doc_fetched' || event === 'skill_fetched'
+    );
+    if (fetchCall) {
+      expect(fetchCall[1]).toHaveProperty('entry_id');
+      expect(fetchCall[1]).toHaveProperty('duration_ms');
+      expect(fetchCall[1]).toHaveProperty('via', 'mcp');
+      expect(fetchCall[1]).not.toHaveProperty('error_message');
+    }
+  });
+
+  it('never sends error_message in any telemetry event', async () => {
+    trackSpy = vi.spyOn(analytics, 'trackEvent').mockResolvedValue();
+
+    // Trigger various paths
+    await handleSearch({ query: 'test' });
+    await handleGet({ id: 'nonexistent/entry-999' });
+
+    for (const [, props] of trackSpy.mock.calls) {
+      expect(props).not.toHaveProperty('error_message');
+    }
   });
 });
 

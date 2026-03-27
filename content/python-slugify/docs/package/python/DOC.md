@@ -18,13 +18,7 @@ metadata:
 
 The default behavior lowercases the text, transliterates Unicode characters to ASCII, removes disallowed characters, and joins words with `-`.
 
-## Version Covered
-
-- Package: `python-slugify`
-- Ecosystem: `pypi`
-- Version: `8.0.4`
-- Docs root: `https://github.com/un33k/python-slugify`
-- Registry: `https://pypi.org/project/python-slugify/`
+This guide covers `8.0.4`.
 
 ## Install
 

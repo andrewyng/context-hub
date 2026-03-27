@@ -22,6 +22,9 @@ const CLI_BIN = join(import.meta.dirname, '..', '..', 'bin', 'chub');
 const FIXTURES = join(import.meta.dirname, '..', '..', 'test', 'fixtures');
 const GO_DOC_PATH = join(REPO_ROOT, 'content', 'openai', 'docs', 'chat', 'go', 'DOC.md');
 const GO_FIXTURE_PATH = join(FIXTURES, 'multilang', 'docs', 'client', 'go', 'DOC.md');
+const BUILD_TEST_TIMEOUT = 15000;
+const itBuild = (name, fn) => it(name, { timeout: BUILD_TEST_TIMEOUT }, fn);
+const TEST_ENV = { ...process.env, CHUB_TELEMETRY: '0', CHUB_FEEDBACK: '0' };
 
 // ---------------------------------------------------------------------------
 // 1. Content file — frontmatter validation
@@ -202,11 +205,11 @@ describe('resolveDocPath() — Go language support', () => {
 // 4. CLI integration — build validates Go fixture without errors
 // ---------------------------------------------------------------------------
 describe('chub build — Go fixture integration', () => {
-  it('validates the multilang fixture (including Go variant) without errors', () => {
+  itBuild('validates the multilang fixture (including Go variant) without errors', () => {
     const result = execFileSync(
       process.execPath,
       [CLI_BIN, 'build', FIXTURES, '--validate-only', '--json'],
-      { encoding: 'utf8' },
+      { encoding: 'utf8', env: TEST_ENV },
     );
 
     const parsed = JSON.parse(result.trim());
@@ -214,13 +217,13 @@ describe('chub build — Go fixture integration', () => {
     expect(parsed.docs).toBeGreaterThanOrEqual(1);
   });
 
-  it('doc count includes Go as part of the multilang entry (not a new doc)', () => {
+  itBuild('doc count includes Go as part of the multilang entry (not a new doc)', () => {
     // The multilang/client entry now has 3 language variants: python, javascript, go.
     // It should still count as 1 doc entry (language variants share the same name).
     const result = execFileSync(
       process.execPath,
       [CLI_BIN, 'build', FIXTURES, '--validate-only', '--json'],
-      { encoding: 'utf8' },
+      { encoding: 'utf8', env: TEST_ENV },
     );
 
     const parsed = JSON.parse(result.trim());
@@ -228,13 +231,13 @@ describe('chub build — Go fixture integration', () => {
     expect(parsed.docs).toBe(3);
   });
 
-  it('exits cleanly (exit code 0) with Go fixture present', () => {
+  itBuild('exits cleanly (exit code 0) with Go fixture present', () => {
     let threw = false;
     try {
       execFileSync(
         process.execPath,
         [CLI_BIN, 'build', FIXTURES, '--validate-only'],
-        { encoding: 'utf8', stdio: 'pipe' },
+        { encoding: 'utf8', stdio: 'pipe', env: TEST_ENV },
       );
     } catch {
       threw = true;
@@ -247,13 +250,13 @@ describe('chub build — Go fixture integration', () => {
 // 5. Build → registry round-trip: go appears in built registry.json
 // ---------------------------------------------------------------------------
 describe('chub build — Go appears in built registry.json', () => {
-  it('go language is present in registry after building content/', () => {
+  itBuild('go language is present in registry after building content/', () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'chub-go-test-'));
 
     execFileSync(
       process.execPath,
       [CLI_BIN, 'build', join(REPO_ROOT, 'content'), '-o', tmpDir],
-      { encoding: 'utf8' },
+      { encoding: 'utf8', env: TEST_ENV },
     );
 
     const registry = JSON.parse(readFileSync(join(tmpDir, 'registry.json'), 'utf8'));

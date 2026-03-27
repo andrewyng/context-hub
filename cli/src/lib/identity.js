@@ -63,7 +63,7 @@ export async function getOrCreateClientId() {
     // File doesn't exist or is unreadable
   }
 
-  // Generate from machine UUID
+  // Generate from machine UUID — this is a first-time user
   const uuid = getMachineUUID();
   const hash = createHash('sha256').update(uuid).digest('hex');
 
@@ -74,7 +74,18 @@ export async function getOrCreateClientId() {
 
   writeFileSync(idPath, hash, 'utf8');
   _cachedClientId = hash;
+  _isFirstRun = true;
   return hash;
+}
+
+let _isFirstRun = false;
+
+/**
+ * Returns true if this is the first time the CLI has run on this machine.
+ * Only valid after getOrCreateClientId() has been called.
+ */
+export function isFirstRun() {
+  return _isFirstRun;
 }
 
 /**

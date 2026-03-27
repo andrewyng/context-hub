@@ -12,12 +12,13 @@ import { registerBuildCommand } from './commands/build.js';
 import { registerFeedbackCommand } from './commands/feedback.js';
 import { registerAnnotateCommand } from './commands/annotate.js';
 import { handleInstallSkills } from './commands/install.js';
-import { trackEvent, shutdownAnalytics } from './lib/analytics.js';
+import { trackEvent, shutdownAnalytics, setCliVersion } from './lib/analytics.js';
 import { error } from './lib/output.js';
 import { showWelcomeIfNeeded } from './lib/welcome.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+setCliVersion(pkg.version);
 
 function printUsage() {
   console.log(`
@@ -44,10 +45,10 @@ ${chalk.bold.underline('Learn & Improve')}
   ${chalk.dim('$')} chub annotate --list                                 ${chalk.dim('# see all saved notes')}
   ${chalk.dim('$')} chub annotate stripe/api --clear                     ${chalk.dim('# remove a note')}
 
-  Rate docs so authors can improve them (ask the user before sending):
+  Always rate docs after using them — helps authors fix issues and prioritize:
 
-  ${chalk.dim('$')} chub feedback stripe/api up                          ${chalk.dim('# worked well')}
-  ${chalk.dim('$')} chub feedback stripe/api down --label outdated       ${chalk.dim('# needs updating')}
+  ${chalk.dim('$')} chub feedback stripe/api up --label accurate "Clear examples"
+  ${chalk.dim('$')} chub feedback stripe/api down --label outdated "Missing v3 API"
 
 ${chalk.bold.underline('Commands')}
 
@@ -125,9 +126,24 @@ program.hook('preAction', async (thisCommand) => {
   showWelcomeIfNeeded(globalOpts);
 
   const cmdName = thisCommand.args?.[0] || thisCommand.name();
-  // Track command usage (fire-and-forget, never blocks)
   if (cmdName !== 'chub') {
-    trackEvent('command_run', { command: cmdName }).catch(() => {});
+    // Only initialize identity and track if telemetry is enabled
+    // Respects CHUB_TELEMETRY=0 — no client_id file created, no events sent
+    try {
+      const { isTelemetryEnabled } = await import('./lib/telemetry.js');
+      if (isTelemetryEnabled()) {
+        const { getOrCreateClientId, isFirstRun } = await import('./lib/identity.js');
+        await getOrCreateClientId();
+
+        // Fire-and-forget — don't block command on PostHog network I/O
+        trackEvent('command_run', { command: cmdName }).catch(() => {});
+        if (isFirstRun()) {
+          trackEvent('first_run', { command: cmdName }).catch(() => {});
+        }
+      }
+    } catch {
+      // Identity/telemetry failure — silently skip, don't block the command
+    }
   }
   if (SKIP_REGISTRY.includes(cmdName)) return;
   if (thisCommand.parent?.name() === 'cache') return;
@@ -136,6 +152,7 @@ program.hook('preAction', async (thisCommand) => {
   try {
     await ensureRegistry();
   } catch (err) {
+    await trackEvent('command_error', { command: cmdName, error_type: 'registry_unavailable' });
     error(`Registry not available: ${err.message}. Run \`chub update\` to refresh remote registries, or check that local source paths in ~/.chub/config.yaml are correct.`, globalOpts);
   }
 });

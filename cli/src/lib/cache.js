@@ -31,6 +31,10 @@ function getSourceRegistryPath(sourceName) {
   return join(getSourceDir(sourceName), 'registry.json');
 }
 
+function getSourceSearchIndexPath(sourceName) {
+  return join(getSourceDir(sourceName), 'search-index.json');
+}
+
 function readMeta(sourceName) {
   try {
     return JSON.parse(readFileSync(getSourceMetaPath(sourceName), 'utf8'));
@@ -47,38 +51,99 @@ function writeMeta(sourceName, meta) {
 
 function isSourceCacheFresh(sourceName) {
   const meta = readMeta(sourceName);
-  if (!meta.lastUpdated) return false;
+  if (!meta.lastUpdated && meta.lastUpdated !== 0) return false;
   const config = loadConfig();
   const age = (Date.now() - meta.lastUpdated) / 1000;
   return age < config.refresh_interval;
+}
+
+function isTimestampFresh(timestamp) {
+  if (timestamp === undefined || timestamp === null) return false;
+  const config = loadConfig();
+  const age = (Date.now() - timestamp) / 1000;
+  return age < config.refresh_interval;
+}
+
+function hasFreshSearchIndexState(sourceName) {
+  if (existsSync(getSourceSearchIndexPath(sourceName))) {
+    return true;
+  }
+
+  const meta = readMeta(sourceName);
+  return meta.searchIndexAvailable === false && isTimestampFresh(meta.searchIndexCheckedAt);
+}
+
+function shouldFetchRemoteRegistry(sourceName, force = false) {
+  if (force) return true;
+  return !(
+    isSourceCacheFresh(sourceName)
+    && existsSync(getSourceRegistryPath(sourceName))
+    && hasFreshSearchIndexState(sourceName)
+  );
+}
+
+async function fetchRemoteText(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) {
+      throw new Error(`${res.status} ${res.statusText}`);
+    }
+    return await res.text();
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**
  * Fetch registry for a single remote source.
  */
 async function fetchRemoteRegistry(source, force = false) {
-  if (!force && isSourceCacheFresh(source.name) && existsSync(getSourceRegistryPath(source.name))) {
+  if (!shouldFetchRemoteRegistry(source.name, force)) {
     return;
   }
 
-  const url = `${source.url}/registry.json`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  let res;
+  const registryUrl = `${source.url}/registry.json`;
+  let registryText;
   try {
-    res = await fetch(url, { signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
-  if (!res.ok) {
-    throw new Error(`Failed to fetch registry from ${source.name}: ${res.status} ${res.statusText}`);
+    registryText = await fetchRemoteText(registryUrl);
+  } catch (err) {
+    throw new Error(`Failed to fetch registry from ${source.name}: ${err.message}`);
   }
 
-  const data = await res.text();
   const dir = getSourceDir(source.name);
   mkdirSync(dir, { recursive: true });
-  writeFileSync(getSourceRegistryPath(source.name), data);
-  writeMeta(source.name, { ...readMeta(source.name), lastUpdated: Date.now() });
+  writeFileSync(getSourceRegistryPath(source.name), registryText);
+
+  const searchIndexUrl = `${source.url}/search-index.json`;
+  const searchIndexCheckedAt = Date.now();
+  let searchIndexAvailable;
+  try {
+    const searchIndexText = await fetchRemoteText(searchIndexUrl);
+    writeFileSync(getSourceSearchIndexPath(source.name), searchIndexText);
+    searchIndexAvailable = true;
+  } catch (err) {
+    // Avoid serving a stale local search index after a registry refresh.
+    rmSync(getSourceSearchIndexPath(source.name), { force: true });
+    if (err.message?.startsWith('404 ')) {
+      searchIndexAvailable = false;
+    }
+  }
+
+  const nextMeta = {
+    ...readMeta(source.name),
+    lastUpdated: Date.now(),
+  };
+  delete nextMeta.searchIndexAvailable;
+  delete nextMeta.searchIndexCheckedAt;
+
+  if (searchIndexAvailable !== undefined) {
+    nextMeta.searchIndexAvailable = searchIndexAvailable;
+    nextMeta.searchIndexCheckedAt = searchIndexCheckedAt;
+  }
+
+  writeMeta(source.name, nextMeta);
 }
 
 /**
@@ -141,6 +206,14 @@ export async function fetchFullBundle(sourceName) {
     writeFileSync(getSourceRegistryPath(sourceName), regData);
   }
 
+  const extractedSearchIndex = join(dataDir, 'search-index.json');
+  if (existsSync(extractedSearchIndex)) {
+    const searchIndexData = readFileSync(extractedSearchIndex, 'utf8');
+    writeFileSync(getSourceSearchIndexPath(sourceName), searchIndexData);
+  } else {
+    rmSync(getSourceSearchIndexPath(sourceName), { force: true });
+  }
+
   writeMeta(sourceName, { ...readMeta(sourceName), lastUpdated: Date.now(), fullBundle: true });
   rmSync(tmpPath, { force: true });
 }
@@ -187,7 +260,7 @@ export async function fetchDoc(source, docPath) {
   const content = await res.text();
 
   // Cache locally
-  const dir = cachedPath.substring(0, cachedPath.lastIndexOf('/'));
+  const dir = dirname(cachedPath);
   mkdirSync(dir, { recursive: true });
   writeFileSync(cachedPath, content);
 
@@ -327,7 +400,7 @@ export async function ensureRegistry() {
     // Auto-refresh stale remote registries (best-effort)
     for (const source of config.sources) {
       if (source.path) continue;
-      if (!isSourceCacheFresh(source.name)) {
+      if (shouldFetchRemoteRegistry(source.name)) {
         try { await fetchRemoteRegistry(source); } catch { /* use stale */ }
       }
     }
@@ -341,6 +414,10 @@ export async function ensureRegistry() {
     const defaultDir = getSourceDir('default');
     mkdirSync(defaultDir, { recursive: true });
     writeFileSync(getSourceRegistryPath('default'), readFileSync(bundledRegistry, 'utf8'));
+    const bundledSearchIndex = join(getBundledDir(), 'search-index.json');
+    if (existsSync(bundledSearchIndex)) {
+      writeFileSync(getSourceSearchIndexPath('default'), readFileSync(bundledSearchIndex, 'utf8'));
+    }
     writeMeta('default', { lastUpdated: 0, bundledSeed: true }); // lastUpdated=0 → stale, so chub update will refresh
     return;
   }

@@ -25,15 +25,7 @@ In application code, the most common entry points are:
 
 Use the framework integrations when your app signs users in with an external identity provider. Use the HTTP client classes for service-to-service OAuth or custom authorization flows. Use the JOSE APIs when your app issues or validates JWTs directly.
 
-## Version Context
-
-- Ecosystem: `pypi`
-- Package: `authlib`
-- Version covered: `1.6.9`
-- Docs root: `https://docs.authlib.org/en/latest/`
-- PyPI URL: `https://pypi.org/project/authlib/`
-
-This guide targets the `1.6.9` package release. Authlib's documentation is published separately from PyPI, so verify the changelog if you depend on a behavior added very recently.
+This guide covers `1.6.9`.
 
 ## Install
 

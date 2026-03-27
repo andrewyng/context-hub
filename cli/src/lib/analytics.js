@@ -66,6 +66,7 @@ export async function trackEvent(event, properties = {}) {
         ...properties,
         platform: process.platform,
         node_version: process.version,
+        cli_version: _cliVersion || undefined,
       },
     });
 
@@ -74,6 +75,15 @@ export async function trackEvent(event, properties = {}) {
   } catch {
     // Silent fail — analytics should never disrupt CLI
   }
+}
+
+let _cliVersion;
+/**
+ * Set the CLI version for inclusion in all events.
+ * Called once from index.js at startup.
+ */
+export function setCliVersion(version) {
+  _cliVersion = version;
 }
 
 /**

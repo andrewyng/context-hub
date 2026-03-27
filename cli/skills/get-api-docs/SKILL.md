@@ -13,6 +13,20 @@ description: >
 When you need documentation for a library or API, fetch it with the `chub` CLI
 rather than guessing from training data. This gives you the current, correct API.
 
+## Step 0 — Install chub
+
+Before using chub, make sure it is installed. Run:
+
+```bash
+chub --version
+```
+
+If the command is not found, install it globally:
+
+```bash
+npm install -g @aisuite/chub
+```
+
 ## Step 1 — Find the right doc ID
 
 ```bash

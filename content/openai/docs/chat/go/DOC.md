@@ -4,8 +4,8 @@ description: "OpenAI API for text generation, chat completions, streaming, funct
 metadata:
   languages: "go"
   versions: "1.3.0"
-  revision: 1
-  updated-on: "2026-03-09"
+  revision: 2
+  updated-on: "2026-03-27"
   source: community
   tags: "openai,chat,llm,ai"
 ---
@@ -195,6 +195,44 @@ if err := stream.Err(); err != nil {
 
 ## Function Calling (Tools)
 
+### Responses API (Recommended)
+
+```go
+response, err := client.Responses.New(context.Background(), responses.ResponseNewParams{
+    Model: "gpt-5.4",
+    Input: responses.ResponseNewParamsInputUnion{
+        OfString: openai.String("What's the weather in Paris?"),
+    },
+    Tools: []responses.ToolUnionParam{{
+        OfFunction: &responses.FunctionToolParam{
+            Name:        "get_weather",
+            Description: openai.String("Get current weather for a city"),
+            Parameters: map[string]any{
+                "type": "object",
+                "properties": map[string]any{
+                    "location": map[string]string{
+                        "type":        "string",
+                        "description": "City name",
+                    },
+                },
+                "required": []string{"location"},
+            },
+        },
+    }},
+})
+if err != nil {
+    panic(err)
+}
+for _, item := range response.Output {
+    if item.Type == "function_call" {
+        toolCall := item.AsFunctionCall()
+        fmt.Printf("Function: %s, Args: %s\n", toolCall.Name, toolCall.Arguments)
+    }
+}
+```
+
+### Chat Completions (Legacy)
+
 ```go
 tools := []openai.ChatCompletionToolParam{
     {
@@ -226,7 +264,6 @@ resp, err := client.Chat.Completions.New(context.Background(), openai.ChatComple
 if err != nil {
     panic(err)
 }
-// Inspect resp.Choices[0].Message.ToolCalls for the model's invocation
 for _, tc := range resp.Choices[0].Message.ToolCalls {
     fmt.Printf("Function: %s, Args: %s\n", tc.Function.Name, tc.Function.Arguments)
 }
@@ -234,15 +271,53 @@ for _, tc := range resp.Choices[0].Message.ToolCalls {
 
 ## Structured Outputs (JSON Schema)
 
+### Responses API (Recommended)
+
 ```go
 import "encoding/json"
 
-type Step struct {
-    Explanation string `json:"explanation"`
-    Output      string `json:"output"`
+type HistoricalComputer struct {
+    Origin string `json:"origin"`
+    Name   string `json:"full_name"`
 }
+
+// GenerateSchema uses github.com/invopop/jsonschema to produce a JSON Schema from a Go struct.
+// See the openai-go README for the full helper implementation.
+var schema = GenerateSchema[HistoricalComputer]()
+
+response, err := client.Responses.New(context.Background(), responses.ResponseNewParams{
+    Model: "gpt-5.4",
+    Input: responses.ResponseNewParamsInputUnion{
+        OfString: openai.String("What computer ran the first neural network?"),
+    },
+    Text: responses.ResponseTextConfigParam{
+        Format: responses.ResponseFormatTextConfigParamOfJSONSchema(
+            "historical_computer",
+            schema,
+        ),
+    },
+})
+if err != nil {
+    panic(err)
+}
+
+var computer HistoricalComputer
+json.Unmarshal([]byte(response.OutputText()), &computer)
+fmt.Println(computer.Name)
+```
+
+Note: Go SDK uses `response.OutputText()` + manual `json.Unmarshal` instead of auto-parsed results like Python/JS. The `GenerateSchema` helper is defined in the [openai-go README](https://github.com/openai/openai-go). Import paths use `github.com/openai/openai-go/v3` and subpackages like `github.com/openai/openai-go/v3/responses`.
+
+### Chat Completions (Legacy)
+
+```go
+import "encoding/json"
+
 type MathReasoning struct {
-    Steps       []Step `json:"steps"`
+    Steps       []struct {
+        Explanation string `json:"explanation"`
+        Output      string `json:"output"`
+    } `json:"steps"`
     FinalAnswer string `json:"final_answer"`
 }
 
@@ -269,6 +344,50 @@ resp, err := client.Chat.Completions.New(context.Background(), openai.ChatComple
 var result MathReasoning
 json.Unmarshal([]byte(resp.Choices[0].Message.Content), &result)
 fmt.Println(result.FinalAnswer)
+```
+
+## Conversations API
+
+Import `github.com/openai/openai-go/v3/conversations` for the conversations package.
+
+```go
+conv, err := client.Conversations.New(context.Background(), conversations.ConversationNewParams{})
+if err != nil {
+    panic(err)
+}
+
+response, err := client.Responses.New(context.Background(), responses.ResponseNewParams{
+    Model: "gpt-5.4",
+    Input: responses.ResponseNewParamsInputUnion{
+        OfString: openai.String("Tell me a joke about programming."),
+    },
+    Conversation: responses.ResponseNewParamsConversationUnion{
+        OfConversationObject: &responses.ResponseConversationParam{
+            ID: conv.ID,
+        },
+    },
+})
+if err != nil {
+    panic(err)
+}
+fmt.Println(response.OutputText())
+
+// Follow-up — context preserved automatically
+followUp, err := client.Responses.New(context.Background(), responses.ResponseNewParams{
+    Model: "gpt-5.4",
+    Input: responses.ResponseNewParamsInputUnion{
+        OfString: openai.String("Explain why that's funny."),
+    },
+    Conversation: responses.ResponseNewParamsConversationUnion{
+        OfConversationObject: &responses.ResponseConversationParam{
+            ID: conv.ID,
+        },
+    },
+})
+if err != nil {
+    panic(err)
+}
+fmt.Println(followUp.OutputText())
 ```
 
 ## Vision (Multimodal)

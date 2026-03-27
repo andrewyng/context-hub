@@ -1,11 +1,12 @@
 ---
 name: chat
-description: "OpenAI API for text generation, chat completions, streaming, function calling, vision, embeddings, and assistants"
+description: "OpenAI API for text generation, responses, conversations, streaming, function calling, vision, structured outputs, embeddings, and assistants"
 metadata:
   languages: "python"
   versions: "2.26.0"
-  updated-on: "2026-03-06"
-  source: maintainer
+  revision: 1
+  updated-on: "2026-03-27"
+  source: community
   tags: "openai,chat,llm,ai"
 ---
 
@@ -124,23 +125,7 @@ response = client.responses.create(
 print(response.output_text)
 ```
 
-### Legacy Method: Chat Completions API
-
-```python
-from openai import OpenAI
-
-client = OpenAI()
-
-completion = client.chat.completions.create(
-    model="gpt-4.1",
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "How do I reverse a string in Python?"},
-    ],
-)
-
-print(completion.choices[0].message.content)
-```
+For the legacy Chat Completions approach, see [references/additional-apis.md](references/additional-apis.md).
 
 ## Vision (Multimodal Inputs)
 
@@ -227,57 +212,58 @@ for event in stream:
     print(event)
 ```
 
-### Chat Completions Streaming
-
-```python
-from openai import OpenAI
-client = OpenAI()
-
-stream = client.chat.completions.create(
-    model="gpt-4.1",
-    messages=[{"role": "user", "content": "Tell me a joke"}],
-    stream=True,
-)
-
-for chunk in stream:
-    if chunk.choices[0].delta.content is not None:
-        print(chunk.choices[0].delta.content, end="")
-```
+For Chat Completions streaming, see [references/additional-apis.md](references/additional-apis.md).
 
 ## Function Calling (Tools)
 
-Type-safe function calling with Pydantic helpers.
+### Primary Method: Responses API (Recommended)
 
 ```python
-from pydantic import BaseModel
+import json
 from openai import OpenAI
-import openai
-
-class WeatherQuery(BaseModel):
-    """Get the current weather for a location"""
-    location: str
-    unit: str = "celsius"
 
 client = OpenAI()
 
-completion = client.chat.completions.parse(
-    model="gpt-4.1",
-    messages=[{"role": "user", "content": "What's the weather like in Paris?"}],
-    tools=[openai.pydantic_function_tool(WeatherQuery)],
+tools = [
+    {
+        "type": "function",
+        "name": "get_weather",
+        "description": "Get the current weather for a location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {"type": "string", "description": "City name"},
+                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+            },
+            "required": ["location"],
+        },
+    },
+]
+
+response = client.responses.create(
+    model="gpt-5.4",
+    tools=tools,
+    input=[{"role": "user", "content": "What's the weather like in Paris?"}],
 )
 
-if completion.choices[0].message.tool_calls:
-    for tool_call in completion.choices[0].message.tool_calls:
-        if getattr(tool_call, "parsed_arguments", None):
-            print(tool_call.parsed_arguments.location)
+# Handle tool calls
+for item in response.output:
+    if item.type == "function_call":
+        args = json.loads(item.arguments)
+        print(f"Call {item.name} with {args}")
+        # Execute your function, then return results:
+        # input.append({"type": "function_call_output", "call_id": item.call_id, "output": result})
 ```
+
+For legacy Chat Completions function calling with Pydantic, see [references/additional-apis.md](references/additional-apis.md).
 
 ## Structured Outputs
 
 Auto-parse JSON into Pydantic models.
 
+### Primary Method: Responses API (Recommended)
+
 ```python
-from typing import List
 from pydantic import BaseModel
 from openai import OpenAI
 
@@ -286,278 +272,87 @@ class Step(BaseModel):
     output: str
 
 class MathResponse(BaseModel):
-    steps: List[Step]
+    steps: list[Step]
     final_answer: str
 
 client = OpenAI()
-completion = client.chat.completions.parse(
-    model="gpt-4.1",
-    messages=[
+response = client.responses.parse(
+    model="gpt-5.4",
+    input=[
         {"role": "system", "content": "You are a helpful math tutor."},
         {"role": "user", "content": "solve 8x + 31 = 2"},
     ],
-    response_format=MathResponse,
+    text_format=MathResponse,
 )
 
-message = completion.choices[0].message
-if message.parsed:
-    print(message.parsed.final_answer)
+if response.output_parsed:
+    print(response.output_parsed.final_answer)
 ```
 
-## Audio Capabilities
+Key differences from Chat Completions:
+- Use `client.responses.parse()` instead of `client.chat.completions.parse()`
+- Use `text_format=` instead of `response_format=`
+- Access result via `response.output_parsed` instead of `message.parsed`
+- Use `input=` instead of `messages=`
 
-### Speech Synthesis (Text-to-Speech)
+For legacy Chat Completions structured outputs, see [references/additional-apis.md](references/additional-apis.md).
+
+## Conversations API
+
+Persistent multi-turn conversations managed server-side by OpenAI. No need to manually pass message history — the API tracks it automatically.
 
 ```python
 from openai import OpenAI
+
 client = OpenAI()
 
-response = client.audio.speech.create(
-    model="gpt-4o-mini-tts",
-    voice="alloy",
-    input="Hello, this is a test of the text to speech API."
-)
+# Create a conversation (once per session)
+conversation = client.conversations.create()
 
-with open("output.mp3", "wb") as f:
-    f.write(response.content)
-```
-
-### Audio Transcription
-
-```python
-from openai import OpenAI
-client = OpenAI()
-
-with open("audio.mp3", "rb") as audio_file:
-    transcription = client.audio.transcriptions.create(
-        model="gpt-4o-transcribe",
-        file=audio_file
-    )
-print(transcription.text)
-```
-
-### Audio Translation
-
-```python
-from openai import OpenAI
-client = OpenAI()
-
-with open("audio.mp3", "rb") as audio_file:
-    translation = client.audio.translations.create(
-        model="whisper-1",
-        file=audio_file
-    )
-print(translation.text)
-```
-
-## File Operations
-
-### Upload Files
-
-```python
-from pathlib import Path
-from openai import OpenAI
-client = OpenAI()
-
-file_response = client.files.create(
-    file=Path("training_data.jsonl"),
-    purpose="fine-tune"
-)
-
-print(f"File ID: {file_response.id}")
-```
-
-### Retrieve, Download, Delete Files
-
-```python
-from openai import OpenAI
-client = OpenAI()
-
-# List files
-files = client.files.list()
-
-# Retrieve a specific file
-file_info = client.files.retrieve("file-abc123")
-
-# Download file content
-file_content = client.files.content("file-abc123")
-
-# Delete a file
-client.files.delete("file-abc123")
-```
-
-## Embeddings
-
-```python
-from openai import OpenAI
-client = OpenAI()
-
-response = client.embeddings.create(
-    model="text-embedding-3-small",
-    input="The quick brown fox jumps over the lazy dog."
-)
-
-embeddings = response.data[0].embedding
-print(f"Embedding dimensions: {len(embeddings)}")
-```
-
-## Image Generation
-
-```python
-from openai import OpenAI
-client = OpenAI()
-
-response = client.images.generate(
-    model="gpt-image-1.5",
-    prompt="A futuristic city skyline at sunset",
-    size="1024x1024",
-    quality="standard",
-    n=1,
-)
-
-image_url = response.data[0].url
-print(f"Generated image: {image_url}")
-```
-
-## Error Handling
-
-```python
-import openai
-from openai import OpenAI
-client = OpenAI()
-
-try:
-    response = client.responses.create(model="gpt-5.4", input="Hello, world!")
-except openai.RateLimitError:
-    print("Rate limit exceeded. Please wait before retrying.")
-except openai.APIConnectionError:
-    print("Failed to connect to OpenAI API.")
-except openai.AuthenticationError:
-    print("Invalid API key provided.")
-except openai.APIStatusError as e:
-    print(f"API error occurred: {e.status_code}")
-    print(f"Error response: {e.response}")
-```
-
-## Request IDs and Debugging
-
-```python
-from openai import OpenAI
-client = OpenAI()
-
-response = client.responses.create(model="gpt-5.4", input="Test message")
-print(f"Request ID: {response._request_id}")
-```
-
-## Retries and Timeouts
-
-```python
-from openai import OpenAI
-
-# Configure retries
-client = OpenAI(max_retries=5)
-
-# Configure timeouts
-client = OpenAI(timeout=30.0)
-
-# Per-request configuration
-response = client.with_options(
-    max_retries=3,
-    timeout=60.0
-).responses.create(
+# First turn
+response = client.responses.create(
     model="gpt-5.4",
-    input="Hello"
+    input="Tell me a joke about programming.",
+    conversation=conversation.id,
 )
+print(response.output_text)
+
+# Follow-up — context is preserved automatically
+response = client.responses.create(
+    model="gpt-5.4",
+    input="Explain why that's funny.",
+    conversation=conversation.id,
+)
+print(response.output_text)
 ```
 
-## Realtime API
+Works with `responses.parse()` for structured outputs in multi-turn conversations:
 
 ```python
-import asyncio
-from openai import AsyncOpenAI
-
-async def main():
-    client = AsyncOpenAI()
-
-    async with client.realtime.connect(model="gpt-realtime") as connection:
-        await connection.session.update(session={'modalities': ['text']})
-
-        await connection.conversation.item.create(
-            item={
-                "type": "message",
-                "role": "user",
-                "content": [{"type": "input_text", "text": "Say hello!"}],
-            }
-        )
-        await connection.response.create()
-
-        async for event in connection:
-            if event.type == "response.output_text.delta":
-                print(event.delta, end="")
-            elif event.type == "response.done":
-                break
-
-asyncio.run(main())
-```
-
-## Microsoft Azure OpenAI
-
-```python
-from openai import AzureOpenAI
-
-client = AzureOpenAI(
-    azure_endpoint="https://your-endpoint.openai.azure.com",
-)
-
-completion = client.chat.completions.create(
-    model="deployment-name",  # Your deployment name
-    messages=[{"role": "user", "content": "Hello, Azure OpenAI!"}],
-)
-print(completion.choices[0].message.content)
-```
-
-## Webhook Verification
-
-```python
-from flask import Flask, request
+from pydantic import BaseModel
 from openai import OpenAI
 
-app = Flask(__name__)
-client = OpenAI()  # Uses OPENAI_WEBHOOK_SECRET environment variable
-
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    request_body = request.get_data(as_text=True)
-
-    try:
-        event = client.webhooks.unwrap(request_body, request.headers)
-
-        if event.type == "response.completed":
-            print("Response completed:", event.data)
-
-        return "ok"
-    except Exception as e:
-        print("Invalid signature:", e)
-        return "Invalid signature", 400
-```
-
-## Pagination
-
-```python
-from openai import OpenAI
+class EditResult(BaseModel):
+    modified_text: str
+    explanation: str
 
 client = OpenAI()
+conversation = client.conversations.create()
 
-# Automatic pagination
-all_files = []
-for file in client.files.list(limit=20):
-    all_files.append(file)
-
-# Manual pagination
-first_page = client.files.list(limit=20)
-if first_page.has_next_page():
-    next_page = first_page.get_next_page()
+response = client.responses.parse(
+    model="gpt-5.4",
+    input="Make the first paragraph bold.",
+    text_format=EditResult,
+    conversation=conversation.id,
+)
+print(response.output_parsed.explanation)
 ```
+
+Use Conversations API when building multi-turn chat UIs or agents that need persistent context. Use manual message history (`input=[...]`) for simple single-request interactions.
+
+## Additional APIs
+
+For audio, files, embeddings, image generation, error handling, retries, realtime API, Azure, webhooks, and pagination, see [references/additional-apis.md](references/additional-apis.md).
 
 ## Notes
 

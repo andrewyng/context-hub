@@ -1,11 +1,12 @@
 ---
 name: chat
-description: "OpenAI API for text generation, chat completions, streaming, function calling, vision, embeddings, and assistants"
+description: "OpenAI API for text generation, responses, conversations, streaming, function calling, vision, structured outputs, embeddings, and assistants"
 metadata:
   languages: "javascript"
   versions: "6.27.0"
-  updated-on: "2026-03-06"
-  source: maintainer
+  revision: 1
+  updated-on: "2026-03-27"
+  source: community
   tags: "openai,chat,llm,ai"
 ---
 
@@ -257,33 +258,48 @@ await client.files.create({
 
 ### Function Calling (Tools)
 
+#### Responses API (Recommended)
+
 ```typescript
-const completion = await client.chat.completions.create({
-  model: 'gpt-5.4',
-  messages: [{ role: 'user', content: 'What is the weather like today?' }],
-  tools: [
-    {
-      type: 'function',
-      function: {
-        name: 'get_current_weather',
-        description: 'Get the current weather in a given location',
-        parameters: {
-          type: 'object',
-          properties: {
-            location: {
-              type: 'string',
-              description: 'The city and state, e.g. San Francisco, CA',
-            },
-            unit: { type: 'string', enum: ['celsius', 'fahrenheit'] },
-          },
-          required: ['location'],
-        },
+const tools = [
+  {
+    type: 'function',
+    name: 'get_weather',
+    description: 'Get the current weather in a given location',
+    parameters: {
+      type: 'object',
+      properties: {
+        location: { type: 'string', description: 'City and state' },
+        unit: { type: 'string', enum: ['celsius', 'fahrenheit'] },
       },
+      required: ['location'],
+      additionalProperties: false,
     },
-  ],
-  tool_choice: 'auto',
+    strict: true,
+  },
+];
+
+let input = [{ role: 'user', content: 'What is the weather like in Paris?' }];
+
+const response = await client.responses.create({
+  model: 'gpt-5.4',
+  tools,
+  input,
 });
+
+// Handle tool calls
+for (const item of response.output) {
+  if (item.type === 'function_call') {
+    const args = JSON.parse(item.arguments);
+    console.log(`Call ${item.name} with`, args);
+    // Return results: input.push({ type: 'function_call_output', call_id: item.call_id, output: result })
+  }
+}
 ```
+
+Note: Responses API uses `name` at the top level of each tool, not nested under `function`. Tool call results use `type: 'function_call_output'` with `call_id`.
+
+For legacy Chat Completions function calling, see [references/additional-apis.md](references/additional-apis.md).
 
 ### Temperature and Sampling Parameters
 
@@ -301,102 +317,88 @@ const completion = await client.chat.completions.create({
 });
 ```
 
-### Structured Outputs (JSON Mode)
+### Structured Outputs
+
+#### Responses API with Zod (Recommended)
 
 ```typescript
-const completion = await client.chat.completions.create({
+import { zodTextFormat } from 'openai/helpers/zod';
+import { z } from 'zod';
+
+const PersonSchema = z.object({
+  name: z.string(),
+  age: z.number(),
+});
+
+const response = await client.responses.parse({
   model: 'gpt-5.4',
-  messages: [
-    { role: 'user', content: 'Extract the name and age from: "John is 30 years old"' }
+  input: [
+    { role: 'user', content: 'Extract the name and age from: "John is 30 years old"' },
   ],
-  response_format: {
-    type: 'json_object'
+  text: {
+    format: zodTextFormat(PersonSchema, 'person'),
   },
 });
 
-const result = JSON.parse(completion.choices[0].message.content);
+const person = response.output_parsed;
+console.log(person.name, person.age);
 ```
 
-## Error Handling
+Key differences from Chat Completions:
+- Use `client.responses.parse()` instead of `client.chat.completions.parse()`
+- Use `text: { format: zodTextFormat(Schema, 'name') }` instead of `response_format: zodResponseFormat(Schema, 'name')`
+- Access result via `response.output_parsed` instead of `message.parsed`
 
-The library provides specific error types for different failure scenarios:
+For legacy Chat Completions structured outputs (JSON mode), see [references/additional-apis.md](references/additional-apis.md).
+
+### Conversations API
+
+Persistent multi-turn conversations managed server-side. Two approaches:
+
+#### Using `previous_response_id` (simpler)
 
 ```typescript
-import OpenAI from 'openai';
+const response = await client.responses.create({
+  model: 'gpt-5.4',
+  input: 'Tell me a joke about programming.',
+  store: true,
+});
+console.log(response.output_text);
 
-const client = new OpenAI();
-
-try {
-  const completion = await client.chat.completions.create({
-    model: 'gpt-5.4',
-    messages: [{ role: 'user', content: 'Hello!' }],
-  });
-} catch (error) {
-  if (error instanceof OpenAI.RateLimitError) {
-    console.log('Rate limit exceeded');
-  } else if (error instanceof OpenAI.AuthenticationError) {
-    console.log('Invalid API key');
-  } else if (error instanceof OpenAI.APIError) {
-    console.log(error.status);  // HTTP status code
-    console.log(error.name);    // Error name
-    console.log(error.headers); // Response headers
-  } else {
-    console.log('Unexpected error:', error);
-  }
-}
+// Follow-up — chain using previous response ID
+const followUp = await client.responses.create({
+  model: 'gpt-5.4',
+  previous_response_id: response.id,
+  input: [{ role: 'user', content: 'Explain why that was funny.' }],
+  store: true,
+});
+console.log(followUp.output_text);
 ```
 
-## Common Patterns
-
-### Retry Logic with Exponential Backoff
+#### Using Conversations (persistent sessions)
 
 ```typescript
-async function createCompletionWithRetry(messages: any[], maxRetries = 3) {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await client.chat.completions.create({
-        model: 'gpt-5.4',
-        messages,
-      });
-    } catch (error) {
-      if (error instanceof OpenAI.RateLimitError && attempt < maxRetries) {
-        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      throw error;
-    }
-  }
-}
+const conversation = await client.conversations.create();
+
+const response = await client.responses.create({
+  model: 'gpt-5.4',
+  input: 'Tell me a joke about programming.',
+  conversation: conversation.id,
+});
+console.log(response.output_text);
+
+// Follow-up — context preserved automatically
+const followUp = await client.responses.create({
+  model: 'gpt-5.4',
+  input: 'Explain why that was funny.',
+  conversation: conversation.id,
+});
+console.log(followUp.output_text);
 ```
 
-### Conversation Management
+Use `previous_response_id` for simple chains. Use Conversations API for persistent multi-session state.
 
-```typescript
-class ChatSession {
-  private messages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
-
-  constructor(private client: OpenAI, systemPrompt?: string) {
-    if (systemPrompt) {
-      this.messages.push({ role: 'system', content: systemPrompt });
-    }
-  }
-
-  async sendMessage(content: string) {
-    this.messages.push({ role: 'user', content });
-
-    const completion = await this.client.chat.completions.create({
-      model: 'gpt-5.4',
-      messages: this.messages,
-    });
-
-    const response = completion.choices[0].message;
-    this.messages.push(response);
-
-    return response.content;
-  }
-}
-```
+For error handling, retry logic, and legacy conversation management patterns, see [references/additional-apis.md](references/additional-apis.md).
 
 ## Useful Links
 

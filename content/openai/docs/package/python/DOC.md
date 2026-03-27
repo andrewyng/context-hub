@@ -4,9 +4,9 @@ description: "openai package guide for Python with OpenAI(), AsyncOpenAI(), Resp
 metadata:
   languages: "python"
   versions: "2.26.0"
-  revision: 1
-  updated-on: "2026-03-12"
-  source: maintainer
+  revision: 2
+  updated-on: "2026-03-27"
+  source: community
   tags: "openai,python,sdk,llm,responses,chat,streaming,webhooks"
 ---
 
@@ -205,7 +205,35 @@ print(response.output_text)
 
 ### Structured Outputs With Pydantic
 
-The SDK's documented auto-parsing helper is on Chat Completions, not on the Responses API. Use it when you want parsed Pydantic output.
+Auto-parsing helpers are available on both the Responses API and Chat Completions.
+
+#### Responses API (Recommended)
+
+```python
+from pydantic import BaseModel
+from openai import OpenAI
+
+class Summary(BaseModel):
+    title: str
+    bullets: list[str]
+
+client = OpenAI()
+
+response = client.responses.parse(
+    model="gpt-5.4",
+    input=[
+        {"role": "system", "content": "Return a short structured summary."},
+        {"role": "user", "content": "Summarize how Python context managers work."},
+    ],
+    text_format=Summary,
+)
+
+if response.output_parsed:
+    print(response.output_parsed.title)
+    print(response.output_parsed.bullets)
+```
+
+#### Chat Completions (Legacy)
 
 ```python
 from pydantic import BaseModel

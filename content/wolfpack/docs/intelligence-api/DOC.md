@@ -1,17 +1,16 @@
----
 name: intelligence-api
-description: "Wolfpack Intelligence — on-chain token security, risk analysis, and market intelligence API for Base chain. 14 services via x402 micropayments."
+description: "Wolfpack Intelligence — on-chain token security, risk analysis, and market intelligence API for Base chain. 15 services via x402 micropayments."
 metadata:
-  versions: "2.4.0"
-  revision: 1
-  updated-on: "2026-03-23"
+  versions: "2.5.0"
+  revision: 2
+  updated-on: "2026-03-29"
   source: maintainer
-  tags: "crypto,security,base,defi,token,risk,attestation,erc-8183,x402,mcp,a2a,agents"
+  tags: "crypto,security,base,defi,token,risk,attestation,erc-8183,x402,mcp,a2a,agents,micropayments,model-context-protocol"
 ---
 
 # Wolfpack Intelligence API
 
-On-chain security and market intelligence for AI agents on Base. 14 services via x402 micropayments (USDC on Base), MCP, and Google A2A.
+On-chain security and market intelligence for AI agents on Base. 15 services via x402 micropayments (USDC on Base), MCP, and Google A2A.
 
 Base URL: `https://api.wolfpack.roklabs.dev`
 
@@ -22,16 +21,35 @@ curl -X POST https://api.wolfpack.roklabs.dev/api/v1/intelligence/security-check
   -d '{"token_address": "0x4ed4E862860BeD51a9570b96d89aF5E1B0Efefed"}'
 ```
 
-Response:
+Response (nested `checks` object with 13 boolean fields):
 ```json
 {
+  "token_address": "0x4ed4E862860BeD51a9570b96d89aF5E1B0Efefed",
+  "chain": "base",
   "safe": true,
-  "honeypot": false,
-  "verified_source": true,
-  "hidden_owner": false,
+  "checks": {
+    "is_honeypot": false,
+    "verified_source": true,
+    "hidden_owner": false,
+    "can_take_back_ownership": false,
+    "is_proxy": false,
+    "is_mintable": false,
+    "selfdestruct": false,
+    "owner_change_balance": false,
+    "is_blacklisted": false,
+    "is_open_source": true,
+    "external_call": false,
+    "transfer_pausable": false,
+    "trading_cooldown": false
+  },
   "holder_count": 45000,
   "top10_holder_percent": 32.5,
-  "risk_flags": []
+  "creator_percent": 0.0,
+  "risk_flags": [],
+  "holder_concentration_status": { "available": true },
+  "raw_available": true,
+  "analysis_timestamp": "2026-03-29T09:00:00.000Z",
+  "powered_by": "Wolfpack Intelligence v2"
 }
 ```
 
@@ -42,7 +60,7 @@ curl -X POST https://api.wolfpack.roklabs.dev/api/v1/intelligence/token-risk \
   -d '{"token_address": "0x4ed4E862860BeD51a9570b96d89aF5E1B0Efefed", "chain": "base"}'
 ```
 
-Returns a 360° risk audit: honeypot detection, liquidity analysis, holder concentration, smart money activity, social signals, and an overall risk score.
+Returns a 360° risk audit: honeypot detection, liquidity analysis, holder concentration, smart money activity, social signals, and an overall risk score with nested `checks` sub-objects.
 
 ## Services
 
@@ -51,18 +69,18 @@ Returns a 360° risk audit: honeypot detection, liquidity analysis, holder conce
 | `POST /api/v1/intelligence/security-check` | GoPlus honeypot, contract verification, ownership | $0.01 | <1s |
 | `POST /api/v1/intelligence/token-risk` | Multi-source risk audit (GoPlus + DexScreener + Dune + social) | $0.02 | 3-5s |
 | `POST /api/v1/intelligence/narrative-score` | Social momentum scoring (Twitter/X sentiment, KOL ratio) | $0.05 | 2-4s |
+| `POST /api/v1/intelligence/token-market-snapshot` | DexScreener price, volume, liquidity, buy/sell ratio | $0.25 | <1s |
 | `POST /api/v1/intelligence/agent-trust` | Agent reliability rating (ACP performance, sybil detection) | $0.50 | 2-3s |
-| `POST /api/v1/intelligence/smart-money` | Smart money wallet activity on Base (Nansen + Dune) | $1.00 | 2-3s |
-| `POST /api/v1/intelligence/market-snapshot` | DexScreener price, volume, liquidity, buy/sell ratio | $0.25 | <1s |
-| `POST /api/v1/intelligence/mega-report` | Cross-service synthesis with overall signal | $5.00 | 8-12s |
-| `POST /api/v1/intelligence/technical-analysis` | RSI, SMA, Bollinger, support/resistance (GeckoTerminal OHLCV) | $1.00 | 2-3s |
-| `POST /api/v1/intelligence/trade-signals` | Execution-ready signals with TP/SL from 5 upstream sources | $2.00 | 5-8s |
-| `POST /api/v1/intelligence/prediction-market` | Polymarket crypto odds and volume | $1.00 | 1-2s |
 | `POST /api/v1/intelligence/il-calculator` | Impermanent loss for AMM and concentrated V3 positions | $0.50 | <1s |
+| `POST /api/v1/intelligence/smart-money-signals` | Smart money wallet activity on Base (Nansen + Dune) | $1.00 | 2-3s |
+| `POST /api/v1/intelligence/prediction-market` | Polymarket crypto odds and volume | $1.00 | 1-2s |
 | `POST /api/v1/intelligence/yield-scanner` | IL-adjusted Base yield opportunities (DefiLlama) | $1.00 | 2-3s |
+| `POST /api/v1/intelligence/technical-analysis` | RSI, SMA, Bollinger, support/resistance (GeckoTerminal OHLCV) | $1.00 | 2-3s |
 | `POST /api/v1/intelligence/agent-credit-risk` | Financial credit risk scoring for ACP agents | $1.00 | 2-3s |
-| `POST /api/v1/intelligence/graduation-check` | Live graduation readiness audit with test fires | $5.00 | 15-30s |
-| `POST /api/v1/intelligence/query` | Unified router — pass `service_type` in body | varies | varies |
+| `POST /api/v1/intelligence/trade-signals` | Execution-ready signals with TP/SL from 5 upstream sources | $2.00 | 3-5s |
+| `POST /api/v1/intelligence/mega-report` | Cross-service synthesis with overall signal | $5.00 | 5-8s |
+| `POST /api/v1/intelligence/graduation-readiness-check` | Live graduation readiness audit with test fires | $5.00 | 3-5s |
+| `POST /api/v1/intelligence/query` | Unified router — pass `service_type` in body (includes `agent_audit` at $15.00) | varies | varies |
 
 All endpoints accept JSON POST. Payment is via x402 (USDC on Base), processed automatically per-call.
 
@@ -77,9 +95,28 @@ curl -X POST https://api.wolfpack.roklabs.dev/api/v1/intelligence/security-check
 
 Supported services: `security-check`, `token-risk`, `agent-trust`.
 
-Response includes the service result plus an EIP-712 signed envelope with `signature`, `signer`, `domain`, `types`, and `message`. Any smart contract can verify the signature on-chain using standard EIP-712 recovery.
+Response includes the service result plus an EIP-712 signed envelope:
+```json
+{
+  "result": { "safe": true, "checks": { "..." }, "risk_flags": [] },
+  "attestation": {
+    "evaluation": {
+      "subject": "0x4ed4...",
+      "service": "security_check",
+      "verdict": "PASS",
+      "score": 10000,
+      "timestamp": 1711234567,
+      "nonce": 42
+    },
+    "signature": "0x...",
+    "messageHash": "0x...",
+    "signer": "0x6887...1AEA",
+    "domain": { "name": "WolfpackIntelligence", "version": "1", "chainId": 8453 }
+  }
+}
+```
 
-This enables Wolfpack to serve as an ERC-8183 evaluator — signed verification that downstream contracts can trust.
+Any smart contract can verify the signature on-chain using standard EIP-712 recovery. This enables Wolfpack to serve as an ERC-8183 evaluator — signed verification that downstream contracts can trust.
 
 ## MCP Server
 
@@ -140,7 +177,9 @@ The `smart_money_signals` service accepts (all optional):
 
 ## Links
 
+- npm: https://www.npmjs.com/package/wolfpack-intelligence
 - SDK: https://github.com/rok-labs/wolfpack-sdk
 - Health: https://api.wolfpack.roklabs.dev/api/health
 - MCP Registry: https://registry.modelcontextprotocol.io
 - Virtuals ACP: https://app.virtuals.io/acp/agent/1888
+```

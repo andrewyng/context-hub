@@ -4,7 +4,6 @@ description: "Google Gemini Live API for real-time bidirectional voice, video, a
 metadata:
   languages: "python"
   versions: "1.56.0"
-  revision: 1
   updated-on: "2026-03-29"
   source: community
   tags: "gemini,google,live,realtime,voice,audio,streaming,websocket,vad,speech"
@@ -117,7 +116,9 @@ await session.send_realtime_input(
 
 ## Receiving Responses
 
-Iterate over `session.receive()` to get server messages.
+Iterate over `session.receive()` to get server messages. In production, wrap
+this in `try/except` to handle `WebSocketError` and reconnect using session
+resumption (see below).
 
 ```python
 async for response in session.receive():
@@ -126,7 +127,7 @@ async for response in session.receive():
         continue
 
     # Audio from the model
-    if content.model_turn:
+    if content.model_turn and content.model_turn.parts:
         for part in content.model_turn.parts:
             if part.inline_data:
                 pcm_24khz = part.inline_data.data
@@ -302,9 +303,15 @@ await session.send_client_content(turns=turns, turn_complete=True)
 ```
 
 **Gemini 3.1 Flash Live:** `send_client_content` is only for initial history
-seeding. You must set `initial_history_in_client_content: true` in the config's
-`history_config`. After the first model turn, use `send_realtime_input(text=...)`
-for mid-conversation text.
+seeding. You must enable it in the config and use `send_realtime_input(text=...)`
+for mid-conversation text:
+
+```python
+config = types.LiveConnectConfig(
+    response_modalities=["AUDIO"],
+    history_config={"initial_history_in_client_content": True},
+)
+```
 
 **Gemini 2.5 Flash Live:** `send_client_content` works throughout the
 conversation.
@@ -339,22 +346,40 @@ Handle server-initiated disconnects by storing the resume handle:
 ```python
 session_handle = None
 
-config = types.LiveConnectConfig(
-    response_modalities=["AUDIO"],
-    session_resumption=types.SessionResumptionConfig(handle=session_handle),
-)
+async def run_session():
+    global session_handle
+    config = types.LiveConnectConfig(
+        response_modalities=["AUDIO"],
+        session_resumption=types.SessionResumptionConfig(handle=session_handle),
+        context_window_compression=types.ContextWindowCompressionConfig(
+            sliding_window=types.SlidingWindow(),
+        ),
+    )
+    async with client.aio.live.connect(model=model, config=config) as session:
+        async for response in session.receive():
+            # Store resume handle for reconnection
+            if hasattr(response, 'session_resumption_update'):
+                update = response.session_resumption_update
+                if update and update.new_handle:
+                    session_handle = update.new_handle
 
-async with client.aio.live.connect(model=model, config=config) as session:
-    async for response in session.receive():
-        # Store resume handle from server updates
-        if hasattr(response, 'session_resumption_update'):
-            update = response.session_resumption_update
-            if update and update.new_handle:
-                session_handle = update.new_handle
+            # Server is about to disconnect — reconnect with stored handle
+            if hasattr(response, 'go_away'):
+                break  # exit loop, then call run_session() again
+
+# Reconnect loop
+while True:
+    try:
+        await run_session()
+    except Exception:
+        if session_handle:
+            continue  # reconnect with stored handle
+        raise
 ```
 
 Tokens are valid for 2 hours after session termination. The server sends a
-`GoAway` message with `timeLeft` before disconnecting.
+`GoAway` message with `timeLeft` before disconnecting. Always handle `GoAway`
+by breaking out of the receive loop and reconnecting with the stored handle.
 
 ## Best Practices
 

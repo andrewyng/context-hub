@@ -6,6 +6,9 @@ For environments where the SDK is unavailable, connect directly via WebSocket.
 
 ### Endpoint
 
+**Server-side only.** Never embed your API key in client-side code. For
+browser clients, use ephemeral tokens (see below).
+
 ```
 wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=YOUR_API_KEY
 ```
@@ -83,7 +86,7 @@ wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.
 ### Browser Usage Example
 
 ```typescript
-// Token received from your backend
+// Token received from your backend (endpoint must be authenticated + rate-limited)
 const ephemeralToken = await fetch('/api/gemini-token').then(r => r.json());
 
 const ws = new WebSocket(

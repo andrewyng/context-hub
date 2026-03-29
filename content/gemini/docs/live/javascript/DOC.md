@@ -4,7 +4,6 @@ description: "Google Gemini Live API for real-time bidirectional voice, video, a
 metadata:
   languages: "javascript"
   versions: "1.43.0"
-  revision: 1
   updated-on: "2026-03-29"
   source: community
   tags: "gemini,google,live,realtime,voice,audio,streaming,websocket,vad,speech"
@@ -126,7 +125,9 @@ session.sendRealtimeInput({
 
 ## Receiving Responses
 
-Handle responses inside the `onmessage` callback:
+Handle responses inside the `onmessage` callback. The `onerror` and `onclose`
+callbacks handle disconnects — use them to trigger reconnection with session
+resumption (see below).
 
 ```typescript
 function handleServerMessage(response: any) {
@@ -304,12 +305,14 @@ const config = {
     }],
 };
 
-function handleToolCall(toolCall: any) {
-    const functionResponses = toolCall.functionCalls.map((fc: any) => ({
-        name: fc.name,
-        id: fc.id,
-        response: { result: myToolHandler(fc.name, fc.args) },
-    }));
+async function handleToolCall(toolCall: any) {
+    const functionResponses = await Promise.all(
+        toolCall.functionCalls.map(async (fc: any) => ({
+            name: fc.name,
+            id: fc.id,
+            response: { result: await myToolHandler(fc.name, fc.args) },
+        }))
+    );
     session.sendToolResponse({ functionResponses });
 }
 ```
@@ -329,7 +332,15 @@ session.sendClientContent({
 ```
 
 **Gemini 3.1 Flash Live:** `sendClientContent` is only for initial history
-seeding. After the first model turn, use `sendRealtimeInput({ text: ... })`.
+seeding. You must enable it in the config and use `sendRealtimeInput({ text: ... })`
+for mid-conversation text:
+
+```typescript
+const config = {
+    responseModalities: [Modality.AUDIO],
+    historyConfig: { initialHistoryInClientContent: true },
+};
+```
 
 **Gemini 2.5 Flash Live:** `sendClientContent` works throughout the conversation.
 
@@ -356,16 +367,36 @@ Store the handle from server updates and pass it when reconnecting:
 ```typescript
 let sessionHandle: string | null = null;
 
-// In onmessage callback:
-if (response.sessionResumptionUpdate?.newHandle) {
-    sessionHandle = response.sessionResumptionUpdate.newHandle;
+function connectSession() {
+    const session = await ai.live.connect({
+        model,
+        callbacks: {
+            onmessage(response) {
+                // Store handle for reconnection
+                if (response.sessionResumptionUpdate?.newHandle) {
+                    sessionHandle = response.sessionResumptionUpdate.newHandle;
+                }
+                // Server about to disconnect — reconnect with stored handle
+                if (response.goAway) {
+                    session.close();
+                    connectSession();  // reconnect with updated handle
+                }
+                handleServerMessage(response);
+            },
+            onclose() {
+                // Reconnect if we have a valid handle (within 2 hours)
+                if (sessionHandle) connectSession();
+            },
+        },
+        config: {
+            responseModalities: [Modality.AUDIO],
+            sessionResumption: { handle: sessionHandle },
+            contextWindowCompression: { slidingWindow: {} },
+        },
+    });
 }
 
-// When reconnecting:
-const config = {
-    responseModalities: [Modality.AUDIO],
-    sessionResumption: { handle: sessionHandle },
-};
+connectSession();
 ```
 
 ## Best Practices

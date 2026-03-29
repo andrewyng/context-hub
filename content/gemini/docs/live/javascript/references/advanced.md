@@ -6,9 +6,6 @@ For environments where the SDK is unavailable, connect directly via WebSocket.
 
 ### Endpoint
 
-**Server-side only.** Never embed your API key in client-side code. For
-browser clients, use ephemeral tokens (see below).
-
 ```
 wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=YOUR_API_KEY
 ```

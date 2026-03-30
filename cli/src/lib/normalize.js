@@ -4,6 +4,7 @@ const ALIASES = {
   py: 'python',
   rb: 'ruby',
   cs: 'csharp',
+  pwsh: 'powershell',
 };
 
 const DISPLAY = {
@@ -12,6 +13,7 @@ const DISPLAY = {
   python: 'py',
   ruby: 'rb',
   csharp: 'cs',
+  powershell: 'pwsh',
 };
 
 export function normalizeLanguage(lang) {

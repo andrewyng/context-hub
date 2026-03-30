@@ -35,7 +35,7 @@ Fetch one or more docs or skills by ID. Auto-detects type (doc vs skill). Auto-i
 
 | Flag | Purpose |
 |------|---------|
-| `--lang <language>` | Language variant (js, py, ts, etc.) |
+| `--lang <language>` | Language variant (js, py, ts, pwsh, etc.) |
 | `--version <version>` | Specific doc version |
 | `--full` | Fetch all files, not just the entry point |
 | `--file <paths>` | Fetch specific file(s) by path (comma-separated) |

@@ -12,8 +12,6 @@ metadata:
 
 # Perso API — Python
 
-Perso is an AI-powered video and audio dubbing/translation platform. The API lets you upload media, request translations into multiple languages, edit translated sentences, generate lip-synced video, and download results.
-
 ```bash
 pip install requests
 ```
@@ -531,54 +529,3 @@ for lang in languages["result"]["languages"]:
     print(f"{lang['code']}: {lang['name']} {'(experimental)' if lang['experiment'] else ''}")
 ```
 
----
-
-## Feedback API
-
-### Submit Feedback
-
-```python
-requests.post(
-    f"{API_BASE}/video-translator/api/v1/projects/feedbacks",
-    headers=HEADERS,
-    json={"projectSeq": 101, "rating": 4}
-)
-```
-
-### Get Feedback
-
-```python
-feedback = requests.get(
-    f"{API_BASE}/video-translator/api/v1/projects/feedbacks",
-    headers=HEADERS,
-    params={"projectSeq": 101}
-).json()
-```
-
----
-
-## Community Spotlight API
-
-### List Featured Projects
-
-```python
-featured = requests.get(
-    f"{API_BASE}/video-translator/api/v1/projects/recommended",
-    headers=HEADERS,
-    params={"page": 0, "size": 10, "languageCode": "ko"}
-).json()
-```
-
-### Get Featured / Shared Project
-
-```python
-project = requests.get(
-    f"{API_BASE}/video-translator/api/v1/projects/recommended/{project_seq}",
-    headers=HEADERS
-).json()
-
-shared = requests.get(
-    f"{API_BASE}/video-translator/api/v1/projects/shared/{shared_query}",
-    headers=HEADERS
-).json()
-```

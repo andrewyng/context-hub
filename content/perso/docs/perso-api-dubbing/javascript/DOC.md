@@ -12,8 +12,6 @@ metadata:
 
 # Perso API — JavaScript / TypeScript
 
-Perso is an AI-powered video and audio dubbing/translation platform. The API lets you upload media, request translations into multiple languages, edit translated sentences, generate lip-synced video, and download results.
-
 ## Configuration
 
 ```javascript
@@ -512,86 +510,3 @@ languages.result.languages.forEach(lang => {
 });
 ```
 
----
-
-## Feedback API
-
-### Submit Feedback
-
-```javascript
-await fetch(`${API_BASE}/video-translator/api/v1/projects/feedbacks`, {
-  method: "POST", headers, body: JSON.stringify({ projectSeq: 101, rating: 4 })
-});
-```
-
-### Get Feedback
-
-```javascript
-const feedback = await fetch(
-  `${API_BASE}/video-translator/api/v1/projects/feedbacks?projectSeq=101`,
-  { headers }
-).then(r => r.json());
-```
-
----
-
-## Community Spotlight API
-
-### List Featured Projects
-
-```javascript
-const featured = await fetch(
-  `${API_BASE}/video-translator/api/v1/projects/recommended?page=0&size=10&languageCode=ko`,
-  { headers }
-).then(r => r.json());
-```
-
-### Get Featured / Shared Project
-
-```javascript
-const project = await fetch(
-  `${API_BASE}/video-translator/api/v1/projects/recommended/${projectSeq}`,
-  { headers }
-).then(r => r.json());
-
-const shared = await fetch(
-  `${API_BASE}/video-translator/api/v1/projects/shared/${sharedQuery}`,
-  { headers }
-).then(r => r.json());
-```
-
----
-
-## Browser: Upload from File Input
-
-```javascript
-const fileInput = document.querySelector('input[type="file"]');
-const file = fileInput.files[0];
-
-// 1. Get SAS token
-const sas = await fetch(
-  `${API_BASE}/file/api/upload/sas-token?fileName=${encodeURIComponent(file.name)}`,
-  { headers }
-).then(r => r.json());
-
-// 2. Upload directly to Azure Blob Storage from browser
-await fetch(sas.blobSasUrl, {
-  method: "PUT",
-  body: file,
-  headers: {
-    "x-ms-blob-type": "BlockBlob",
-    "Content-Type": "application/octet-stream"
-  }
-});
-
-// 3. Register with File API
-const upload = await fetch(`${API_BASE}/file/api/upload/video`, {
-  method: "PUT",
-  headers,
-  body: JSON.stringify({
-    spaceSeq,
-    fileUrl: sas.blobSasUrl.split("?")[0],
-    fileName: file.name
-  })
-}).then(r => r.json());
-```

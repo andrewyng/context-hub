@@ -22,10 +22,15 @@ describe('normalizeLanguage', () => {
     expect(normalizeLanguage('cs')).toBe('csharp');
   });
 
+  it('maps pwsh to powershell', () => {
+    expect(normalizeLanguage('pwsh')).toBe('powershell');
+  });
+
   it('is case-insensitive', () => {
     expect(normalizeLanguage('JS')).toBe('javascript');
     expect(normalizeLanguage('Py')).toBe('python');
     expect(normalizeLanguage('TS')).toBe('typescript');
+    expect(normalizeLanguage('PWSH')).toBe('powershell');
   });
 
   it('passes through unknown languages unchanged (lowercased)', () => {
@@ -60,6 +65,10 @@ describe('displayLanguage', () => {
 
   it('maps csharp to cs', () => {
     expect(displayLanguage('csharp')).toBe('cs');
+  });
+
+  it('maps powershell to pwsh', () => {
+    expect(displayLanguage('powershell')).toBe('pwsh');
   });
 
   it('passes through unknown languages unchanged', () => {

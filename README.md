@@ -22,6 +22,7 @@ Chub is designed for your coding agent to use (not for you to use!). You can pro
 
 ```bash
 chub search "stripe payments"        # find relevant docs
+chub search "stripe payments" --explain
 chub get stripe/api --lang js        # fetch the doc
 # Agent reads the doc, writes correct code. Done.
 ```
@@ -88,6 +89,12 @@ Docs can have multiple reference files beyond the main entry point. Fetch only w
 ### Annotations & Feedback
 
 Annotations are local notes that agents attach to docs — they persist across sessions and appear automatically on future fetches. Feedback (up/down ratings) goes to doc authors to improve the content for everyone. See [Feedback and Annotations](docs/feedback-and-annotations.md).
+
+### Search Relevance
+
+Search ranking now combines the existing base retrieval signal (BM25 when an index is available, otherwise keyword fallback), the existing lexical rescue pass, and a new multi-term coverage boost. The coverage boost helps longer queries prefer entries that match more of the query across ids, names, tags, and descriptions, and it adds light support for acronym rescue such as `mcp`.
+
+Use `chub search "stripe payments" --scores` to inspect the final ranking scores, or `chub search "stripe payments" --explain` to inspect the ranking signals that contributed to a result. Contributors can also run `cd cli && npm run relevance:benchmark` for the synthetic benchmark harness and `cd cli && npm run test:relevance` for the fixture-backed regression tests. See [Search Relevance](docs/search-relevance.md) for details.
 
 ## Contributing
 

@@ -4,7 +4,31 @@ import { displayLanguage } from '../lib/normalize.js';
 import { output } from '../lib/output.js';
 import { trackEvent } from '../lib/analytics.js';
 
-function formatEntryList(entries) {
+function formatSearchSignals(entry, showExplain = false) {
+  const score = Number.isFinite(entry._score) ? entry._score.toFixed(1) : '0.0';
+  if (!showExplain || !entry._debug) {
+    return `score=${score}`;
+  }
+
+  const parts = [`score=${score}`];
+  if ((entry._debug.baseScore || 0) > 0) {
+    parts.push(`${entry._debug.baseKind}=${entry._debug.baseScore.toFixed(1)}`);
+  }
+  if ((entry._debug.lexicalBoost || 0) > 0) {
+    parts.push(`lexical=+${entry._debug.lexicalBoost.toFixed(1)}`);
+  }
+  if ((entry._debug.coverageBoost || 0) > 0) {
+    parts.push(`coverage=+${entry._debug.coverageBoost.toFixed(1)}`);
+  }
+  if (entry._debug.coverage?.reasons?.length) {
+    parts.push(entry._debug.coverage.reasons.join(', '));
+  }
+
+  return parts.join(' • ');
+}
+
+function formatEntryList(entries, options = {}) {
+  const { showScores = false, showExplain = false } = options;
   const multi = isMultiSource();
   for (const entry of entries) {
     const id = getDisplayId(entry);
@@ -19,6 +43,9 @@ function formatEntryList(entries) {
       : '';
     console.log(`  ${chalk.bold(id)}  ${type}  ${chalk.dim(langs)}  ${source} ${sourceName}`.trimEnd());
     if (desc) console.log(`       ${chalk.dim(desc)}`);
+    if (showScores || showExplain) {
+      console.log(`       ${chalk.dim(formatSearchSignals(entry, showExplain))}`);
+    }
   }
 }
 
@@ -54,6 +81,8 @@ export function registerSearchCommand(program) {
     .option('--tags <tags>', 'Filter by tags (comma-separated)')
     .option('--lang <language>', 'Filter by language')
     .option('--limit <n>', 'Max results', '20')
+    .option('--scores', 'Show ranking scores for fuzzy search results')
+    .option('--explain', 'Show ranking signals for fuzzy search results')
     .action((query, opts) => {
       const globalOpts = program.optsWithGlobals();
       const limit = parseInt(opts.limit, 10);
@@ -106,6 +135,8 @@ export function registerSearchCommand(program) {
         duration_ms,
         has_tags: !!opts.tags,
         has_lang: !!opts.lang,
+        has_scores: !!opts.scores,
+        has_explain: !!opts.explain,
         tags: opts.tags || undefined,
         lang: opts.lang || undefined,
       }).catch(() => {});
@@ -115,7 +146,10 @@ export function registerSearchCommand(program) {
           return;
         }
         console.log(chalk.bold(`${data.total} results for "${normalizedQuery}":\n`));
-        formatEntryList(data.results);
+        formatEntryList(data.results, {
+          showScores: !!opts.scores || !!opts.explain,
+          showExplain: !!opts.explain,
+        });
       }, globalOpts);
     });
 }

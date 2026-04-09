@@ -2,6 +2,7 @@ import { loadSourceRegistry, loadSearchIndex } from './cache.js';
 import { loadConfig } from './config.js';
 import { normalizeLanguage } from './normalize.js';
 import { buildIndexFromDocuments, compactIdentifier, search as bm25Search, tokenize } from './bm25.js';
+import { scoreEntryCoverageBoost, scoreKeywordFallback } from './relevance.js';
 
 let _merged = null;
 let _searchIndex = null;
@@ -357,33 +358,29 @@ export function searchEntries(query, filters = {}) {
       const entry = entryById.get(match.id);
       if (!entry) continue;
       const key = getSearchLookupId(entry._source, entry.id);
-      resultByKey.set(key, { entry, score: match.score });
+      resultByKey.set(key, {
+        entry,
+        score: match.score,
+        baseKind: 'bm25',
+        baseScore: match.score,
+        lexicalBoost: 0,
+        coverageBoost: 0,
+      });
     }
   } else {
     // Fallback: keyword matching
-    const q = normalizedQuery.toLowerCase();
-    const words = q.split(/\s+/);
-
     for (const entry of deduped) {
-      let score = 0;
-
-      if (entry.id === q) score += 100;
-      else if (entry.id.includes(q)) score += 50;
-
-      const nameLower = entry.name.toLowerCase();
-      if (nameLower === q) score += 80;
-      else if (nameLower.includes(q)) score += 40;
-
-      for (const word of words) {
-        if (entry.id.includes(word)) score += 10;
-        if (nameLower.includes(word)) score += 10;
-        if (entry.description?.toLowerCase().includes(word)) score += 5;
-        if (entry.tags?.some((t) => t.toLowerCase().includes(word))) score += 15;
-      }
-
+      const score = scoreKeywordFallback(entry, normalizedQuery);
       if (score > 0) {
         const key = getSearchLookupId(entry._source, entry.id);
-        resultByKey.set(key, { entry, score });
+        resultByKey.set(key, {
+          entry,
+          score,
+          baseKind: 'keyword',
+          baseScore: score,
+          lexicalBoost: 0,
+          coverageBoost: 0,
+        });
       }
     }
   }
@@ -403,8 +400,42 @@ export function searchEntries(query, filters = {}) {
     const current = resultByKey.get(key);
     if (current) {
       current.score += boost;
+      current.lexicalBoost += boost;
     } else {
-      resultByKey.set(key, { entry, score: boost });
+      resultByKey.set(key, {
+        entry,
+        score: boost,
+        baseKind: 'none',
+        baseScore: 0,
+        lexicalBoost: boost,
+        coverageBoost: 0,
+      });
+    }
+  }
+
+  const queryTerms = tokenize(normalizedQuery).filter((term) => term.length >= 2);
+  if (queryTerms.length > 1) {
+    for (const entry of deduped) {
+      const { score: coverageBoost, debug } = scoreEntryCoverageBoost(entry, normalizedQuery);
+      if (coverageBoost === 0) continue;
+
+      const key = getSearchLookupId(entry._source, entry.id);
+      const current = resultByKey.get(key);
+      if (current) {
+        current.score += coverageBoost;
+        current.coverageBoost += coverageBoost;
+        if (filters.explain) current.coverageDebug = debug;
+      } else {
+        resultByKey.set(key, {
+          entry,
+          score: coverageBoost,
+          baseKind: 'none',
+          baseScore: 0,
+          lexicalBoost: 0,
+          coverageBoost,
+          coverageDebug: filters.explain ? debug : undefined,
+        });
+      }
     }
   }
 
@@ -415,7 +446,19 @@ export function searchEntries(query, filters = {}) {
   results = results.filter((r) => filteredSet.has(r.entry));
 
   results.sort((a, b) => b.score - a.score);
-  return results.map((r) => ({ ...r.entry, _score: r.score }));
+  return results.map((r) => ({
+    ...r.entry,
+    _score: r.score,
+    ...(filters.explain ? {
+      _debug: {
+        baseKind: r.baseKind || 'none',
+        baseScore: r.baseScore || 0,
+        lexicalBoost: r.lexicalBoost || 0,
+        coverageBoost: r.coverageBoost || 0,
+        coverage: r.coverageDebug || null,
+      },
+    } : {}),
+  }));
 }
 
 /**

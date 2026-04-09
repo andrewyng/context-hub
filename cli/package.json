@@ -39,7 +39,9 @@
     "prepublish": "node bin/chub build ../content -o dist --base-url https://cdn.aichub.org/v1",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:relevance": "vitest run test/relevance.test.js",
+    "relevance:benchmark": "node scripts/relevance-benchmark.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",

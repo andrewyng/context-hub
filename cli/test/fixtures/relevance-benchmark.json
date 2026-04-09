@@ -1,0 +1,84 @@
+{
+  "catalog": [
+    {
+      "id": "stripe/api",
+      "name": "Stripe API Reference",
+      "description": "Reference for PaymentIntents, webhooks, subscriptions, and payment methods.",
+      "tags": ["stripe", "payments", "api"]
+    },
+    {
+      "id": "stripe/payments",
+      "name": "Payments Guide",
+      "description": "Guide for checkout, subscriptions, and end to end payment flows in Stripe.",
+      "tags": ["stripe", "guide"]
+    },
+    {
+      "id": "pw-community/login-flows",
+      "name": "Login Flows Skill",
+      "description": "Reusable browser login flows and authenticated session handling for agents.",
+      "tags": ["playwright", "skill", "login"]
+    },
+    {
+      "id": "browser/login",
+      "name": "Browser Login Basics",
+      "description": "Basic browser login examples and shared auth helpers.",
+      "tags": ["browser", "login", "skill"]
+    },
+    {
+      "id": "browser/session-cookies",
+      "name": "Session Cookie Authentication",
+      "description": "Persist authenticated browser state with session cookies and auth tokens.",
+      "tags": ["auth", "cookies", "browser"]
+    },
+    {
+      "id": "protocol/mcp-overview",
+      "name": "Model Context Protocol Overview",
+      "description": "Introduction to the Model Context Protocol and MCP server basics.",
+      "tags": ["protocol", "overview"]
+    },
+    {
+      "id": "protocol/client-setup",
+      "name": "Client Setup Guide",
+      "description": "Set up a Model Context Protocol client and connect it to servers.",
+      "tags": ["mcp", "client", "setup"]
+    },
+    {
+      "id": "openai/chat",
+      "name": "OpenAI Chat API",
+      "description": "Chat completions and conversation state for chat-first integrations.",
+      "tags": ["openai", "chat"]
+    },
+    {
+      "id": "openai/responses",
+      "name": "Responses API",
+      "description": "Responses API for multimodal generation and tool use.",
+      "tags": ["openai", "responses"]
+    }
+  ],
+  "scenarios": [
+    {
+      "query": "stripe payments",
+      "expectedTop": "stripe/payments",
+      "expectedInTop3": ["stripe/api"]
+    },
+    {
+      "query": "login flows skill",
+      "expectedTop": "pw-community/login-flows",
+      "expectedInTop3": ["browser/login"]
+    },
+    {
+      "query": "session cookie auth",
+      "expectedTop": "browser/session-cookies"
+    },
+    {
+      "query": "model context protocol",
+      "expectedTop": "protocol/mcp-overview",
+      "expectedInTop3": ["protocol/client-setup"]
+    },
+    {
+      "query": "mcp",
+      "expectedTop": "protocol/mcp-overview",
+      "expectedInTop3": ["protocol/client-setup"]
+    }
+  ]
+}

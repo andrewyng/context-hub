@@ -29,6 +29,7 @@ ${chalk.bold.underline('Getting Started')}
   ${chalk.dim('$')} chub update                                ${chalk.dim('# download the registry')}
   ${chalk.dim('$')} chub search                                ${chalk.dim('# list everything available')}
   ${chalk.dim('$')} chub search "stripe"                       ${chalk.dim('# fuzzy search')}
+  ${chalk.dim('$')} chub search "stripe payments" --explain      ${chalk.dim('# inspect ranking signals')}
   ${chalk.dim('$')} chub search stripe/payments                ${chalk.dim('# exact id → full detail')}
   ${chalk.dim('$')} chub get stripe/api                        ${chalk.dim('# print doc to terminal')}
   ${chalk.dim('$')} chub get stripe/api -o doc.md              ${chalk.dim('# save to file')}
@@ -64,6 +65,8 @@ ${chalk.bold.underline('Flags')}
   --json                 Structured JSON output (for agents and piping)
   --tags <csv>           Filter by tags (e.g. docs, skill, openai, browser)
   --lang <language>      Language variant (required for docs): py | js | ts | rb | cs (or full name)
+  --scores               Show ranking scores for fuzzy search results
+  --explain              Show ranking signals for fuzzy search results
   --full                 Fetch all files, not just the entry point
   -o, --output <path>    Write content to file or directory
 

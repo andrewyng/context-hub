@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          CURRENT_TAG="${GITHUB_REF#refs/tags/}"
+          PREVIOUS_TAG="$(git tag --sort=-v:refname | grep -vxF "$CURRENT_TAG" | head -n 1 || true)"
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            echo "## Changes since ${PREVIOUS_TAG}" > release-notes.md
+            echo "" >> release-notes.md
+            git log --no-merges --pretty=format:'- %s (%h)' "${PREVIOUS_TAG}..HEAD" >> release-notes.md
+          else
+            echo "Initial release" > release-notes.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          draft: false
+          prerelease: false

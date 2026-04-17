@@ -1,5 +1,9 @@
 # Context Hub
 
+> **Status**: active | **Version**: unversioned | **README refreshed**: 2026-04-17
+>
+> Since README was last updated (2026-03-05): 11 tracked commits (3 feat, 4 fix, 4 chore). Fork with upstream-mirror sync.
+
 Coding agents hallucinate APIs and forget what they learn in a session. Context Hub gives them curated, versioned docs, plus the ability to get smarter with every task. All content is open and maintained as markdown in this repo — you can inspect exactly what your agent reads, and contribute back. 
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

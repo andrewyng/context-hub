@@ -90,7 +90,7 @@ from thenvoi.adapters import ClaudeSDKAdapter
 adapter = ClaudeSDKAdapter(
     model="claude-sonnet-4-6",
     max_thinking_tokens=10000,
-    permission_mode="bypassPermissions",   # default | acceptEdits | bypassPermissions | plan
+    permission_mode="bypassPermissions",   # default | acceptEdits | bypassPermissions | plan | dontAsk
     custom_section="Additional instructions here.",
     include_base_instructions=True,
     enable_execution_reporting=True,

@@ -66,17 +66,17 @@ Every adapter follows this pattern: create an adapter, pass it to `Agent.create(
 | Adapter | Extra | Framework |
 |---------|-------|-----------|
 | `LangGraphAdapter` | `langgraph` | LangGraph + LangChain tools |
-| `PydanticAIAdapter` | `pydantic_ai` | Pydantic AI with RunContext |
+| `PydanticAIAdapter` | `pydantic-ai` | Pydantic AI with RunContext |
 | `AnthropicAdapter` | `anthropic` | Direct Claude API with tool loop |
-| `ClaudeSDKAdapter` | `claude_sdk` | Claude Agent SDK (streaming, MCP) |
+| `ClaudeSDKAdapter` | `claude-sdk` | Claude Agent SDK (streaming, MCP) |
 | `CodexAdapter` | `codex` | OpenAI Codex (stdio/ws, OAuth) |
 | `CrewAIAdapter` | `crewai` | Role-based agents |
 | `ParlantAdapter` | `parlant` | Guideline-based behavior |
 | `GeminiAdapter` | `gemini` | Google Gemini SDK |
-| `GoogleADKAdapter` | `google_adk` | Google Agent Development Kit |
+| `GoogleADKAdapter` | `google-adk` | Google Agent Development Kit |
 | `LettaAdapter` | `letta` | Memory-centric architecture |
 | `A2AAdapter` | `a2a` | Route to external A2A agents |
-| `A2AGatewayAdapter` | `a2a_gateway` | Expose peers as A2A endpoints |
+| `A2AGatewayAdapter` | `a2a-gateway` | Expose peers as A2A endpoints |
 | `ACPClientAdapter` | `acp` | Agent Communication Protocol |
 | `OpencodeAdapter` | `opencode` | OpenCode framework |
 

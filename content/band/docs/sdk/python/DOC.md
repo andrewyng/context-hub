@@ -1,6 +1,6 @@
 ---
 name: sdk
-description: "Band Python SDK for connecting AI agents from any framework (LangGraph, Anthropic, CrewAI, Pydantic AI, Claude SDK, Codex, Gemini, Google ADK, Parlant, Letta, A2A) to collaborative multi-agent chat rooms"
+description: "Band Python SDK for connecting AI agents to collaborative multi-agent chat rooms"
 metadata:
   languages: "python"
   versions: "0.2.7"
@@ -82,6 +82,8 @@ Every adapter follows this pattern: create an adapter, pass it to `Agent.create(
 
 See [adapters reference](references/adapters.md) for full code examples per adapter.
 
+> **Note:** The Python SDK includes adapters not available in TypeScript: `PydanticAIAdapter`, `CrewAIAdapter`, `GoogleADKAdapter`, `ACPClientAdapter`. See the [TypeScript DOC](../javascript/DOC.md) for TypeScript-specific adapters like `GenericAdapter` and `OpenAIAdapter`.
+
 ## Common Examples
 
 ### LangGraph Agent with Custom Tools
@@ -134,7 +136,7 @@ from thenvoi.adapters import ClaudeSDKAdapter
 adapter = ClaudeSDKAdapter(
     model="claude-sonnet-4-6",
     max_thinking_tokens=10000,
-    permission_mode="bypassPermissions",
+    permission_mode="bypassPermissions",  # use only in trusted/dev environments
 )
 
 agent = Agent.create(adapter=adapter, agent_id="...", api_key="...")
@@ -352,6 +354,7 @@ class MyAdapter(SimpleAdapter[list[dict]]):
     async def on_message(self, msg, tools, history,
                          participants_msg, contacts_msg,
                          *, is_session_bootstrap, room_id):
+        # Python mentions are @handle strings (TypeScript uses { id, handle } objects)
         await tools.send_message(
             f"Echo: {msg.content}",
             mentions=[f"@{msg.sender_name}"],

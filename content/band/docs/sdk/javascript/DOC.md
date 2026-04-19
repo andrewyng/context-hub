@@ -67,9 +67,11 @@ Every adapter follows this pattern: create an adapter, pass it to `Agent.create(
 | `A2AGatewayAdapter` | Expose Band peers as A2A endpoints |
 | `ParlantAdapter` | Guideline-based behavior engine |
 | `LettaAdapter` | Memory-centric architecture |
-| `OpencodeAdapter` | OpenCode framework integration |
+| `OpencodeAdapter` | OpenCode framework (wraps provider/model abstraction) |
 
 See [adapters reference](references/adapters.md) for full code examples per adapter.
+
+> **Note:** The TypeScript SDK includes adapters not available in Python: `GenericAdapter`, `OpenAIAdapter`. See the [Python DOC](../python/DOC.md) for Python-specific adapters like `PydanticAIAdapter`, `CrewAIAdapter`, `GoogleADKAdapter`, and `ACPClientAdapter`.
 
 ## Common Examples
 
@@ -117,7 +119,7 @@ import { Agent, ClaudeSDKAdapter } from "@thenvoi/sdk";
 const adapter = new ClaudeSDKAdapter({
   model: "claude-sonnet-4-6",
   maxThinkingTokens: 10000,
-  permissionMode: "bypassPermissions",
+  permissionMode: "bypassPermissions", // use only in trusted/dev environments
   enableExecutionReporting: true,
 });
 
@@ -178,6 +180,8 @@ Every adapter automatically exposes these tools to the LLM. The agent calls them
 | `thenvoi_respond_contact_request` | Approve, reject, or cancel. |
 
 ### Memory Tools (opt-in)
+
+Enable memory tools by passing `includeMemoryTools: true` to adapters that support it (e.g., `OpenAIAdapter`, `LangGraphAdapter`, `ClaudeSDKAdapter`).
 
 | Tool | Description |
 |------|-------------|
@@ -327,7 +331,7 @@ Extend `SimpleAdapter` for full control:
 import { SimpleAdapter } from "@thenvoi/sdk/core";
 import type { AdapterToolsProtocol, PlatformMessage } from "@thenvoi/sdk";
 
-class MyAdapter extends SimpleAdapter<any> {
+class MyAdapter extends SimpleAdapter<Message[]> {
   async onMessage(
     message: PlatformMessage,
     tools: AdapterToolsProtocol,

@@ -90,7 +90,7 @@ from thenvoi.adapters import ClaudeSDKAdapter
 adapter = ClaudeSDKAdapter(
     model="claude-sonnet-4-6",
     max_thinking_tokens=10000,
-    permission_mode="bypassPermissions",   # default | acceptEdits | bypassPermissions | plan | dontAsk
+    permission_mode="bypassPermissions",   # default | acceptEdits | bypassPermissions | plan | dontAsk (use bypassPermissions only in trusted/dev environments)
     custom_section="Additional instructions here.",
     include_base_instructions=True,
     enable_execution_reporting=True,
@@ -145,8 +145,15 @@ from thenvoi import Agent
 from thenvoi.adapters import ParlantAdapter
 
 adapter = ParlantAdapter(
+    environment="production",
+    agent_id="parlant-agent-id",
+    base_url="http://localhost:8000",
+    api_key=os.environ.get("PARLANT_API_KEY"),
     system_prompt="You are a customer support agent.",
     custom_section="Follow company guidelines strictly.",
+    include_base_instructions=True,         # default: True
+    response_timeout_seconds=120,           # default: 120
+    max_history_messages=100,               # default: 100
     additional_tools=[],
 )
 
@@ -236,7 +243,7 @@ await agent.run()
 from thenvoi import Agent
 from thenvoi.adapters import ACPClientAdapter
 
-adapter = ACPClientAdapter()
+adapter = ACPClientAdapter()  # discovers ACP server via environment or default localhost
 
 agent = Agent.create(adapter=adapter, agent_id="...", api_key="...")
 await agent.run()

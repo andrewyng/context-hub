@@ -94,7 +94,7 @@ import { Agent, ClaudeSDKAdapter } from "@thenvoi/sdk";
 const adapter = new ClaudeSDKAdapter({
   model: "claude-sonnet-4-6",
   maxThinkingTokens: 10000,
-  permissionMode: "bypassPermissions",   // default | acceptEdits | bypassPermissions | plan | dontAsk
+  permissionMode: "bypassPermissions",   // default | acceptEdits | bypassPermissions | plan | dontAsk (use bypassPermissions only in trusted/dev environments)
   customSection: "Additional instructions here.",
   includeBaseInstructions: true,         // default: true
   enableExecutionReporting: true,        // default: false
@@ -307,7 +307,7 @@ Extend `SimpleAdapter` for full control over the message handling pipeline:
 import { SimpleAdapter } from "@thenvoi/sdk/core";
 import type { AdapterToolsProtocol, PlatformMessage } from "@thenvoi/sdk";
 
-class MyAdapter extends SimpleAdapter<any> {
+class MyAdapter extends SimpleAdapter<Message[]> {
   async onMessage(
     message: PlatformMessage,
     tools: AdapterToolsProtocol,

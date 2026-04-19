@@ -222,6 +222,8 @@ const adapter = new CodexAdapter({
 
 Custom tools work with `CodexAdapter`, `OpenAIAdapter`, `AnthropicAdapter`, `GeminiAdapter`, and `ClaudeSDKAdapter`.
 
+See [custom tools reference](references/custom-tools.md) for all patterns including LangGraph tools.
+
 ## Architecture
 
 ```

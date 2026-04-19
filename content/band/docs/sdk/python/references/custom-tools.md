@@ -1,4 +1,4 @@
-# Band SDK - Custom Tools Reference
+# Band Python SDK - Custom Tools Reference
 
 Custom tools let agents call your own functions alongside the built-in platform tools. Each adapter accepts custom tools in its framework's native format.
 
@@ -110,88 +110,23 @@ adapter = CodexAdapter(
 )
 ```
 
-## TypeScript: Zod Schema + Handler
-
-Used by: `CodexAdapter`, `OpenAIAdapter`, `AnthropicAdapter`, `GeminiAdapter`, `ClaudeSDKAdapter`
-
-```typescript
-import { z } from "zod";
-
-const customTools = [
-  {
-    name: "search_database",
-    description: "Search the internal database for matching records.",
-    schema: z.object({
-      query: z.string().describe("Search query"),
-      limit: z.number().optional().default(10).describe("Max results"),
-    }),
-    handler: async ({ query, limit }) => {
-      return `Found ${limit} results for: ${query}`;
-    },
-  },
-  {
-    name: "deploy",
-    description: "Deploy the application.",
-    schema: z.object({
-      environment: z.enum(["staging", "production"]),
-      version: z.string(),
-    }),
-    handler: async ({ environment, version }) => {
-      return `Deployed ${version} to ${environment}`;
-    },
-  },
-];
-
-const adapter = new CodexAdapter({
-  config: { model: "gpt-5.3-codex" },
-  customTools,
-});
-```
-
-## TypeScript: LangGraph Tools
-
-Used by: `LangGraphAdapter`
-
-LangGraph in TypeScript uses LangChain-style tool definitions:
-
-```typescript
-import { LangGraphAdapter } from "@thenvoi/sdk";
-
-const adapter = new LangGraphAdapter({
-  graphFactory: (tools) => buildMyGraph(tools),
-  additionalTools: [],        // LangChain tool instances
-  systemPrompt: "You are a helpful assistant.",
-});
-```
-
 ## Tool Errors
 
 When a custom tool fails, the SDK wraps the error:
 
-- **Python:** `CustomToolValidationError` (bad args), `CustomToolExecutionError` (handler exception)
-- **TypeScript:** `CustomToolValidationError` (Zod validation), `CustomToolExecutionError` (handler throws)
+- `CustomToolValidationError` — bad arguments (Pydantic validation failed)
+- `CustomToolExecutionError` — handler raised an exception
 
 The error message is returned to the LLM so it can retry or report the failure.
 
 ## Accessing Tool Schemas
 
-Retrieve registered tool schemas in LLM-native formats:
-
-```typescript
-// TypeScript
-const schemas = tools.getOpenAIToolSchemas();   // OpenAI format
-const schemas = tools.getAnthropicToolSchemas(); // Anthropic format
-```
-
-```python
-# Python - schemas are generated automatically from Pydantic models
-# and injected into the LLM call by the adapter
-```
+Schemas are generated automatically from Pydantic models and injected into the LLM call by the adapter.
 
 ## Best Practices
 
 - Keep tool descriptions concise and action-oriented
-- Use `Field(description=...)` (Python) or `.describe(...)` (Zod) for every parameter
+- Use `Field(description=...)` for clear parameter documentation
 - Return strings from handlers (LLMs work with text)
 - Raise exceptions with clear messages on failure
 - Avoid side effects in tool handlers when possible

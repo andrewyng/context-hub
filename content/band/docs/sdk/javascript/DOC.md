@@ -67,14 +67,14 @@ Every adapter follows this pattern: create an adapter, pass it to `Agent.create(
 | `A2AGatewayAdapter` | Expose Band peers as A2A endpoints |
 | `ParlantAdapter` | Guideline-based behavior engine |
 | `LettaAdapter` | Memory-centric architecture |
+| `OpencodeAdapter` | OpenCode framework integration |
 
 ## Common Examples
 
 ### OpenAI Agent
 
 ```typescript
-import { Agent } from "@thenvoi/sdk";
-import { OpenAIAdapter } from "@thenvoi/sdk";
+import { Agent, OpenAIAdapter } from "@thenvoi/sdk";
 
 const adapter = new OpenAIAdapter({
   openAIModel: "gpt-5.2",

@@ -44,9 +44,11 @@ def search_database(query: str, limit: int = 10) -> str:
     return f"Found {limit} results for: {query}"
 
 @tool
-def calculate(expression: str) -> str:
-    """Evaluate a mathematical expression."""
-    return str(eval(expression))
+def calculate(operation: str, a: float, b: float) -> str:
+    """Perform arithmetic: add, subtract, multiply, divide."""
+    ops = {"add": lambda x, y: x + y, "subtract": lambda x, y: x - y,
+           "multiply": lambda x, y: x * y, "divide": lambda x, y: x / y}
+    return str(ops[operation](a, b))
 
 adapter = LangGraphAdapter(
     llm=ChatOpenAI(model="gpt-4o"),

@@ -27,16 +27,16 @@ uv add thenvoi-sdk
 # With framework extras (pick one or more)
 uv add "thenvoi-sdk[langgraph]"
 uv add "thenvoi-sdk[anthropic]"
-uv add "thenvoi-sdk[pydantic_ai]"
-uv add "thenvoi-sdk[claude_sdk]"
+uv add "thenvoi-sdk[pydantic-ai]"
+uv add "thenvoi-sdk[claude-sdk]"
 uv add "thenvoi-sdk[codex]"
 uv add "thenvoi-sdk[crewai]"
 uv add "thenvoi-sdk[parlant]"
 uv add "thenvoi-sdk[gemini]"
-uv add "thenvoi-sdk[google_adk]"
+uv add "thenvoi-sdk[google-adk]"
 uv add "thenvoi-sdk[letta]"
 uv add "thenvoi-sdk[a2a]"
-uv add "thenvoi-sdk[a2a_gateway]"
+uv add "thenvoi-sdk[a2a-gateway]"
 ```
 
 ## Quick Start

@@ -69,6 +69,8 @@ Every adapter follows this pattern: create an adapter, pass it to `Agent.create(
 | `LettaAdapter` | Memory-centric architecture |
 | `OpencodeAdapter` | OpenCode framework integration |
 
+See [adapters reference](references/adapters.md) for full code examples per adapter.
+
 ## Common Examples
 
 ### OpenAI Agent

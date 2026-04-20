@@ -4,7 +4,7 @@
 
 Rerankers re-score initial search results using a more powerful model for better relevance.
 
-### Neural Reranker (Recommended)
+### Neural Reranker
 
 ```python
 resp = requests.post(
@@ -26,11 +26,88 @@ resp = requests.post(
 )
 ```
 
+Rerankers can be identified by name or ID:
+- `"reranker_name": "Rerank_Multilingual_v1"` — by name
+- `"reranker_id": "rnk_272725719"` — by ID
+
+### Qwen3 Reranker with Instructions
+
+The `qwen3-reranker` supports natural language `instructions` to steer reranking behavior — useful for domain-specific queries:
+
+```python
+resp = requests.post(
+    f"{BASE_URL}/query",
+    headers=headers,
+    json={
+        "query": "How does HHEM work?",
+        "search": {
+            "corpora": [
+                {
+                    "corpus_key": "my-corpus",
+                    "lexical_interpolation": 0.005,
+                }
+            ],
+            "limit": 100,
+            "context_configuration": {
+                "sentences_before": 2,
+                "sentences_after": 2,
+            },
+            "reranker": {
+                "type": "customer_reranker",
+                "reranker_name": "qwen3-reranker",
+                "instructions": (
+                    "HHEM stands for Hughes Hallucination Evaluation Model. "
+                    "Prioritize results that explain the model architecture "
+                    "and evaluation methodology."
+                ),
+                "limit": 30,
+                "cutoff": 0.2,
+            },
+        },
+        "generation": {
+            "generation_preset_name": "vectara-summary-ext-24-05-med-omni",
+            "max_used_search_results": 10,
+            "response_language": "eng",
+            "enable_factual_consistency_score": True,
+        },
+    },
+)
+```
+
+Use `instructions` to:
+- **Resolve abbreviations** — expand domain jargon so the reranker understands context
+- **Steer intent** — e.g., "prioritize practical how-to guides over academic papers"
+- **Add domain context** — e.g., "this query is about network security, not physical security"
+
+### Chain Reranker
+
+Combine multiple rerankers in sequence — e.g., neural reranking followed by diversity:
+
+```python
+"reranker": {
+    "type": "chain",
+    "rerankers": [
+        {
+            "type": "customer_reranker",
+            "reranker_name": "qwen3-reranker",
+            "instructions": "Focus on practical implementation details",
+            "limit": 100,
+            "cutoff": 0.2,
+        },
+        {
+            "type": "mmr",
+            "diversity_bias": 0.05,
+        },
+    ],
+}
+```
+
 ### MMR Reranker (Diversity)
 
 Maximal Marginal Relevance reduces redundancy in results:
 
 ```python
+# Use within a query request's search object:
 "reranker": {
     "type": "mmr",
     "diversity_bias": 0.3,  # 0.0 = pure relevance, 1.0 = max diversity
@@ -38,7 +115,7 @@ Maximal Marginal Relevance reduces redundancy in results:
 }
 ```
 
-### No Reranker
+### Disable Reranking
 
 ```python
 "reranker": {
@@ -107,16 +184,31 @@ Generation presets bundle an LLM, a prompt template, and model parameters.
 
 ### Custom Prompt Template
 
-Override the default prompt with a Velocity template:
+Override the default prompt with a Velocity template. The `prompt_template` is a JSON-stringified array of message objects using Velocity variables:
+
+- `$vectaraQuery` — the user's query text
+- `$vectaraQueryResults` — iterable of search results
+- `$qResult.text()` — result text
+- `$qResult.docMetadata().get('title')` — access document metadata
 
 ```python
+import json
+
+prompt = json.dumps([
+    {"role": "system", "content": "You are a research assistant. Cite sources."},
+    {"role": "user", "content": (
+        "Question: $vectaraQuery\n\n"
+        "Sources:\n"
+        "#foreach ($qResult in $vectaraQueryResults)\n"
+        "Title: $qResult.docMetadata().get('title')\n"
+        "Content: $qResult.text()\n"
+        "#end"
+    )},
+])
+
 "generation": {
     "generation_preset_name": "mockingbird-2.0",
-    "prompt_template": (
-        "Given the search results: $results\n\n"
-        "Answer the question: $query\n\n"
-        "Be concise and cite sources."
-    ),
+    "prompt_template": prompt,
     "max_used_search_results": 5,
     "model_parameters": {
         "temperature": 0.3,

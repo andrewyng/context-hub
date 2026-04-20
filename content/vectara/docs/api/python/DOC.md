@@ -106,7 +106,21 @@ for result in results["search_results"]:
     print(f"Score: {result['score']:.3f} — {result['text']}")
 ```
 
-### Single Corpus Query (Shorthand)
+### Simple Single Corpus Query (GET)
+
+For quick searches without generation or reranking:
+
+```python
+resp = requests.get(
+    f"{BASE_URL}/corpora/my-corpus/query",
+    headers=headers,
+    params={"query": "How does reranking work?", "limit": 10},
+)
+```
+
+### Advanced Single Corpus Query (POST)
+
+For full control over search, reranking, and generation on a single corpus:
 
 ```python
 resp = requests.post(
@@ -170,7 +184,7 @@ for r in data["search_results"]:
 Control the balance between neural and keyword search with `lexical_interpolation`:
 - `0.0` = pure neural (semantic) search
 - `1.0` = pure keyword (lexical) search
-- `0.025` = recommended starting point (mostly neural with slight keyword boost)
+- `0.005` = recommended starting point (mostly neural with slight keyword boost)
 
 ```python
 resp = requests.post(
@@ -271,18 +285,20 @@ resp = requests.post(
 ```
 
 Reranker types:
-- `customer_reranker` — Vectara's neural reranker (use `Rerank_Multilingual_v1`)
+- `customer_reranker` — Vectara's neural reranker (`Rerank_Multilingual_v1` or `qwen3-reranker`)
 - `mmr` — Maximal Marginal Relevance (diversifies results)
+- `chain` — combine multiple rerankers in sequence
 - `none` — skip reranking
 
 ### Streaming Responses
 
-For RAG with streaming, use `stream_response=True`:
+Add `stream_response: true` and set `Accept: text/event-stream` to receive SSE chunks:
 
 ```python
+import json
 resp = requests.post(
     f"{BASE_URL}/query",
-    headers=headers,
+    headers={**headers, "Accept": "text/event-stream"},
     json={
         "query": "Explain vector databases",
         "search": {
@@ -297,9 +313,17 @@ resp = requests.post(
     stream=True,
 )
 for line in resp.iter_lines():
-    if line:
-        print(line.decode())
+    if line and line.startswith(b"data:"):
+        event = json.loads(line[5:])
+        if event["type"] == "generation_chunk":
+            print(event["generation_chunk"], end="")
+        elif event["type"] == "search_results":
+            pass  # Search results arrive first
+        elif event["type"] == "factual_consistency_score":
+            print(f"\nScore: {event['factual_consistency_score']}")
 ```
+
+SSE event types: `search_results`, `generation_chunk`, `factual_consistency_score`, `generation_end`, `end`.
 
 ## Corpus Management
 
@@ -316,13 +340,13 @@ resp = requests.post(
         "filter_attributes": [
             {
                 "name": "category",
-                "level": "doc",
+                "level": "document",
                 "type": "text",
                 "indexed": True,
             },
             {
                 "name": "year",
-                "level": "doc",
+                "level": "document",
                 "type": "integer",
                 "indexed": True,
             },
@@ -363,17 +387,21 @@ resp = requests.delete(f"{BASE_URL}/corpora/my-corpus", headers=headers)
 Upload PDF, Word, PowerPoint, HTML, Markdown, or plain text files (max 10 MB):
 
 ```python
+import json
+
 with open("document.pdf", "rb") as f:
     resp = requests.post(
         f"{BASE_URL}/corpora/my-corpus/upload_file",
-        headers={"x-api-key": API_KEY},
-        files={"file": ("document.pdf", f, "application/pdf")},
-        data={
-            "metadata": '{"category": "engineering", "year": 2024}',
+        headers={"x-api-key": API_KEY, "Accept": "application/json"},
+        files={
+            "file": ("document.pdf", f, "application/pdf"),
+            "metadata": (None, json.dumps({"category": "engineering", "year": 2024}), "application/json"),
         },
     )
 # 201 = document parsed, chunked, and indexed
 ```
+
+Do **not** set `Content-Type` header manually for multipart uploads — let `requests` set the boundary.
 
 Supported file types: Markdown, PDF, Word (.docx), PowerPoint (.pptx), HTML, RTF, EPUB, plain text, email (RFC 822).
 

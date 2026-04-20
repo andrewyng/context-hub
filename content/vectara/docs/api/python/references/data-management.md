@@ -14,6 +14,31 @@ for doc in resp.json()["documents"]:
     print(f"{doc['id']}: {doc.get('metadata', {})}")
 ```
 
+### Pagination
+
+All list endpoints use cursor-based pagination with `limit` + `page_key`:
+
+```python
+page_key = None
+all_docs = []
+while True:
+    params = {"limit": 100}
+    if page_key:
+        params["page_key"] = page_key
+    resp = requests.get(
+        f"{BASE_URL}/corpora/my-corpus/documents",
+        headers=headers,
+        params=params,
+    )
+    data = resp.json()
+    all_docs.extend(data["documents"])
+    page_key = data.get("metadata", {}).get("page_key")
+    if not page_key:
+        break
+```
+
+This pattern works for all list endpoints (`/corpora`, `/documents`, `/agents`, `/sessions`, etc.).
+
 ### Get Document Details
 
 ```python
@@ -36,14 +61,17 @@ resp = requests.delete(
 
 ### Bulk Delete Documents
 
+Async operation — accepts document IDs, metadata filters, or both:
+
 ```python
-resp = requests.post(
-    f"{BASE_URL}/corpora/my-corpus/documents/bulk_delete",
+resp = requests.delete(
+    f"{BASE_URL}/corpora/my-corpus/documents",
     headers=headers,
     json={
         "document_ids": ["doc-001", "doc-002", "doc-003"],
     },
 )
+# Async — returns a job. Poll via GET /v2/jobs/{job_id}
 ```
 
 ### Summarize a Document
@@ -62,6 +90,34 @@ resp = requests.post(
 print(resp.json()["summary"])
 ```
 
+### Update Document Metadata
+
+Partial update — only specified metadata fields change:
+
+```python
+resp = requests.patch(
+    f"{BASE_URL}/corpora/my-corpus/documents/doc-001",
+    headers=headers,
+    json={
+        "metadata": {"category": "updated-category", "reviewed": True},
+    },
+)
+```
+
+### Replace Document Metadata
+
+Full replacement — all existing metadata is overwritten:
+
+```python
+resp = requests.put(
+    f"{BASE_URL}/corpora/my-corpus/documents/doc-001/metadata",
+    headers=headers,
+    json={
+        "metadata": {"category": "new-category", "author": "team-b"},
+    },
+)
+```
+
 ### Retrieve Images from Documents
 
 ```python
@@ -73,7 +129,58 @@ for image in resp.json()["images"]:
     print(f"Image: {image['id']} — {image['content_type']}")
 ```
 
+### Get a Specific Image
+
+```python
+resp = requests.get(
+    f"{BASE_URL}/corpora/my-corpus/documents/doc-001/images/{image_id}",
+    headers=headers,
+)
+```
+
 ## Corpus Management
+
+### Update a Corpus
+
+Partial update — modify name, description, or enabled status:
+
+```python
+resp = requests.patch(
+    f"{BASE_URL}/corpora/my-corpus",
+    headers=headers,
+    json={
+        "name": "Updated Corpus Name",
+        "description": "New description",
+        "enabled": True,
+    },
+)
+```
+
+### Compute Corpus Size
+
+Trigger an async size computation:
+
+```python
+resp = requests.post(
+    f"{BASE_URL}/corpora/my-corpus/compute_size",
+    headers=headers,
+)
+# Returns a job object — poll via GET /v2/jobs/{job_id}
+job_id = resp.json()["job_id"]
+```
+
+### Get Filter Attribute Statistics
+
+Retrieve statistics about filter attribute values in a corpus:
+
+```python
+resp = requests.get(
+    f"{BASE_URL}/corpora/my-corpus/filter_attribute_stats",
+    headers=headers,
+)
+for attr in resp.json()["filter_attributes"]:
+    print(f"{attr['name']}: {attr['type']} — {attr.get('unique_values', 'N/A')}")
+```
 
 ### Filter Attributes
 
@@ -87,10 +194,10 @@ resp = requests.post(
         "key": "products",
         "name": "Product Catalog",
         "filter_attributes": [
-            {"name": "category", "level": "doc", "type": "text", "indexed": True},
-            {"name": "price", "level": "doc", "type": "real", "indexed": True},
-            {"name": "in_stock", "level": "doc", "type": "boolean", "indexed": True},
-            {"name": "tags", "level": "doc", "type": "text_list", "indexed": True},
+            {"name": "category", "level": "document", "type": "text", "indexed": True},
+            {"name": "price", "level": "document", "type": "real", "indexed": True},
+            {"name": "in_stock", "level": "document", "type": "boolean", "indexed": True},
+            {"name": "tags", "level": "document", "type": "text_list", "indexed": True},
             {"name": "section", "level": "part", "type": "text", "indexed": True},
         ],
     },
@@ -100,22 +207,25 @@ resp = requests.post(
 Filter attribute types: `integer`, `real`, `text`, `boolean`, `integer_list`, `real_list`, `text_list`.
 
 Levels:
-- `doc` — document-level metadata (consistent across all parts)
+- `document` — document-level metadata (consistent across all parts)
 - `part` — part-level metadata (varies per chunk/section)
 
 ### Replace Filter Attributes
 
+Replaces all filter attributes on a corpus (async operation — returns a job):
+
 ```python
-resp = requests.put(
-    f"{BASE_URL}/corpora/my-corpus/filter_attributes",
+resp = requests.post(
+    f"{BASE_URL}/corpora/my-corpus/replace_filter_attributes",
     headers=headers,
     json={
         "filter_attributes": [
-            {"name": "category", "level": "doc", "type": "text", "indexed": True},
-            {"name": "status", "level": "doc", "type": "text", "indexed": True},
+            {"name": "category", "level": "document", "type": "text", "indexed": True},
+            {"name": "status", "level": "document", "type": "text", "indexed": True},
         ],
     },
 )
+# Returns a job — poll via GET /v2/jobs/{job_id}
 ```
 
 ### Corpus Statistics

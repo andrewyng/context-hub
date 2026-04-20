@@ -395,15 +395,18 @@ with open("document.pdf", "rb") as f:
         headers={"x-api-key": API_KEY, "Accept": "application/json"},
         files={
             "file": ("document.pdf", f, "application/pdf"),
+            "filename": (None, "doc-001"),  # Required — sets the document ID
             "metadata": (None, json.dumps({"category": "engineering", "year": 2024}), "application/json"),
         },
     )
 # 201 = document parsed, chunked, and indexed
 ```
 
+The `filename` multipart field is **required** and becomes the document ID inside the corpus — set it explicitly rather than relying on the uploaded file's name.
+
 Do **not** set `Content-Type` header manually for multipart uploads — let `requests` set the boundary.
 
-Supported file types: Markdown, PDF, Word (.docx), PowerPoint (.pptx), HTML, RTF, EPUB, plain text, email (RFC 822).
+Supported file types: Markdown, PDF/A, OpenOffice (.odt), Word (.doc, .docx), PowerPoint (.ppt, .pptx), HTML, LXML, RTF, EPUB, plain text, email (RFC 822).
 
 ### Structured Document Indexing
 

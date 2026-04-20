@@ -115,6 +115,29 @@ Maximal Marginal Relevance reduces redundancy in results:
 }
 ```
 
+### User-Defined Function Reranker (`userfn`)
+
+Score results with a custom expression or a built-in utility function. The most common use is the **knee-point** function, which automatically detects where relevance scores drop off and cuts the result list there:
+
+```python
+"reranker": {
+    "type": "userfn",
+    "user_function": "knee()",
+}
+```
+
+`userfn` also accepts arbitrary expressions over result fields (e.g., `"0.7 * get('$.score') + 0.3 * get('$.document_metadata.recency')"`) for per-tenant scoring logic. Pair with chain reranking to run knee-based truncation after a neural pass:
+
+```python
+"reranker": {
+    "type": "chain",
+    "rerankers": [
+        {"type": "customer_reranker", "reranker_name": "Rerank_Multilingual_v1", "limit": 100},
+        {"type": "userfn", "user_function": "knee()"},
+    ],
+}
+```
+
 ### Disable Reranking
 
 ```python

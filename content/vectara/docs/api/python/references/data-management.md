@@ -296,7 +296,10 @@ with open("report.pdf", "rb") as f:
     resp = requests.post(
         f"{BASE_URL}/corpora/my-corpus/upload_file",
         headers={"x-api-key": API_KEY},
-        files={"file": ("report.pdf", f, "application/pdf")},
+        files={
+            "file": ("report.pdf", f, "application/pdf"),
+            "filename": (None, "report-q4-2024"),
+        },
         data={
             "table_extraction_config": '{"extract_tables": true}',
         },
@@ -305,7 +308,7 @@ with open("report.pdf", "rb") as f:
 
 ## Factual Consistency Evaluation
 
-Score how well generated text is grounded in source material. Uses the HHEM (Hughes Hallucination Evaluation Model) v2.2 by default.
+Score how well generated text is grounded in source material. Uses the HHEM (Hughes Hallucination Evaluation Model) **v2.3**, which supports 11 languages and is the only value accepted by the API.
 
 ```python
 resp = requests.post(
@@ -318,16 +321,59 @@ resp = requests.post(
             "The company currently employs 487 people.",
         ],
         "language": "eng",
-        "model_parameters": {"model": "hhem_v2.2"},
+        "model_parameters": {"model_name": "hhem_v2.3"},  # Default; only value supported
     },
 )
 result = resp.json()
-print(f"Score: {result['score']}")            # 0.0–1.0
-print(f"Consistent: {result['p_consistent']}")
-print(f"Inconsistent: {result['p_inconsistent']}")
+print(f"Score: {result['score']}")            # 0.0–1.0 — higher = more consistent
 ```
 
-This is also available inline during RAG queries via `enable_factual_consistency_score: true` in the generation config.
+Language is an ISO 639-3 code (`eng`, `fra`, etc.). The same score is also available inline during RAG queries via `enable_factual_consistency_score: true` in the generation config.
+
+## Hallucination Correction (VHC)
+
+The Vectara Hallucination Corrector rewrites generated text to remove unsupported claims, keeping edits minimal. This is distinct from the evaluation API above — `evaluate_factual_consistency` **measures**, while this endpoint **rewrites**.
+
+### List Available Correctors
+
+```python
+resp = requests.get(f"{BASE_URL}/hallucination_correctors", headers=headers)
+for corrector in resp.json()["hallucination_correctors"]:
+    print(f"{corrector['name']}: {corrector.get('description', '')}")
+```
+
+### Correct Hallucinations
+
+```python
+resp = requests.post(
+    f"{BASE_URL}/hallucination_correctors/correct_hallucinations",
+    headers=headers,
+    json={
+        "generated_text": "The Eiffel Tower is located in Berlin and was built in 1789.",
+        "documents": [
+            {"text": "The Eiffel Tower is a famous landmark located in Paris, France."},
+            {"text": "It was built in 1889 and remains one of the most visited monuments in the world."},
+        ],
+        "model_name": "vhc-large-1.0",
+        "query": "Where is the Eiffel Tower and when was it built?",  # Optional — enables query-aware correction
+    },
+)
+data = resp.json()
+print(data["corrected_text"])  # Minimal-edit rewrite grounded in documents
+for c in data["corrections"]:
+    print(f"[{c['original_text']}] → [{c['corrected_text']}] — {c['explanation']}")
+```
+
+Request fields:
+- `generated_text` (required) — the text to correct
+- `documents` (required) — array of `{"text": "..."}` source documents
+- `model_name` (required) — e.g., `vhc-large-1.0` (call `GET /v2/hallucination_correctors` to discover current models)
+- `query` (optional) — the original user query; enables query-aware correction
+
+Response fields:
+- `corrected_text` — the revised text (empty string indicates VHC judged the entire input as unsupported)
+- `corrections` — array of `{original_text, corrected_text, explanation}` spans
+- `model` — the model that produced the correction
 
 ## Jobs (Async Operations)
 

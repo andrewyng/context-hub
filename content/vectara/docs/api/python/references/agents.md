@@ -148,6 +148,176 @@ resp = requests.delete(f"{BASE_URL}/agents/{agent_key}", headers=headers)
 # 204 = success
 ```
 
+## Multi-Step Workflows
+
+An agent can define multiple named steps in the `steps` map and route between them with conditional transitions. Use this for classify-then-route patterns, multi-phase workflows, or handing off to specialized sub-prompts.
+
+Each step is executed serially — for parallel work, give the agent other agents as tools (`sub_agent`) instead.
+
+### Define Multiple Steps
+
+```python
+resp = requests.post(
+    f"{BASE_URL}/agents",
+    headers=headers,
+    json={
+        "name": "Support Router",
+        "model": {"name": "gpt-4o", "parameters": {"temperature": 0.2}},
+        "first_step_name": "classifier",
+        "steps": {
+            "classifier": {
+                "instructions": [
+                    {
+                        "type": "inline",
+                        "template": (
+                            "Classify the user's intent into one of: "
+                            "`billing`, `technical`, `general`. Respond with JSON "
+                            "matching the output schema."
+                        ),
+                    }
+                ],
+                "output_parser": {
+                    "type": "structured",
+                    "json_schema": {
+                        "type": "object",
+                        "properties": {"intent": {"type": "string"}},
+                        "required": ["intent"],
+                    },
+                },
+                "next_steps": [
+                    {"condition": "get('$.output.intent') == 'billing'", "step_name": "billing_handler"},
+                    {"condition": "get('$.output.intent') == 'technical'", "step_name": "tech_handler"},
+                    {"step_name": "general_handler"},  # Catch-all (no condition)
+                ],
+                "allowed_tools": [],  # Classifier does no tool calls
+            },
+            "billing_handler": {
+                "instructions": [
+                    {"type": "inline", "template": "You are a billing specialist. Search billing docs before answering."}
+                ],
+                "output_parser": {"type": "default"},
+                "allowed_tools": ["billing_search"],
+                "reentry_step": "classifier",  # Re-classify on the next user message
+            },
+            "tech_handler": {
+                "instructions": [
+                    {"type": "inline", "template": "You are a technical specialist. Search engineering docs."}
+                ],
+                "output_parser": {"type": "default"},
+                "allowed_tools": ["tech_search"],
+                "reentry_step": "classifier",
+            },
+            "general_handler": {
+                "instructions": [
+                    {"type": "inline", "template": "You handle general questions. Be brief."}
+                ],
+                "output_parser": {"type": "default"},
+                "allowed_tools": [],
+                "reentry_step": "classifier",
+            },
+        },
+        "tool_configurations": {
+            "billing_search": {"type": "corpora_search", "query_configuration": {"search": {"corpora": [{"corpus_key": "billing-docs"}]}}},
+            "tech_search":    {"type": "corpora_search", "query_configuration": {"search": {"corpora": [{"corpus_key": "engineering-docs"}]}}},
+        },
+    },
+)
+```
+
+### Transition Conditions
+
+`next_steps` entries are evaluated in order — the **first matching condition** wins. An entry with no `condition` is a catch-all; place it last.
+
+Conditions are [UserFn](https://docs.vectara.com/docs/search-and-retrieval/rerankers/user-defined-function-reranker) boolean expressions using `get()` with JSONPath over this context:
+
+| Path | Contents |
+|------|----------|
+| `$.output.text` | LLM text output (when `output_parser.type == "default"`) |
+| `$.output.<field>` | Structured output fields (when `output_parser.type == "structured"`) |
+| `$.session.metadata.<key>` | Session metadata |
+| `$.agent.metadata.<key>` | Agent metadata |
+| `$.tools.<tool_name>.outputs.latest.<field>` | Latest tool output |
+| `$.currentDate` | ISO timestamp |
+
+Examples:
+```python
+{"condition": "get('$.output.intent') == 'sales'", "step_name": "sales_handler"}
+{"condition": "get('$.tools.corpus_search.outputs.latest.score') < 0.3", "step_name": "fallback"}
+```
+
+If no condition matches, the agent stops on the current step and emits output.
+
+### Per-Step Controls
+
+- `allowed_tools` — list of tool-configuration names this step may call. `null` (omitted) = all; `[]` = text-only.
+- `allowed_skills` — same pattern for skills (see below).
+- `reentry_step` — which step to resume at when the user sends the next message. Omit to stay on the current step; set to `first_step_name` to always restart the flow.
+- `reminders` — messages injected into conversation context when specific events occur, to keep long conversations on-task.
+
+## Skills
+
+Skills are progressively-disclosed instructions. The agent sees only the **skill name + description** in its system message; the full `content` is loaded on demand when the LLM decides to invoke the skill via the built-in `invoke_skill` tool. This keeps the base prompt small while giving the agent access to large, specialized instruction sets.
+
+Skills are defined at the agent level and can be filtered per step via `allowed_skills`.
+
+### Define Skills on an Agent
+
+```python
+resp = requests.post(
+    f"{BASE_URL}/agents",
+    headers=headers,
+    json={
+        "name": "Engineering Assistant",
+        "model": {"name": "gpt-4o", "parameters": {"temperature": 0.2}},
+        "first_step_name": "main",
+        "steps": {
+            "main": {
+                "instructions": [
+                    {"type": "inline", "template": "You help engineers. Invoke skills when they match the task."}
+                ],
+                "output_parser": {"type": "default"},
+                "allowed_skills": ["code_review", "incident_response"],  # This step may invoke these
+            },
+        },
+        "skills": {
+            "code_review": {
+                "description": "Reviews code for best practices, bugs, and security issues.",
+                "content": (
+                    "When reviewing code, check for security vulnerabilities (injection, "
+                    "auth bypass, unsafe deserialization), performance issues (N+1 queries, "
+                    "unnecessary allocations), and adherence to our style guide. Cite line "
+                    "numbers. End with a prioritized list of suggested changes."
+                ),
+            },
+            "incident_response": {
+                "description": "Guides on-call engineers through an incident triage workflow.",
+                "content": (
+                    "1. Establish severity (SEV1/2/3). 2. Open a war-room channel. "
+                    "3. Identify the blast radius. 4. Mitigate before diagnosing root cause. "
+                    "5. Page the service owner if user-facing. ..."
+                ),
+            },
+        },
+        "tool_configurations": {},
+    },
+)
+```
+
+Each skill entry requires `description` (≤500 chars) and `content` (≤50 000 chars).
+
+### Per-Step Skill Filtering
+
+`allowed_skills` on a step restricts which skills the LLM can invoke at that point:
+- Omit (null) → all agent skills available
+- `[]` → no skills; `invoke_skill` tool is not shown to the LLM
+- `["code_review"]` → only `code_review` is invocable in this step
+
+### Skills vs Instructions vs Tools
+
+- **Instructions** (`steps[x].instructions`) — always included in the system prompt. Use for core behavior that must always apply.
+- **Skills** — name + description always shown; full content loaded only when invoked. Use for large, specialized instruction sets that only apply to specific tasks.
+- **Tools** (`tool_configurations`) — executed actions that return data (search, web, lambda). Use when the agent needs to **do** something, not just **know** something.
+
 ## Tool Configurations
 
 Tools are defined in the `tool_configurations` dict when creating or updating an agent. Each key is a tool name, and the value specifies the tool type and config.
@@ -520,6 +690,122 @@ resp = requests.post(
         "query": "Summarize new documents added in the last 24 hours",
     },
 )
+```
+
+## Pipelines
+
+Pipelines continuously ingest data from a source system (e.g., S3) and send each record to an agent for processing. Each record creates a new agent session — this is how pipelines differ from **schedules** (recurring single execution of one agent) and **connectors** (bidirectional chat like Slack).
+
+### Create a Pipeline
+
+```python
+resp = requests.post(
+    f"{BASE_URL}/pipelines",
+    headers=headers,
+    json={
+        "key": "s3-legal-ingest",  # Optional; auto-generated if omitted
+        "name": "Legal Docs S3 Ingest",
+        "description": "Ingests contracts from S3 and routes them to the legal review agent",
+        "source": {
+            "type": "s3",
+            "bucket": "my-legal-docs",
+            "region": "us-east-1",
+            "prefix": "contracts/2026/",          # Optional — scope to a subfolder
+            "access_key_id": "AKIA...",           # Encrypted at rest, not returned in responses
+            "secret_access_key": "...",
+            # "endpoint_url": "https://minio.example.com:9000",  # Optional — for S3-compatible stores
+        },
+        "trigger": {
+            "type": "cron",
+            "expression": "0 */6 * * *",         # Every 6 hours, UTC
+        },
+        "transform": {
+            "type": "agent",
+            "agent_key": agent_key,
+            # Optional output verification:
+            # "verification": {"type": "condition", "expression": "get('$.output.status') == 'success'"},
+            # or a judge agent:
+            # "verification": {"type": "agent", "agent_key": "agt_judge_..."},
+        },
+        "sync_mode": "incremental",              # or "full_refresh" — default: "incremental"
+        "enabled": True,
+    },
+)
+pipeline = resp.json()
+pipeline_key = pipeline["key"]
+```
+
+Trigger types:
+- `cron` — 5-field UTC cron expression
+- `interval` — ISO-8601 duration (e.g., `"duration": "PT1H"` for hourly)
+- `manual` — only runs via the trigger endpoint
+
+Source types currently include `s3` (S3-compatible storage). Additional source types (e.g., `sharepoint`) are available; check `GET /v2/pipelines?source_type=...` for what's live in your account.
+
+### List Pipelines
+
+```python
+resp = requests.get(
+    f"{BASE_URL}/pipelines",
+    headers=headers,
+    params={"enabled": True, "limit": 50},
+)
+for p in resp.json()["pipelines"]:
+    print(f"{p['key']}: {p['name']} — {p.get('status')}")
+```
+
+### Get / Update / Delete
+
+```python
+# Get
+resp = requests.get(f"{BASE_URL}/pipelines/{pipeline_key}", headers=headers)
+
+# Partial update
+resp = requests.patch(
+    f"{BASE_URL}/pipelines/{pipeline_key}",
+    headers=headers,
+    json={"enabled": False, "description": "Paused for Q2 audit"},
+)
+
+# Replace (full schema required — same as create)
+resp = requests.put(f"{BASE_URL}/pipelines/{pipeline_key}", headers=headers, json={...})
+
+# Delete (cancels in-progress runs; does not delete sessions the pipeline created)
+resp = requests.delete(f"{BASE_URL}/pipelines/{pipeline_key}", headers=headers)
+```
+
+### Trigger a Run Manually
+
+```python
+resp = requests.post(
+    f"{BASE_URL}/pipelines/{pipeline_key}/trigger",
+    headers=headers,
+)
+run = resp.json()
+print(f"Run {run['id']}: {run['status']} (fetched {run['records_fetched']} records)")
+# 409 = a run is already in progress for this pipeline
+```
+
+### Pipeline Runs
+
+Inspect past executions:
+
+```python
+resp = requests.get(f"{BASE_URL}/pipelines/{pipeline_key}/runs", headers=headers)
+for run in resp.json()["runs"]:
+    print(f"{run['id']}: {run['status']} — fetched {run['records_fetched']}, processed {run['records_processed']}")
+```
+
+### Dead Letters
+
+Records that failed processing are captured in a dead-letter queue for reprocessing:
+
+```python
+# List dead letters
+resp = requests.get(f"{BASE_URL}/pipelines/{pipeline_key}/dead_letters", headers=headers)
+
+# Retry all dead letters
+resp = requests.post(f"{BASE_URL}/pipelines/{pipeline_key}/dead_letters/process", headers=headers)
 ```
 
 ## Instructions

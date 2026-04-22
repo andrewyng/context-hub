@@ -1,67 +1,130 @@
+---
+name: Troubleshooting
+description: Error codes, common issues, and fixes for ADE Parse, Extract, Split, and Parse Jobs
+type: reference
+---
+
 # Troubleshooting
 
-## HTTP Error Codes
+## Common Errors (All Endpoints)
 
-| Code | Meaning | Common Causes | Action |
-|------|---------|---------------|--------|
-| **400** | Bad Request | `anyOf` sub-schema missing `type`/`anyOf` keyword; invalid parameter | Fix schema per error message |
-| **401** | Unauthorized | Missing or invalid `VISION_AGENT_API_KEY` | Check `.env` file and key validity |
-| **413** | Payload Too Large | File exceeds sync parse limit | Use Parse Jobs API for large files |
-| **422** | Unprocessable Entity | Invalid JSON schema; unsupported keywords; top-level type not `"object"`; password-protected file without ZDR or with wrong password | Validate schema structure; check password; enable ZDR |
-| **429** | Rate Limited | Too many concurrent requests | Add retry with exponential backoff |
-| **206** | Partial Content | Some pages failed (parse) or schema violation (extract) | Check `metadata.failed_pages` or `metadata.schema_violation_error` |
+| Code | Issue | What to Do |
+|------|-------|------------|
+| **401** Unauthorized | Missing or invalid `VISION_AGENT_API_KEY` | Confirm the key is set in your environment or `.env` file. Get a key at [va.landing.ai/settings/api-key](https://va.landing.ai/settings/api-key). If you recently rotated your key, update all call sites. |
+| **402** Payment Required | Not enough credits | Verify you are using the correct API key (credits are per-key). Add credits to your account. |
+| **429** Too Many Requests | Rate limit exceeded | Wait before retrying. Implement exponential backoff for batch workloads. |
 
-## Parse Failures
+---
 
-- **Password-protected file**: Pass `password="..."` parameter (requires ZDR). Without ZDR, remove password protection before parsing
-- **Unsupported format**: Check [file formats reference](file-formats.md)
-- **File too large**: Use Parse Jobs API (`client.parse_jobs.create()`) for files > 50 pages or > 10 MB
-- **Poor OCR quality**: Use high-resolution scans (300+ DPI); consider `dpt-2-latest` over `dpt-2-mini` for scanned docs
+## Parse
 
-## Low Extraction Accuracy
+### Partial results (206)
 
-- Add more detailed field descriptions (include format hints: "as YYYY-MM-DD", "in USD")
-- Use more specific field names (`invoice_total_usd` rather than `total`)
-- Match schema field order to how data appears in the document
-- Reduce schema complexity — stay under 30 properties for best results
-- Try `model="extract-20251024"` if the latest model misses fields it should return as `null`
+Some pages failed; successful pages are still returned. Check `metadata.failed_pages` (zero-indexed):
 
-## Missing Fields
-
-- Verify the field actually exists in the document
-- Check that the field description clearly identifies the data
-- `extract-20251024` returns `null` for absent fields; `extract-latest` may omit them entirely
-- Check `extraction_metadata` — if the field has `chunk_ids`, the model found it but may have returned an unexpected value
-
-## Schema Validation Errors (HTTP 422)
-
-- Top-level schema must have `"type": "object"`
-- `anyOf` / `oneOf` sub-schemas each need their own `type` or `anyOf` keyword
-- Avoid unsupported JSON Schema keywords (e.g., `if`/`then`, `$ref`)
-- Use `pydantic_to_json_schema()` from `landingai_ade.lib` for reliable schema generation
-
-## Performance Issues
-
-- Use `dpt-2-mini` for simple, digitally-native documents (faster and cheaper)
-- Enable Parse Jobs (`client.parse_jobs.create()`) for large files to avoid timeouts
-- Process documents in parallel with `ThreadPoolExecutor` — see [document-workflows batch-processing.md](../../document-workflows/references/batch-processing.md)
-- Cache parse results (save `response.markdown` to disk) when running multiple extractions on the same document
-
-## Partial Results (HTTP 206)
-
-**Parse 206** — Some pages failed:
 ```python
 response = client.parse(document=Path("doc.pdf"), model="dpt-2-latest")
 if response.metadata.failed_pages:
     print(f"Failed pages: {response.metadata.failed_pages}")
-    # Remaining pages were parsed successfully; credits are consumed
 ```
 
-**Extract 206** — Schema violation:
+Credits are consumed for pages that processed successfully.
+
+### Common errors
+
+| Code | Error | Fix |
+|------|-------|-----|
+| 400 | `Failed to download document from URL` | Verify the URL is publicly accessible and points to a supported file type. |
+| 400 | `Unsupported model: {version}` | Use a supported model version. Omit `model` to use the latest. |
+| 422 | `Unsupported format: {mime_type}` | See [File Formats](file-formats.md). |
+| 422 | `PDF must not exceed {limit} pages` | Use Parse Jobs for large documents. |
+| 422 | `Document is password-protected. Please provide the password parameter.` | Add `password="..."` to your request. Requires ZDR. See [Parse Password-Protected Files](https://docs.landing.ai/ade/ade-parse-password). |
+| 422 | `Password-protected documents are not currently supported for your account.` | ZDR is not enabled. Remove password protection before uploading. |
+| 422 | `Failed to decrypt document. The password is incorrect or the file is corrupted.` | Check the password; verify the file opens correctly. |
+| 422 | `custom_prompts['figure'] must be 512 characters or fewer.` | Shorten the prompt to 512 characters. |
+| 422 | `custom_prompts is not supported for the '{model}' model.` | `custom_prompts` requires DPT-2. |
+| 500 | `Failed to process the document` | Retry. If the issue persists, contact support@landing.ai. |
+| 504 | `Request timed out after {seconds} seconds` | Reduce document size or use Parse Jobs. |
+
+---
+
+## Parse Jobs
+
+### Job status values
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Queued, waiting to process |
+| `processing` | Currently processing |
+| `completed` | Done. Results are in `data` (under 1 MB) or `output_url` (over 1 MB; URL expires in 1 hour) |
+| `failed` | Check `failure_reason` |
+| `cancelled` | Cancelled |
+
+### Common issues
+
+- **404 Not Found (Get job)**: The job ID belongs to a different API key, or the ID is incorrect.
+- **ZDR accounts**: Use `document_url` (not file upload) and provide `output_save_url` when creating jobs.
+- **Partial results (206)**: Some pages failed. Check `metadata.failed_pages` same as sync Parse.
+
+---
+
+## Extract
+
+### Partial results (206)
+
+Extracted data does not fully conform to the schema. Check `metadata.schema_violation_error`:
+
 ```python
-response = client.extract(schema=schema, markdown=markdown)
-err = response.metadata.schema_violation_error
-if err:
-    print(f"Schema violation: {err}")
-    # Partial data is still returned; credits are consumed
+response = client.extract(schema=schema, markdown=Path("parsed.md"))
+if response.metadata.schema_violation_error:
+    print(f"Schema violation: {response.metadata.schema_violation_error}")
 ```
+
+For `extract-20260314` and later, `metadata.warnings` contains structured objects with `code` and `msg`:
+
+| Warning Code | Meaning |
+|---|---|
+| `nonconformant_schema` | Schema issues affected extraction |
+| `nonconformant_output` | Output does not fully conform to schema (also populates `schema_violation_error`) |
+
+**Field returned as null:** The API could not find the field in the document.
+
+- Check whether the field actually appears in the document. If it does not, the null result is correct.
+- If the field is present but not found: add or refine `description` to be more specific; add `x-alternativeNames` entries that match how the field label appears in the document.
+- To allow null in the schema: `"type": ["string", "null"]` or set `"nullable": true`.
+
+Credits are consumed even for 206 responses.
+
+### Low extraction accuracy
+
+- Add `description` fields with format hints ("as YYYY-MM-DD", "in USD").
+- Use `x-alternativeNames` if field labels vary across document types.
+- Use specific field names (`invoice_total_usd` rather than `total`).
+- Match schema field order to how data appears in the document.
+
+### Common schema errors (422)
+
+| Error | Fix |
+|-------|-----|
+| `The provided schema must have "type": "object" for the root.` | Wrap all fields in a top-level object. |
+| `The provided JSON object was not a valid JSON schema.` | Validate JSON structure; check for syntax errors. |
+| `The provided schema contains recursive local $ref cycles` | Remove circular references; ADE does not support them. |
+| `The following schema fields were not supported: {keywords}` | Remove unsupported keywords, or use `strict=false` to allow the API to skip them. |
+
+---
+
+## Build Extract Schema
+
+At least one of `markdowns`, `markdown_urls`, or `prompt` is required. If you pass an existing `schema` to refine, it must be valid JSON. All other errors (URL accessibility, model version) follow the same patterns as Extract.
+
+---
+
+## Split
+
+### Common issues
+
+- **Max 19 split classes**: Reduce the number of classes to 19 or fewer.
+- **Pass Markdown from Parse**: Split expects the structured Markdown that Parse produces. Raw text or other formats produce poor results.
+- **Improve accuracy**: Write detailed `description` values for each split class.
+- **`identifier` field**: Use `identifier` only when a document contains multiple instances of the same class that need to be separated.
+- **500 errors**: Retry. Verify that split class `name`, `description`, and `identifier` fields are properly formatted. Contact support@landing.ai if the issue persists.

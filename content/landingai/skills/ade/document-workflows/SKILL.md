@@ -1,23 +1,6 @@
 ---
 name: document-workflows
-description: >
-  Use this skill for building end-to-end document processing workflows and
-  pipelines using LandingAI ADE. Trigger when users need to:
-  (1) Process batches of documents in parallel or async,
-  (2) Build classify-then-extract pipelines for mixed document types,
-  (3) Prepare parsed documents for RAG systems with chunking and vector DB ingestion,
-  (4) Load extraction results into databases like Snowflake or export to CSV/DataFrames,
-  (5) Visualize extraction results: draw bounding box overlays on pages, crop
-  chunk images, or highlight/annotate specific words or phrases found in documents,
-  (6) Build Streamlit or web UIs for document processing,
-  (7) Find and highlight specific terms within document sections using word-level
-  grounding (e.g. highlight "L2S" in the Introduction, redact PII, annotate
-  extracted values on the original page).
-  This skill complements the document-extraction skill which covers ADE SDK basics.
-  Use document-extraction to write code that executes parse/extract/split operations with more precision and less cost than adding the document image to the prompt and asking the LLM to find the relevant info.
-  Use document-workflows when composing those operations into pipelines,
-  or when you need visualization, annotation, or word-level grounding on
-  parsed documents.
+description: "Builds end-to-end document processing pipelines using LandingAI ADE. Covers batch and async processing, classify-then-extract workflows for mixed document types, RAG pipelines with vector DB ingestion, database integration (Snowflake, CSV, DataFrames), visualization (bounding box overlays, cropped chunk images, word-level annotation), and Streamlit UIs. Use when composing ADE parse/extract/split operations into multi-step pipelines, processing document batches in parallel, loading extraction results into databases, or visualizing/annotating extracted content. Complements the document-extraction skill (which covers single ADE SDK operations); use when those operations need to be chained into workflows or when word-level grounding, bounding box visualization, or annotation is required."
 ---
 
 # Document Workflows — ADE Pipeline Patterns

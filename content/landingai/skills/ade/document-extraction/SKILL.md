@@ -1,17 +1,25 @@
 ---
 name: document-extraction
-description: Use this skill for intelligent document processing and content extraction using LandingAI's Agentic Document Extraction (ADE). Trigger when users need to (1) Parse documents (PDFs, images, spreadsheets, presentations) into structured Markdown with layout understanding, (2) Extract specific structured data from documents using schemas (invoice fields, form data, table data, etc.), (3) Classify and separate multi-document batches by type (invoices vs receipts, statements vs forms, etc.), (4) Process large documents asynchronously (up to 1GB/1000 pages), (5) Get visual grounding (bounding boxes, page numbers) for extracted content — use when users mention bounding boxes, word locations, grounding, highlighting extracted content, or showing where data appears in a document. Use this skill when the task involves understanding document content for a set of documents. In particular this skill can help you write code that run on sets of documents. This will increase speed, and reduce the cost of loading the documents on the Agent context window because you can use a single script to extract the information needed.
+description: "Parses, extracts, and classifies documents using LandingAI's Agentic Document Extraction (ADE). Supports PDFs, images, spreadsheets, and presentations; outputs structured Markdown with hierarchical JSON. Covers schema-based field extraction (JSON Schema or Pydantic), document classification and splitting by type, async processing for large files, and visual grounding (bounding boxes, page numbers). Use when parsing documents into structured Markdown, extracting specific fields with a schema, classifying mixed document batches, processing large files asynchronously, or when the user mentions bounding boxes, word locations, grounding, or highlighting where data appears in a document."
 ---
 
 # Document Extraction (ADE)
 
 ## Overview
 
-LandingAI's Agentic Document Extraction (ADE) is a document processing SaaS that parses, extracts, and classifies documents without requiring templates or training. It provides three main capabilities:
+LandingAI's Agentic Document Extraction (ADE) is a document processing SaaS that parses, extracts, and classifies documents without requiring templates or training. The `landingai-ade` Python library is the recommended approach for most use cases. It wraps the REST API and handles authentication and response parsing for you.
 
-1. **Parse**: Convert documents into structured Markdown with hierarchical JSON representation
-2. **Extract**: Pull specific structured data using JSON schemas or Pydantic models
-3. **Split**: Classify and separate multi-document batches by type
+ADE provides these core API functions:
+
+| API | Python Method | What It Does |
+|-----|--------------|--------------|
+| **Parse** | `client.parse()` | Converts documents into structured Markdown, chunks, and metadata. Always the first step. |
+| **Extract** | `client.extract()` | Pulls specific fields from Markdown using a JSON schema. |
+| **Build Extract Schema** | `client.extract_build_schema()` | Generates or refines a JSON extraction schema from Markdown using AI. |
+| **Split** | `client.split()` | Classifies and separates multi-document batches by document type. |
+| **Parse Jobs (Create)** | `client.parse_jobs.create()` | Creates an async parse job for large files (up to 6,000 pages). |
+| **Parse Jobs (Get)** | `client.parse_jobs.get()` | Retrieves the status and results of an async parse job. |
+| **Parse Jobs (List)** | `client.parse_jobs.list()` | Lists all async parse jobs with optional status filtering. |
 
 **Key Benefits:**
 - No ML training or templates required
@@ -27,11 +35,11 @@ LandingAI's Agentic Document Extraction (ADE) is a document processing SaaS that
 Never install packages globally without user approval. Always check for a local Python environment first.
 
 ```
-1. .venv/bin/python       — uv-managed (this project)
-2. venv/bin/python        — standard Python venv
-3. uv run python          — if pyproject.toml exists
-4. poetry run python      — if poetry.lock exists
-5. python3                — system fallback; warn the user
+1. .venv/bin/python       : uv-managed (this project)
+2. venv/bin/python        : standard Python venv
+3. uv run python          : if pyproject.toml exists
+4. poetry run python      : if poetry.lock exists
+5. python3                : system fallback; warn the user
 ```
 Use the local environment to install: `landingai-ade`, `python-dotenv`
 
@@ -194,7 +202,7 @@ Spreadsheets (CSV, XLSX) return a **different response type** than documents. Ke
 | Field | Documents (`ParseResponse`) | Spreadsheets (`SpreadsheetParseResponse`) |
 |---|---|---|
 | `metadata.page_count` | ✓ | ✗ (uses `sheet_count`, `total_rows`, `total_cells`, `total_chunks`, `total_images`) |
-| `splits[].pages` | ✓ | ✗ (uses `sheets` — array of sheet indices) |
+| `splits[].pages` | ✓ | ✗ (uses `sheets`: array of sheet indices) |
 | `grounding` (top-level) | ✓ | ✗ (not present for spreadsheets) |
 | Chunk grounding | Always present | Optional (null for table chunks, present for embedded image chunks) |
 
@@ -217,17 +225,9 @@ for split in response.splits:
 
 ### Model Selection
 
-Choose the right model for your documents:
-
-| Model | Best For | Chunk Types |
-|-------|----------|-------------|
-| **dpt-2-latest** | Complex documents with logos, signatures, ID cards | text, table, figure, logo, card, attestation, scan_code, marginalia |
-| **dpt-2-mini** | Simple, digitally-native documents (faster, cheaper) | text, table, figure, marginalia |
-| **dpt-1** | ⚠️ **Deprecated March 31, 2026** — migrate to dpt-2 | text, table, figure, marginalia |
-
-**Recommendation:** Use `dpt-2-latest` unless you have simple documents where cost/speed is critical.
-
-**Version Pinning:** For production, use dated versions (e.g., `dpt-2-20260302`) for reproducibility.
+- **dpt-2-latest**: Complex documents with logos, signatures, ID cards
+- **dpt-2-mini**: Simple, digitally-native documents (faster, cheaper)
+- **dpt-1**: ❌ Deprecated; migrate to dpt-2
 
 ### Parse Large Files (Async)
 
@@ -315,8 +315,8 @@ Parse returns a `ParseResponse` with:
 - **`markdown`**: Complete document in Markdown with HTML anchor tags
 - **`chunks`**: Array of extracted elements (each with unique ID, type, content, and per-chunk grounding)
 - **`grounding`**: Dictionary mapping element IDs to detailed location data (page, bounding box, grounding type, and table cell position). See [JSON Response](#json-response) for structure.
-- **`metadata`**: Processing info — `filename`, `org_id`, `page_count`, `duration_ms`, `credit_usage` (float), `job_id`, `version`, `failed_pages`
-- **`splits`**: Array of split objects grouping chunks. Always present — contains a single `"full"` split by default, or per-page splits if `split="page"` was used. **Note:** Parse splits use a `class` field (values: `"full"` or `"page"`), which is different from the Split API's `classification` field.
+- **`metadata`**: Processing info: `filename`, `org_id`, `page_count`, `duration_ms`, `credit_usage` (float), `job_id`, `version`, `failed_pages`
+- **`splits`**: Array of split objects grouping chunks. Always present (contains a single `"full"` split by default, or per-page splits if `split="page"` was used). **Note:** Parse splits use a `class` field (values: `"full"` or `"page"`), which is different from the Split API's `classification` field.
 
 **Common chunk types**: `text`, `table`, `figure`, `logo`, `card`, `attestation`, `scan_code`, `marginalia`
 
@@ -363,7 +363,7 @@ The `save_to` parameter:
 - Creates the folder if it doesn't exist
 - Names the file `{input_filename}_{method}_output.json` (e.g., `document_parse_output.json`)
 - Works on `client.parse()`, `client.extract()`, and `client.split()`
-- Is a **client-side convenience** — it saves the full response locally after the API call
+- Is a **client-side convenience** that saves the full response locally after the API call
 
 For manual serialization (e.g., custom filenames or selective saving), use `model_dump()`:
 
@@ -384,12 +384,15 @@ with open("document_parsed.md", "w", encoding="utf-8") as f:
 ### Parse Parameters
 
 ```python
+import json
+
 response = client.parse(
     document=Path("document.pdf"),
     model="dpt-2-latest",
-    split="page",       # Optional: organize chunks by page
-    password="secret",   # Optional: decrypt protected files (ZDR only)
-    save_to="output/",   # Optional: auto-save response JSON
+    split="page",                                          # Optional: organize chunks by page
+    password="secret",                                     # Optional: decrypt protected files (ZDR only)
+    custom_prompts=json.dumps({"figure": "YOUR_PROMPT"}),  # Optional: customize figure captions (DPT-2 only)
+    save_to="output/",                                     # Optional: auto-save response JSON
 )
 ```
 
@@ -416,6 +419,22 @@ job = client.parse_jobs.create(
 > **Note:** Without ZDR the API returns HTTP 422. If the password is wrong the API
 > returns HTTP 422 with a decryption error. The parameter is ignored for unencrypted documents.
 
+### Custom Prompts for Figure Descriptions
+
+Use the optional `custom_prompts` parameter to control how ADE describes figures during parsing. Useful for domain-specific charts, standardized formats, or specific languages.
+
+```python
+import json
+
+response = client.parse(
+    document=Path("document.pdf"),
+    model="dpt-2-latest",
+    custom_prompts=json.dumps({"figure": "Describe axis labels in detail."}),
+)
+```
+
+**Constraints:** DPT-2 only (DPT-2 mini returns HTTP 422). Only `figure` key is supported. Max 512 characters. Must be passed as a JSON string via `json.dumps` (not a plain dict).
+
 ## Structured Data Extraction
 
 ### Schema Definition
@@ -440,7 +459,9 @@ schema = pydantic_to_json_schema(BankStatement)
 **JSON Schema approach:**
 
 ```python
-schema = {
+import json
+
+schema = json.dumps({
     "type": "object",
     "properties": {
         "account_holder": {
@@ -450,19 +471,12 @@ schema = {
         "account_number": {
             "type": "string",
             "description": "Account number"
-        },
-        "beginning_balance": {
-            "type": "number",
-            "description": "Beginning balance in USD"
-        },
-        "ending_balance": {
-            "type": "number",
-            "description": "Ending balance in USD"
         }
-    },
-    "required": ["account_holder", "account_number"]
-}
+    }
+})
 ```
+
+`client.extract()` requires `schema` to be a JSON string. Use `json.dumps()` when defining a schema as a Python dict. `pydantic_to_json_schema()` already returns a string, so no conversion is needed on the Pydantic path.
 
 ### Extraction Workflow
 
@@ -512,6 +526,25 @@ extract_response = client.extract(
 )
 ```
 
+### Build Extract Schema
+
+Use the Build Extract Schema API to generate or refine a JSON schema from parsed Markdown. Call it via `client.extract_build_schema()` using the Python library. Useful when you want to automate schema creation or detect schema drift when new document variants enter your pipeline.
+
+```python
+import json
+
+with open("sample_invoice.md", "rb") as f:
+    response = client.extract_build_schema(
+        markdowns=[f],
+        prompt="Extract invoice number, date, vendor name, and line items with quantities and amounts",
+        model="extract-latest",
+    )
+
+schema = json.loads(response.extraction_schema)
+```
+
+You can also pass `schema` (an existing schema string) to refine it, `markdown_urls` instead of file handles, or `prompt` alone without any Markdown. The response `extraction_schema` is already a JSON string; pass it directly to `client.extract(schema=response.extraction_schema)` without parsing.
+
 ### Common Schema Patterns
 
 For detailed schema patterns, see [references/extraction-schemas.md](references/extraction-schemas.md)
@@ -557,72 +590,13 @@ class Patient(BaseModel):
     last_name: str
 ```
 
-### Document Classification
-
-Classify documents before extracting type-specific fields:
-
-```python
-from dotenv import load_dotenv
-load_dotenv()
-
-from landingai_ade import LandingAIADE
-from pydantic import BaseModel, Field
-from landingai_ade.lib import pydantic_to_json_schema
-from pathlib import Path
-
-# Step 1: Define classification schema
-class DocumentType(BaseModel):
-    document_type: str = Field(
-        description="Document classification",
-        enum=["Invoice", "Receipt", "Bank Statement", "Other"]
-    )
-
-client = LandingAIADE()
-
-# Step 2: Parse document
-parse_response = client.parse(
-    document=Path("document.pdf"),
-    model="dpt-2-latest"
-)
-
-# Step 3: Classify document
-classification_schema = pydantic_to_json_schema(DocumentType)
-classification_response = client.extract(
-    schema=classification_schema,
-    markdown=parse_response.markdown,
-    model="extract-latest"
-)
-
-doc_type = classification_response.extraction["document_type"]
-print(f"Classified as: {doc_type}")
-
-# Step 4: Extract based on type
-if doc_type == "Invoice":
-    schema = pydantic_to_json_schema(InvoiceSchema)
-elif doc_type == "Receipt":
-    schema = pydantic_to_json_schema(ReceiptSchema)
-else:
-    print("Unsupported document type")
-    exit()
-
-# Extract type-specific fields
-extract_response = client.extract(
-    schema=schema,
-    markdown=parse_response.markdown,
-    model="extract-latest"
-)
-```
+> **Note:** `extract-20260314` supports these JSON Schema keywords: `type`, `description`, `properties` (for objects only), `items` (for arrays only), `enum`, `format`, and `x-alternativeNames`. Other keywords are silently ignored or cause errors; see [Keyword Support](https://docs.landing.ai/ade/ade-extract-schema-json#keyword-support).
 
 ## Document Classification & Splitting
 
 ### When to Use Split API
 
-Use the Split API when you have multi-document batches on  single file that need to be separated:
-
-- Financial services: Separate bank statements, utility bills, ID documents
-- Healthcare: Split intake forms, medical reports, medication lists
-- Accounting: Separate multiple invoices and receipts
-- Academic: Separate article bodies from references
+Use the Split API when a single file contains multiple document types that need to be classified and separated for downstream processing.
 
 ### Split Classification
 
@@ -716,72 +690,9 @@ Paragraph text...
 - HTML tables for spreadsheet data
 - Preserved structure and hierarchy
 
-### JSON Response
+### Grounding and Traceability
 
-Parse returns structured JSON with five top-level fields:
-
-```json
-{
-  "markdown": "# Document...",
-  "chunks": [
-    {
-      "id": "7d58c5cf-e4f5-4a7e-ba34-0cd7bc6a6506",
-      "type": "text",
-      "markdown": "Content...",
-      "grounding": {
-        "page": 0,
-        "box": { "left": 0.1, "top": 0.2, "right": 0.9, "bottom": 0.3 }
-      }
-    }
-  ],
-  "splits": [
-    {
-      "class": "full",
-      "identifier": "full",
-      "pages": [0],
-      "markdown": "# Document...",
-      "chunks": ["7d58c5cf-e4f5-4a7e-ba34-0cd7bc6a6506"]
-    }
-  ],
-  "grounding": {
-    "7d58c5cf-e4f5-4a7e-ba34-0cd7bc6a6506": {
-      "box": { "left": 0.1, "top": 0.2, "right": 0.9, "bottom": 0.3 },
-      "page": 0,
-      "type": "chunkText",
-      "confidence": 0.95,
-      "low_confidence_spans": []
-    },
-    "0-1": {
-      "box": { "left": 0.15, "top": 0.4, "right": 0.85, "bottom": 0.7 },
-      "page": 0,
-      "type": "table"
-    },
-    "0-2": {
-      "box": { "left": 0.15, "top": 0.4, "right": 0.5, "bottom": 0.55 },
-      "page": 0,
-      "type": "tableCell",
-      "position": { "row": 0, "col": 0, "rowspan": 1, "colspan": 1,
-                     "chunk_id": "ef24b1ea-..." }
-    }
-  },
-  "metadata": {
-    "filename": "document.pdf",
-    "org_id": "org-123",
-    "page_count": 5,
-    "duration_ms": 1500,
-    "credit_usage": 2.0,
-    "job_id": "abc-123",
-    "version": "dpt-2-20260302",
-    "failed_pages": []
-  }
-}
-```
-
-**Top-level `grounding`** is a dictionary keyed by element ID (UUID for chunks, `{page}-{base62}` for tables/cells). Each value contains `box`, `page`, `type`, and optionally `confidence` and `low_confidence_spans` (see [Confidence Scores](#confidence-scores)). Table cell entries also include a `position` field (see [Grounding and Traceability](#grounding-and-traceability)).
-
-#### Grounding Type Mapping
-
-Grounding types use a `chunk` prefix to distinguish them from chunk types. The `table` and `tableCell` types are grounding-only (no corresponding chunk type):
+The top-level `grounding` dictionary is keyed by element ID (UUID for chunks, `{page}-{base62}` for tables and table cells). Each entry contains `box` (normalized 0–1 coordinates), `page` (zero-indexed), and `type`:
 
 | Grounding Type | Chunk Type | Description |
 |---|---|---|
@@ -794,60 +705,10 @@ Grounding types use a `chunk` prefix to distinguish them from chunk types. The `
 | `chunkAttestation` | `attestation` | Signatures, stamps (DPT-2) |
 | `chunkScanCode` | `scan_code` | QR codes, barcodes (DPT-2) |
 | `table` | _(grounding only)_ | HTML `<table>` element within a table chunk |
-| `tableCell` | _(grounding only)_ | Individual cell within a table |
-
-Extract returns:
-
-```json
-{
-  "extraction": {
-    "invoice_number": "INV-12345",
-    "total": 1250.00
-  },
-  "extraction_metadata": {
-    "invoice_number": {
-      "chunk_ids": ["chunk-uuid-1"]
-    },
-    "total": {
-      "chunk_ids": ["chunk-uuid-2"],
-      "cell_ids": ["2-a5"]
-    }
-  },
-  "metadata": {
-    "filename": "markdown.md",
-    "org_id": "org-123",
-    "duration_ms": 850,
-    "credit_usage": 1.0,
-    "job_id": "abc-456",
-    "version": "extract-20251024",
-    "schema_violation_error": null,
-    "fallback_model_version": null
-  }
-}
-```
-
-**Extract Metadata Fields:**
-- **`schema_violation_error`**: `null` when extraction matches schema. Contains a detailed error message when the extracted data doesn't fully conform (HTTP 206 response). Extraction still returns partial data and consumes credits.
-- **`fallback_model_version`**: `null` normally. Contains the model version actually used when the initial extraction attempt failed with the requested version and a fallback was used.
-
-### Grounding and Traceability
-
-Every parsed element includes precise location information in the top-level `grounding` dictionary:
-
-- **Page references**: Zero-indexed page numbers
-- **Bounding boxes**: Normalized coordinates (0-1) for position
-  - `left`, `top`, `right`, `bottom`
-  - Convert to pixels: multiply by image dimensions
-- **Element IDs**: UUID for chunks, `{page}-{base62}` for tables and table cells
-  - Table/cell IDs use sequential base62 numbering per page: `0-1`, `0-2`, ..., `0-9`, `0-a`, ..., `0-z`, `0-A`, ..., `0-Z`, `0-10`, etc.
-  - Numbering restarts on each page (e.g., first table on page 1 → `1-1`)
-- **Grounding types**: Each entry has a `type` field using prefixed names (e.g., `chunkText`, `chunkTable`). See [Grounding Type Mapping](#grounding-type-mapping).
-- **Table cell position**: `tableCell` entries include a `position` object with `row`, `col` (zero-indexed), `rowspan`, `colspan`, and `chunk_id` (the parent table chunk UUID)
-- **Extraction metadata**: Shows which chunks/cells provided each field
+| `tableCell` | _(grounding only)_ | Individual cell within a table (includes a `position` object: `row`, `col`, `rowspan`, `colspan`, `chunk_id`) |
 
 **Per-chunk grounding** (on each chunk object) contains only `box` and `page`. The **top-level grounding dictionary** adds `type` and, for table cells, `position`.
 
-**Example:**
 ```python
 # Per-chunk grounding (basic location)
 for chunk in response.chunks:
@@ -856,14 +717,18 @@ for chunk in response.chunks:
     print(f"Location: ({bbox.left}, {bbox.top}) to ({bbox.right}, {bbox.bottom})")
 
 # Top-level grounding (detailed, with type and position)
-# NOTE: grounding values are Pydantic models — use attribute access, not dict access
+# NOTE: grounding values are Pydantic models (use attribute access, not dict access)
 for elem_id, info in response.grounding.items():
     print(f"{elem_id}: type={info.type}, page={info.page}")
     if info.type == "tableCell" and info.position:
         print(f"  Cell at row={info.position.row}, col={info.position.col}")
 ```
 
-> **Important:** `response.grounding` is a `Dict[str, Grounding]` — the outer container is a dict (so `.items()`, `.get()` work), but each **value** is a Pydantic model. Use **attribute access** (`info.type`, `info.box.left`) not dict access (`info["type"]`).
+> **Important:** `response.grounding` is a `Dict[str, Grounding]` (the outer container is a dict, so `.items()`, `.get()` work), but each **value** is a Pydantic model. Use **attribute access** (`info.type`, `info.box.left`) not dict access (`info["type"]`).
+
+**Extract metadata fields:**
+- **`schema_violation_error`**: `null` when extraction matches schema. Contains an error message when extracted data doesn't fully conform (HTTP 206). Extraction still returns partial data and consumes credits.
+- **`fallback_model_version`**: `null` normally. Contains the model version actually used if the requested version failed and a fallback was applied.
 
 ### Confidence Scores {#confidence-scores}
 
@@ -894,19 +759,17 @@ for elem_id, info in response.grounding.items():
 
 ### Model Selection
 
-- **Use dpt-2-latest** for most documents (complex layouts, logos, signatures)
-- **Use dpt-2-mini** for simple, digitally-native documents (faster, cheaper)
-- **Pin versions in production** for reproducibility (e.g., `dpt-2-20260302`)
-- **Use extract-latest** for extraction (automatically uses newest model)
-- **Do NOT use dpt-1** — deprecated March 31, 2026; migrate to dpt-2
+- **Pin versions in production** for reproducibility (e.g., `dpt-2-20260410`)
+- **Use extract-latest** for extraction (automatically uses the newest model, currently `extract-20260314`)
+- **Do NOT use dpt-1**: deprecated; migrate to dpt-2
 
 ### Schema Design
 
 - **Be specific**: Use descriptive field names (`invoice_number` not `number`)
 - **Add descriptions**: Include format requirements ("in USD", "as YYYY-MM-DD")
 - **Keep it simple**: Start with few fields, add more as needed
-- **Limit complexity**: Under 30 properties for optimal performance
 - **Match document structure**: Order fields as they appear in document
+- **`extract-20260314` capabilities**: Unlimited schema size, cross-page table reconstruction, and `x-alternativeNames` for semantic field matching across document variations
 
 For detailed schema patterns, see [references/extraction-schemas.md](references/extraction-schemas.md)
 
@@ -979,6 +842,7 @@ See [references/troubleshooting.md](references/troubleshooting.md) for HTTP erro
 - [LandingAI ADE Documentation](https://docs.landing.ai/ade/)
 - [Parse API Reference](https://docs.landing.ai/api-reference/tools/ade-parse)
 - [Extract API Reference](https://docs.landing.ai/api-reference/tools/ade-extract)
+- [Build Extract Schema API Reference](https://docs.landing.ai/api-reference/tools/ade-build-schema)
 - [Split API Reference](https://docs.landing.ai/api-reference/tools/ade-split)
 - [Python Library (GitHub)](https://github.com/landing-ai/ade-python)
 
@@ -990,4 +854,4 @@ See [references/troubleshooting.md](references/troubleshooting.md) for HTTP erro
 - [Chunk Types Reference](references/chunk-types.md) - Complete chunk type guide
 - [File Formats](references/file-formats.md) - Supported formats and considerations
 - [Use Cases](references/use-cases.md) - Worked examples for invoices, forms, tables, and figure extraction
-- [Troubleshooting](references/troubleshooting.md) - HTTP error codes and common issues
+- [Troubleshooting](references/troubleshooting.md) - Error codes and common issues by endpoint

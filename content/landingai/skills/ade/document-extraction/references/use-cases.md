@@ -1,6 +1,6 @@
 # Use Cases
 
-Common document processing patterns using LandingAI ADE. All examples assume the client and dependencies are set up per `SKILL.md`.
+Common document processing patterns using LandingAI ADE. Each example is self-contained and includes all required imports.
 
 ## Invoice Processing
 
@@ -34,7 +34,7 @@ extract_response = client.extract(
 )
 
 invoice = extract_response.extraction
-print(f"Invoice #{invoice['invoice_number']} — ${invoice['total_amount']}")
+print(f"Invoice #{invoice['invoice_number']}: ${invoice['total_amount']}")
 for item in invoice['line_items']:
     print(f"  {item['description']}: {item['quantity']} x ${item['unit_price']}")
 ```
@@ -44,6 +44,9 @@ for item in invoice['line_items']:
 ```python
 from pydantic import BaseModel, Field
 from typing import Optional
+from landingai_ade.lib import pydantic_to_json_schema
+from landingai_ade import LandingAIADE
+from pathlib import Path
 
 class PatientIntake(BaseModel):
     patient_name: str = Field(description="Full patient name")
@@ -53,6 +56,8 @@ class PatientIntake(BaseModel):
     allergies: list[str] = Field(description="List of known allergies")
     has_existing_conditions: bool = Field(description="Whether patient has existing conditions")
     primary_complaint: Optional[str] = Field(default=None, description="Primary complaint or reason for visit")
+
+client = LandingAIADE()
 
 # Parse and extract
 parse_response = client.parse(document=Path("intake_form.pdf"), model="dpt-2-latest")
@@ -69,8 +74,23 @@ print(extract_response.extraction)
 Split a batch PDF into document types, then extract type-specific fields from each:
 
 ```python
+from pydantic import BaseModel, Field
+from landingai_ade.lib import pydantic_to_json_schema
 from landingai_ade import LandingAIADE
 from pathlib import Path
+
+class LineItem(BaseModel):
+    description: str = Field(description="Item description")
+    quantity: int = Field(description="Quantity")
+    unit_price: float = Field(description="Unit price in USD")
+    amount: float = Field(description="Line total in USD")
+
+class Invoice(BaseModel):
+    invoice_number: str = Field(description="Invoice number")
+    invoice_date: str = Field(description="Invoice date as YYYY-MM-DD")
+    vendor_name: str = Field(description="Vendor company name")
+    total_amount: float = Field(description="Total amount due in USD")
+    line_items: list[LineItem] = Field(description="List of line items")
 
 client = LandingAIADE()
 
@@ -107,7 +127,8 @@ for split in split_response.splits:
 ```python
 from landingai_ade import LandingAIADE
 from pathlib import Path
-import json
+import pandas as pd
+from io import StringIO
 
 client = LandingAIADE()
 
@@ -120,12 +141,9 @@ print(f"Found {len(tables)} tables")
 
 for i, table in enumerate(tables, start=1):
     print(f"\nTable {i} on page {table.grounding.page}:")
-    print(table.markdown)  # HTML table — parse with pandas or BeautifulSoup
+    print(table.markdown)  # HTML table; parse with pandas or BeautifulSoup
 
 # Save as CSV using pandas
-import pandas as pd
-from io import StringIO
-
 for i, table in enumerate(tables, start=1):
     try:
         dfs = pd.read_html(StringIO(table.markdown))
@@ -149,7 +167,7 @@ Extract figures from PDFs as individual PNG files using bounding boxes:
 from dotenv import load_dotenv
 load_dotenv()
 
-import fitz  # PyMuPDF — install with: pip install pymupdf
+import fitz  # PyMuPDF (install with: pip install pymupdf)
 from landingai_ade import LandingAIADE
 from pathlib import Path
 
@@ -168,7 +186,7 @@ pdf_doc = fitz.open(pdf_path)
 
 for idx, chunk in enumerate(figure_chunks, start=1):
     page_num = chunk.grounding.page
-    bbox = chunk.grounding.box  # Always present — API guarantees grounding on returned chunks
+    bbox = chunk.grounding.box  # Always present; API guarantees grounding on returned chunks
 
     page = pdf_doc[page_num]
 

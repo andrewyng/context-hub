@@ -541,8 +541,8 @@ chub-first-draft/
 ## Future considerations
 
 - **`skills_dir` / `docs_dir` config** — default output directories for skills and docs
-- **Agent detection** — auto-detect installed agents and write to the right skill directory
-- **`chub install`** — dedicated install command if the piping pattern proves too verbose
+- ~~**Agent detection**~~ — implemented: `chub --install-skills` with 3-tier auto-detection
+- ~~**`chub install`**~~ — implemented: `chub --install-skills [--runtime <agent>]`
 - **Usage telemetry** — agents report which docs/skills they used, enabling quality signals
 - **CI/CD integration** — GitHub Action that runs `chub build` and publishes to CDN on push
 

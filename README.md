@@ -25,14 +25,13 @@ cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md <agent-skill-dir>/g
 
 The source for that packaged skill lives in this repo at
 [cli/skills/get-api-docs/SKILL.md](cli/skills/get-api-docs/SKILL.md). The CLI
-also exposes `chub help` so agents can read versioned runtime instructions for
-the installed CLI.
+also exposes versioned runtime instructions through `chub --help`.
 
 ## How It Works
 
 Chub is designed for your coding agent to use (not for you to use!). The
 recommended pattern is: install the packaged `get-api-docs` skill, then have
-the agent run `chub help` to get the matching remote instructions for its
+the agent run `chub --help` to get the matching remote instructions for its
 installed CLI version before it searches or fetches anything. That remote help
 can be revised over time for the same CLI version, and the CLI falls back to
 bundled local help if the exact remote document is unavailable.

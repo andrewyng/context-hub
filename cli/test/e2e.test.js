@@ -144,51 +144,28 @@ describe('chub CLI e2e', () => {
   });
 
   describe('help', () => {
-    itCli('returns bundled local help when remote help is disabled', () => {
-      const out = chub(['help', '--json'], {
+    itCli('root --json keeps bundled local help human-readable', () => {
+      const out = chub(['--json'], {
         env: {
           CHUB_HELP_URL: 'off',
         },
       });
-      const data = JSON.parse(out);
-      expect(data.content).toContain('Getting Started');
-      expect(data.content).toContain('Agent Workflow');
-      expect(data.content).toContain('npx skills add https://github.com/andrewyng/context-hub --skill get-api-docs');
-      expect(data.content).toContain('$(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md');
-      expect(data.content).toContain('cli/skills/get-api-docs/SKILL.md');
-      expect(data.source).toBe('local');
+
+      expect(out).toContain('Help source: local');
+      expect(out).toContain('Getting Started');
+      expect(out).toContain('Agent Workflow');
+      expect(out).toContain('npx skills add https://github.com/andrewyng/context-hub --skill get-api-docs');
+      expect(out).toContain('$(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md');
+      expect(out).toContain('cli/skills/get-api-docs/SKILL.md');
+      expect(out.trim()).not.toMatch(/^\{/);
     });
 
-    itCli('retrieves the matching remote help version when available', () => {
+    itCli('root --json retrieves matching remote help in human mode', () => {
       const payload = encodeURIComponent(JSON.stringify({
         schema_version: 1,
         cli_version: '{version}',
         help_revision: '2026-04-01.1',
-        content: 'Remote bootstrap instructions for {version}',
-      })).replaceAll('%7Bversion%7D', '{version}');
-
-      const out = chub(['help', '--json'], {
-        env: {
-          CHUB_HELP_URL: `data:application/json,${payload}`,
-          CHUB_HELP_TIMEOUT_MS: '1000',
-        },
-      });
-
-      const data = JSON.parse(out);
-      expect(data.source).toBe('remote');
-      expect(data.requestedVersion).toBe(CLI_VERSION);
-      expect(data.resolvedVersion).toBe(CLI_VERSION);
-      expect(data.resolution).toBe('exact');
-      expect(data.helpRevision).toBe('2026-04-01.1');
-      expect(data.content).toBe(`Remote bootstrap instructions for ${CLI_VERSION}`);
-    });
-
-    itCli('root command uses versioned help when available', () => {
-      const payload = encodeURIComponent(JSON.stringify({
-        schema_version: 1,
-        cli_version: '{version}',
-        help_revision: '2026-04-01.1',
-        content: 'Root bootstrap instructions for {version}',
+        content: 'Remote help stays text for {version}',
       })).replaceAll('%7Bversion%7D', '{version}');
 
       const out = chub(['--json'], {
@@ -198,17 +175,58 @@ describe('chub CLI e2e', () => {
         },
       });
 
-      const data = JSON.parse(out);
-      expect(data.source).toBe('remote');
-      expect(data.content).toBe(`Root bootstrap instructions for ${CLI_VERSION}`);
+      expect(out).toContain('Help source: remote');
+      expect(out).toContain('revision 2026-04-01.1');
+      expect(out).toContain(`Remote help stays text for ${CLI_VERSION}`);
+      expect(out.trim()).not.toMatch(/^\{/);
     });
 
-    itCli('root --help uses the same versioned bootstrap help', () => {
+    itCli('root command prints versioned help in human mode when available', () => {
+      const payload = encodeURIComponent(JSON.stringify({
+        schema_version: 1,
+        cli_version: '{version}',
+        help_revision: '2026-04-01.1',
+        content: 'Root bootstrap instructions for {version}',
+      })).replaceAll('%7Bversion%7D', '{version}');
+
+      const out = chub([], {
+        env: {
+          CHUB_HELP_URL: `data:application/json,${payload}`,
+          CHUB_HELP_TIMEOUT_MS: '1000',
+        },
+      });
+
+      expect(out).toContain('Help source: remote');
+      expect(out).toContain(`Root bootstrap instructions for ${CLI_VERSION}`);
+      expect(out.trim()).not.toMatch(/^\{/);
+    });
+
+    itCli('root --help prints versioned help in human mode', () => {
       const payload = encodeURIComponent(JSON.stringify({
         schema_version: 1,
         cli_version: '{version}',
         help_revision: '2026-04-01.1',
         content: 'Flag bootstrap instructions for {version}',
+      })).replaceAll('%7Bversion%7D', '{version}');
+
+      const out = chub(['--help'], {
+        env: {
+          CHUB_HELP_URL: `data:application/json,${payload}`,
+          CHUB_HELP_TIMEOUT_MS: '1000',
+        },
+      });
+
+      expect(out).toContain('Help source: remote');
+      expect(out).toContain(`Flag bootstrap instructions for ${CLI_VERSION}`);
+      expect(out.trim()).not.toMatch(/^\{/);
+    });
+
+    itCli('root --help keeps human help when --json is also present', () => {
+      const payload = encodeURIComponent(JSON.stringify({
+        schema_version: 1,
+        cli_version: '{version}',
+        help_revision: '2026-04-01.1',
+        content: 'Help flag wins over JSON for {version}',
       })).replaceAll('%7Bversion%7D', '{version}');
 
       const out = chub(['--help', '--json'], {
@@ -218,29 +236,9 @@ describe('chub CLI e2e', () => {
         },
       });
 
-      const data = JSON.parse(out);
-      expect(data.source).toBe('remote');
-      expect(data.content).toBe(`Flag bootstrap instructions for ${CLI_VERSION}`);
-    });
-
-    itCli('help --help uses the same versioned bootstrap help', () => {
-      const payload = encodeURIComponent(JSON.stringify({
-        schema_version: 1,
-        cli_version: '{version}',
-        help_revision: '2026-04-01.1',
-        content: 'Help flag bootstrap instructions for {version}',
-      })).replaceAll('%7Bversion%7D', '{version}');
-
-      const out = chub(['help', '--help', '--json'], {
-        env: {
-          CHUB_HELP_URL: `data:application/json,${payload}`,
-          CHUB_HELP_TIMEOUT_MS: '1000',
-        },
-      });
-
-      const data = JSON.parse(out);
-      expect(data.source).toBe('remote');
-      expect(data.content).toBe(`Help flag bootstrap instructions for ${CLI_VERSION}`);
+      expect(out).toContain('Help source: remote');
+      expect(out).toContain(`Help flag wins over JSON for ${CLI_VERSION}`);
+      expect(out.trim()).not.toMatch(/^\{/);
     });
 
     itCli('subcommand --help still prints command syntax help', () => {
@@ -249,7 +247,19 @@ describe('chub CLI e2e', () => {
       expect(out).toContain('--lang <language>');
     });
 
-    itCli('does not accept help operands for subcommand help', () => {
+    itCli('does not support chub help as a separate alias', () => {
+      const out = chub(['help'], {
+        expectError: true,
+        env: {
+          CHUB_HELP_URL: 'off',
+        },
+      });
+
+      expect(out).toContain('`chub help` is not supported');
+      expect(out).toContain('chub --help');
+    });
+
+    itCli('does not support chub help search as subcommand help', () => {
       const out = chub(['help', 'search'], {
         expectError: true,
         env: {
@@ -257,20 +267,20 @@ describe('chub CLI e2e', () => {
         },
       });
 
-      expect(out).toContain('Unexpected operand for help');
+      expect(out).toContain('`chub help` is not supported');
       expect(out).toContain('chub <command> --help');
     });
 
-    itCli('does not let help operands bypass validation with --help', () => {
-      const out = chub(['help', 'search', '--help'], {
+    itCli('does not let chub help --help --json bypass alias rejection', () => {
+      const out = chub(['help', '--help', '--json'], {
         expectError: true,
         env: {
           CHUB_HELP_URL: 'off',
         },
       });
 
-      expect(out).toContain('Unexpected operand for help');
-      expect(out).toContain('chub <command> --help');
+      expect(out).toContain('`chub help` is not supported');
+      expect(out).toContain('chub --help');
     });
 
   });

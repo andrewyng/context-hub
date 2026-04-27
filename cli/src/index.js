@@ -10,7 +10,7 @@ import { registerGetCommand } from './commands/get.js';
 import { registerBuildCommand } from './commands/build.js';
 import { registerFeedbackCommand } from './commands/feedback.js';
 import { registerAnnotateCommand } from './commands/annotate.js';
-import { printHelpContent, registerHelpCommand } from './commands/help.js';
+import { printHelpContent } from './commands/help.js';
 import { trackEvent, shutdownAnalytics, setCliVersion } from './lib/analytics.js';
 import { error, output } from './lib/output.js';
 import { showWelcomeIfNeeded } from './lib/welcome.js';
@@ -22,31 +22,22 @@ setCliVersion(pkg.version);
 
 const program = new Command();
 
-function isBootstrapHelpRequest(argv) {
+function isRootHelpRequest(argv) {
   const args = argv.slice(2);
   const hasHelpFlag = args.includes('--help') || args.includes('-h');
   if (!hasHelpFlag) return false;
-
-  if (args[0] === 'help') {
-    return args.slice(1).every((arg) => arg.startsWith('-'));
-  }
 
   // Preserve subcommand help, e.g. `chub search --help`.
   return args.every((arg) => arg.startsWith('-'));
 }
 
-function getHelpCommandOperands(argv) {
-  const args = argv.slice(2);
-  if (args[0] !== 'help') return [];
-  return args.slice(1).filter((arg) => !arg.startsWith('-'));
+function isUnsupportedHelpAlias(argv) {
+  return argv.slice(2)[0] === 'help';
 }
 
-async function printBootstrapHelp() {
-  const globalOpts = {
-    json: process.argv.slice(2).includes('--json'),
-  };
+async function printRootHelp() {
   const help = await loadHelpContent(pkg.version);
-  output(help, printHelpContent, globalOpts);
+  output(help, printHelpContent, {});
 }
 
 program
@@ -55,14 +46,13 @@ program
   .version(pkg.version, '-V, --cli-version')
   .addHelpCommand(false)
   .option('--json', 'Output as JSON (machine-readable)')
+  .allowExcessArguments(false)
   .action(async () => {
-    const globalOpts = program.optsWithGlobals();
-    const help = await loadHelpContent(pkg.version);
-    output(help, printHelpContent, globalOpts);
+    await printRootHelp();
   });
 
 // Commands that don't need registry
-const SKIP_REGISTRY = ['update', 'cache', 'build', 'feedback', 'annotate', 'help'];
+const SKIP_REGISTRY = ['update', 'cache', 'build', 'feedback', 'annotate'];
 
 program.hook('preAction', async (thisCommand) => {
   const globalOpts = thisCommand.optsWithGlobals?.() || {};
@@ -107,16 +97,14 @@ registerGetCommand(program);
 registerBuildCommand(program);
 registerFeedbackCommand(program);
 registerAnnotateCommand(program);
-registerHelpCommand(program, pkg.version);
 
-const helpCommandOperands = getHelpCommandOperands(process.argv);
-if (helpCommandOperands.length > 0) {
+if (isUnsupportedHelpAlias(process.argv)) {
   error(
-    `Unexpected operand for help: "${helpCommandOperands.join(' ')}". Use \`chub <command> --help\` for command syntax help.`,
-    { json: process.argv.slice(2).includes('--json') }
+    '`chub help` is not supported. Use `chub --help` for root help or `chub <command> --help` for command syntax help.',
+    {}
   );
-} else if (isBootstrapHelpRequest(process.argv)) {
-  await printBootstrapHelp();
+} else if (isRootHelpRequest(process.argv)) {
+  await printRootHelp();
 } else {
   program.parse();
 }

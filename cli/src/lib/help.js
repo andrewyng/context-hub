@@ -128,7 +128,7 @@ export function getLocalHelpText(cliVersion) {
     '',
     'Flags',
     '',
-    '  --json                 Structured JSON output (for agents and piping)',
+    '  --json                 Structured JSON output for command results',
     '  --tags <csv>           Filter by tags (e.g. docs, skill, openai, browser)',
     '  --lang <language>      Language variant (required for docs): py | js | ts | rb | cs (or full name)',
     '  --full                 Fetch all files, not just the entry point',

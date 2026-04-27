@@ -6,9 +6,9 @@ Full command reference for Context Hub (`chub`).
 
 | Flag | Purpose |
 |------|---------|
-| `--json` | Structured JSON output (for agents and piping) |
+| `--json` | Structured JSON output for command results |
 | `--version` | Print CLI version |
-| `--help` | Show the same versioned bootstrap guidance as `chub help` |
+| `--help` | Show versioned bootstrap guidance |
 
 ## Install as an Agent Skill
 
@@ -21,12 +21,13 @@ cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md <agent-skill-dir>/g
 
 The source skill lives in this repo at `cli/skills/get-api-docs/SKILL.md`.
 
-## chub help
+## chub / chub --help
 
 Show bootstrap guidance for coding agents.
 
-- Bare `chub`, root `chub --help`, and `chub help` all print the same bootstrap guidance.
-- `chub help` first tries to fetch the remote help document for the exact installed CLI version.
+- Bare `chub` and root `chub --help` print the same bootstrap guidance.
+- Root help stays human-readable even when `--json` is present.
+- Root help first tries to fetch the remote help document for the exact installed CLI version.
 - The remote document for a given CLI version can be revised over time to tune prompting for that same binary.
 - If the exact remote help document is unavailable or mismatched, it prints the bundled local help text shipped with the installed CLI.
 - Subcommand flags print command syntax help, e.g. `chub search --help`.

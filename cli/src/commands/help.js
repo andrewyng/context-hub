@@ -1,6 +1,4 @@
 import chalk from 'chalk';
-import { loadHelpContent } from '../lib/help.js';
-import { output } from '../lib/output.js';
 
 export function printHelpContent(data) {
   if (data.source === 'remote') {
@@ -15,16 +13,4 @@ export function printHelpContent(data) {
   }
 
   process.stdout.write(`${data.content}\n`);
-}
-
-export function registerHelpCommand(program, cliVersion) {
-  program
-    .command('help')
-    .description('Show the same versioned chub bootstrap guidance as chub --help')
-    .allowExcessArguments(false)
-    .action(async () => {
-      const globalOpts = program.optsWithGlobals();
-      const help = await loadHelpContent(cliVersion);
-      output(help, printHelpContent, globalOpts);
-    });
 }

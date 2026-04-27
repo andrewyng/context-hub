@@ -10,10 +10,7 @@ npm install -g @aisuite/chub
 
 ## Use as an Agent Skill
 
-The npm package ships a `get-api-docs` skill that teaches agents to run
-`chub --help` or `chub help`, search current docs, fetch the selected entry, and
-leave feedback instead of guessing from training data. Install the packaged
-skill manually into your agent tool of choice:
+The CLI ships with a skill that teaches agents to fetch docs automatically instead of guessing from training data. Install it into your agent tool of choice:
 
 ### Claude Code
 
@@ -42,22 +39,7 @@ cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md .cursor/rules/get-a
 
 ### Other Agent Tools
 
-The skill is packaged with `@aisuite/chub`. For a global npm install, copy `$(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md` to wherever your agent tool reads custom instructions from.
-
-## Runtime Bootstrap
-
-Once chub is installed, start here:
-
-```bash
-chub --help
-# or
-chub help
-```
-
-`chub --help` and `chub help` fetch the same bootstrap instructions for the
-installed CLI version from the network. That exact-version remote help can be
-revised over time to tune prompting for the same binary, and chub falls back to
-the bundled local help if the exact remote document is unavailable.
+The skill is a standard markdown file at `skills/get-api-docs/SKILL.md`. Copy it to wherever your agent tool reads custom instructions from.
 
 ## Commands
 

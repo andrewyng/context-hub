@@ -105,7 +105,8 @@ describe('loadHelpContent', () => {
     expect(help.requestedVersion).toBe('0.1.3');
     expect(help.resolvedVersion).toBe('0.1.3');
     expect(help.resolution).toBe('local');
-    expect(help.content).toContain('Bootstrap workflow for coding agents');
+    expect(help.content).toContain('Getting Started');
+    expect(help.content).toContain('Agent Workflow');
     expect(help.fallbackReason).toContain('404 Not Found');
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -126,7 +127,8 @@ describe('loadHelpContent', () => {
     const help = await loadHelpContent('0.1.3', { fetchImpl: fetchMock });
 
     expect(help.source).toBe('local');
-    expect(help.content).toContain('Bootstrap workflow for coding agents');
+    expect(help.content).toContain('Getting Started');
+    expect(help.content).toContain('Agent Workflow');
     expect(help.fallbackReason).toContain('mismatched help payload version 0.2.0');
   });
 
@@ -151,7 +153,8 @@ describe('loadHelpContent', () => {
     const help = await loadHelpContent('0.1.3', { fetchImpl: fetchMock });
 
     expect(help.source).toBe('local');
-    expect(help.content).toContain('Bootstrap workflow for coding agents');
+    expect(help.content).toContain('Getting Started');
+    expect(help.content).toContain('Agent Workflow');
     expect(help.fallbackReason).toContain('Invalid remote help payload');
   });
 
@@ -171,7 +174,8 @@ describe('loadHelpContent', () => {
     const help = await loadHelpContent('0.1.3', { fetchImpl: fetchMock });
 
     expect(help.source).toBe('local');
-    expect(help.content).toContain('Bootstrap workflow for coding agents');
+    expect(help.content).toContain('Getting Started');
+    expect(help.content).toContain('Agent Workflow');
     expect(help.fallbackReason).toContain('Invalid remote help payload');
   });
 
@@ -190,7 +194,8 @@ describe('loadHelpContent', () => {
     const help = await loadHelpContent('0.1.3', { fetchImpl: fetchMock });
 
     expect(help.source).toBe('local');
-    expect(help.content).toContain('Bootstrap workflow for coding agents');
+    expect(help.content).toContain('Getting Started');
+    expect(help.content).toContain('Agent Workflow');
     expect(help.fallbackReason).toContain('Invalid remote help payload');
   });
 
@@ -293,7 +298,7 @@ describe('getVersionedHelpPayload', () => {
       cli_version: '0.1.3',
       help_revision: 'git-abc1234',
       updated_at: '2026-04-02T00:00:00Z',
-      content: expect.stringContaining('Bootstrap workflow for coding agents'),
+      content: expect.stringContaining('Getting Started'),
     });
   });
 });

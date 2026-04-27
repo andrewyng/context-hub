@@ -151,7 +151,8 @@ describe('chub CLI e2e', () => {
         },
       });
       const data = JSON.parse(out);
-      expect(data.content).toContain('Bootstrap workflow for coding agents');
+      expect(data.content).toContain('Getting Started');
+      expect(data.content).toContain('Agent Workflow');
       expect(data.content).toContain('npx skills add https://github.com/andrewyng/context-hub --skill get-api-docs');
       expect(data.content).toContain('$(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md');
       expect(data.content).toContain('cli/skills/get-api-docs/SKILL.md');

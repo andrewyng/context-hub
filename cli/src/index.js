@@ -31,8 +31,15 @@ function isRootHelpRequest(argv) {
   return args.every((arg) => arg.startsWith('-'));
 }
 
-function isUnsupportedHelpAlias(argv) {
-  return argv.slice(2)[0] === 'help';
+function isRootHelpAlias(argv) {
+  const args = argv.slice(2);
+  return args[0] === 'help' && args.slice(1).every((arg) => arg.startsWith('-'));
+}
+
+function getHelpAliasOperands(argv) {
+  const args = argv.slice(2);
+  if (args[0] !== 'help') return [];
+  return args.slice(1).filter((arg) => !arg.startsWith('-'));
 }
 
 async function printRootHelp() {
@@ -98,12 +105,13 @@ registerBuildCommand(program);
 registerFeedbackCommand(program);
 registerAnnotateCommand(program);
 
-if (isUnsupportedHelpAlias(process.argv)) {
+const helpAliasOperands = getHelpAliasOperands(process.argv);
+if (helpAliasOperands.length > 0) {
   error(
-    '`chub help` is not supported. Use `chub --help` for root help or `chub <command> --help` for command syntax help.',
+    `Unexpected operand for help: "${helpAliasOperands.join(' ')}". Use \`chub <command> --help\` for command syntax help.`,
     {}
   );
-} else if (isRootHelpRequest(process.argv)) {
+} else if (isRootHelpAlias(process.argv) || isRootHelpRequest(process.argv)) {
   await printRootHelp();
 } else {
   program.parse();

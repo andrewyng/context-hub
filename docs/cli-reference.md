@@ -21,16 +21,17 @@ cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md <agent-skill-dir>/g
 
 The source skill lives in this repo at `cli/skills/get-api-docs/SKILL.md`.
 
-## chub / chub --help
+## chub / chub --help / chub -h / chub help
 
 Show bootstrap guidance for coding agents.
 
-- Bare `chub` and root `chub --help` print the same bootstrap guidance.
+- Bare `chub`, root `chub --help`, `chub -h`, and `chub help` print the same bootstrap guidance.
 - Root help stays human-readable even when `--json` is present.
-- Root help first tries to fetch the remote help document for the exact installed CLI version.
+- All root help forms first try to fetch the same remote help document for the exact installed CLI version.
 - The remote document for a given CLI version can be revised over time to tune prompting for that same binary.
 - If the exact remote help document is unavailable or mismatched, it prints the bundled local help text shipped with the installed CLI.
 - Subcommand flags print command syntax help, e.g. `chub search --help`.
+- `chub help <command>` is not supported; use `chub <command> --help` instead.
 
 ## chub search [query]
 

@@ -160,6 +160,42 @@ describe('chub CLI e2e', () => {
       expect(out.trim()).not.toMatch(/^\{/);
     });
 
+    itCli('chub help is the same root help as -h and --help', () => {
+      const env = {
+        CHUB_HELP_URL: 'off',
+      };
+
+      const rootHelp = chub(['--help'], { env });
+
+      expect(chub(['-h'], { env })).toBe(rootHelp);
+      expect(chub(['help'], { env })).toBe(rootHelp);
+      expect(chub(['help', '--json'], { env })).toBe(rootHelp);
+      expect(chub(['help', '--help', '--json'], { env })).toBe(rootHelp);
+    });
+
+    itCli('root help aliases resolve the same remote help document', () => {
+      const payload = encodeURIComponent(JSON.stringify({
+        schema_version: 1,
+        cli_version: '{version}',
+        help_revision: '2026-04-01.same',
+        content: 'Same remote help for {version}',
+      })).replaceAll('%7Bversion%7D', '{version}');
+      const env = {
+        CHUB_HELP_URL: `data:application/json,${payload}`,
+        CHUB_HELP_TIMEOUT_MS: '1000',
+      };
+
+      const rootHelp = chub(['--help'], { env });
+
+      expect(rootHelp).toContain('Help source: remote');
+      expect(rootHelp).toContain('revision 2026-04-01.same');
+      expect(rootHelp).toContain(`Same remote help for ${CLI_VERSION}`);
+      expect(chub(['-h'], { env })).toBe(rootHelp);
+      expect(chub(['help'], { env })).toBe(rootHelp);
+      expect(chub(['help', '--json'], { env })).toBe(rootHelp);
+      expect(chub(['help', '--help', '--json'], { env })).toBe(rootHelp);
+    });
+
     itCli('root --json retrieves matching remote help in human mode', () => {
       const payload = encodeURIComponent(JSON.stringify({
         schema_version: 1,
@@ -247,18 +283,6 @@ describe('chub CLI e2e', () => {
       expect(out).toContain('--lang <language>');
     });
 
-    itCli('does not support chub help as a separate alias', () => {
-      const out = chub(['help'], {
-        expectError: true,
-        env: {
-          CHUB_HELP_URL: 'off',
-        },
-      });
-
-      expect(out).toContain('`chub help` is not supported');
-      expect(out).toContain('chub --help');
-    });
-
     itCli('does not support chub help search as subcommand help', () => {
       const out = chub(['help', 'search'], {
         expectError: true,
@@ -267,20 +291,20 @@ describe('chub CLI e2e', () => {
         },
       });
 
-      expect(out).toContain('`chub help` is not supported');
+      expect(out).toContain('Unexpected operand for help');
       expect(out).toContain('chub <command> --help');
     });
 
-    itCli('does not let chub help --help --json bypass alias rejection', () => {
-      const out = chub(['help', '--help', '--json'], {
+    itCli('does not let chub help operands bypass alias validation', () => {
+      const out = chub(['help', 'search', '--help', '--json'], {
         expectError: true,
         env: {
           CHUB_HELP_URL: 'off',
         },
       });
 
-      expect(out).toContain('`chub help` is not supported');
-      expect(out).toContain('chub --help');
+      expect(out).toContain('Unexpected operand for help');
+      expect(out).toContain('chub <command> --help');
     });
 
   });

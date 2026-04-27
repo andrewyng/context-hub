@@ -5,7 +5,7 @@ metadata:
   languages: "python"
   versions: "2.26.0"
   revision: 1
-  updated-on: "2026-03-12"
+  updated-on: "2026-04-27"
   source: maintainer
   tags: "openai,python,sdk,llm,responses,chat,streaming,webhooks"
 ---
@@ -21,11 +21,23 @@ metadata:
 ## Version-Sensitive Notes
 
 - This entry is pinned to the version used here `2.26.0`.
-- Upstream currently publishes `v2.26.0` as the latest GitHub release and PyPI package version, so the version used here matches current upstream.
+- Do not treat this package entry as "latest SDK" without refreshing the package-release binding. The API/model guidance below is current as of April 27, 2026, but the SDK pin remains intentionally version-specific.
 - `openai` requires Python `>=3.9`.
 - The maintainers describe the package as generally following SemVer, but they reserve some backwards-incompatible changes for minor releases when the impact is limited to static typing, internals, or low-impact runtime behavior. Do not assume every `2.x` minor bump is completely frictionless.
 - The SDK README describes the Responses API as the primary API for model interaction. Chat Completions remains supported, but it is no longer the default shape to copy for new code.
 - `AzureOpenAI` is a separate client class, and the README explicitly warns that Azure API shapes differ from the core OpenAI API shapes, so static response and parameter types may not always line up perfectly.
+
+## Latest Official API/Model Update (April 2026)
+
+OpenAI's current official API docs recommend starting new complex reasoning and coding work with `gpt-5.5`. The docs also recommend `gpt-5.4-mini` and `gpt-5.4-nano` when latency or cost is more important.
+
+For new Python SDK examples in this entry:
+
+- Prefer `client.responses.create(...)`.
+- Use `model="gpt-5.5"` as the default current model for high-quality text, coding, multimodal, and reasoning work.
+- Use `model="gpt-5.4-mini"` or `model="gpt-5.4-nano"` for lower-latency or lower-cost workloads.
+- Use `model="gpt-image-2"` for direct Image API generation or editing. For conversational image generation through the Responses API, use a mainline model such as `gpt-5.5` with the `image_generation` tool instead of putting `gpt-image-2` in the Responses `model` field.
+- Keep Chat Completions examples only for existing codebases or SDK helpers that are explicitly documented there.
 
 ## Install
 
@@ -62,7 +74,7 @@ from openai import OpenAI
 
 with OpenAI() as client:
     response = client.responses.create(
-        model="gpt-4.1",
+        model="gpt-5.5",
         input="Ping",
     )
     print(response.output_text)
@@ -80,7 +92,7 @@ from openai import OpenAI
 client = OpenAI()
 
 response = client.responses.create(
-    model="gpt-4.1",
+    model="gpt-5.5",
     instructions="You are a concise coding assistant.",
     input="How do I reverse a list in Python?",
 )
@@ -132,7 +144,7 @@ client = AsyncOpenAI()
 
 async def main() -> None:
     response = await client.responses.create(
-        model="gpt-4.1",
+        model="gpt-5.5",
         input="Explain what an event loop does in Python.",
     )
     print(response.output_text)
@@ -149,7 +161,7 @@ from openai import AsyncOpenAI, DefaultAioHttpClient
 async def main() -> None:
     async with AsyncOpenAI(http_client=DefaultAioHttpClient()) as client:
         response = await client.responses.create(
-            model="gpt-4.1",
+            model="gpt-5.5",
             input="Say hello.",
         )
         print(response.output_text)
@@ -167,7 +179,7 @@ from openai import OpenAI
 client = OpenAI()
 
 stream = client.responses.create(
-    model="gpt-4.1",
+    model="gpt-5.5",
     input="Write a one-sentence bedtime story about a unicorn.",
     stream=True,
 )
@@ -269,7 +281,7 @@ Per-request overrides use `with_options(...)`:
 
 ```python
 response = client.with_options(timeout=5.0, max_retries=0).responses.create(
-    model="gpt-4.1",
+    model="gpt-5.5",
     input="Quick health check.",
 )
 ```
@@ -382,7 +394,7 @@ from openai import OpenAI
 client = OpenAI()
 
 try:
-    client.responses.create(model="gpt-4.1", input="Hello")
+    client.responses.create(model="gpt-5.5", input="Hello")
 except openai.RateLimitError:
     # Back off and retry later.
     raise
@@ -441,5 +453,10 @@ Realtime pitfall: upstream documents that `error` events are delivered on the op
 
 - OpenAI Python SDK README: `https://github.com/openai/openai-python`
 - OpenAI Python SDK helpers: `https://github.com/openai/openai-python/blob/main/helpers.md`
-- OpenAI Responses API reference: `https://platform.openai.com/docs/api-reference/responses`
+- OpenAI models guide: `https://developers.openai.com/api/docs/models`
+- OpenAI GPT-5.5 model page: `https://developers.openai.com/api/docs/models/gpt-5.5`
+- OpenAI text generation guide: `https://developers.openai.com/api/docs/guides/text`
+- OpenAI GPT Image 2 model page: `https://developers.openai.com/api/docs/models/gpt-image-2`
+- OpenAI image generation guide: `https://developers.openai.com/api/docs/guides/image-generation`
+- OpenAI Responses API reference: `https://developers.openai.com/api/reference/responses`
 - PyPI package page: `https://pypi.org/project/openai/2.26.0/`

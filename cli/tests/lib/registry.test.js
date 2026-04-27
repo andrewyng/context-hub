@@ -8,7 +8,7 @@ describe('searchEntries', () => {
   });
 
   it('returns empty array for nonsense query', () => {
-    const results = searchEntries('zzzzz-no-match-ever-xyz');
+    const results = searchEntries('zzzzzzzzzzzzzzzzzzzzzzzzzzzz');
     expect(results).toEqual([]);
   });
 

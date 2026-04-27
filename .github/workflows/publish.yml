@@ -18,6 +18,26 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: npm install
       - run: cd cli && npm test
+      - name: Verify versioned help is already live on the CDN
+        run: |
+          CLI_VERSION=$(node -e "const fs = require('node:fs'); console.log(JSON.parse(fs.readFileSync('cli/package.json', 'utf8')).version)")
+          export CLI_VERSION
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --location \
+              "https://cdn.aichub.org/v1/help/${CLI_VERSION}.json" \
+              -o /tmp/chub-help.json; then
+              if node -e 'const fs = require("node:fs"); const version = process.env.CLI_VERSION; const payload = JSON.parse(fs.readFileSync("/tmp/chub-help.json", "utf8")); if (payload.cli_version !== version) { console.error(`Expected cli_version ${version}, got ${payload.cli_version}`); process.exit(1); } if (typeof payload.content !== "string" || payload.content.trim().length === 0) { console.error("Remote help payload is empty"); process.exit(1); }'; then
+                exit 0
+              fi
+            fi
+
+            if [ "$attempt" -eq 30 ]; then
+              echo "Timed out waiting for https://cdn.aichub.org/v1/help/${CLI_VERSION}.json to become available" >&2
+              exit 1
+            fi
+
+            sleep 10
+          done
       - run: cd cli && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

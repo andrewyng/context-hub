@@ -1,4 +1,3 @@
-import chalk from 'chalk';
 import { Command } from 'commander';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -11,95 +10,55 @@ import { registerGetCommand } from './commands/get.js';
 import { registerBuildCommand } from './commands/build.js';
 import { registerFeedbackCommand } from './commands/feedback.js';
 import { registerAnnotateCommand } from './commands/annotate.js';
+import { printHelpContent, registerHelpCommand } from './commands/help.js';
 import { trackEvent, shutdownAnalytics, setCliVersion } from './lib/analytics.js';
-import { error } from './lib/output.js';
+import { error, output } from './lib/output.js';
 import { showWelcomeIfNeeded } from './lib/welcome.js';
+import { loadHelpContent } from './lib/help.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
 setCliVersion(pkg.version);
 
-function printUsage() {
-  console.log(`
-${chalk.bold('chub')} — Context Hub CLI v${pkg.version}
-Search and retrieve LLM-optimized docs and skills.
+const program = new Command();
 
-${chalk.bold.underline('Getting Started')}
+function isBootstrapHelpRequest(argv) {
+  const args = argv.slice(2);
+  const hasHelpFlag = args.includes('--help') || args.includes('-h');
+  if (!hasHelpFlag) return false;
 
-  ${chalk.dim('$')} chub update                                ${chalk.dim('# download the registry')}
-  ${chalk.dim('$')} chub search                                ${chalk.dim('# list everything available')}
-  ${chalk.dim('$')} chub search "stripe"                       ${chalk.dim('# fuzzy search')}
-  ${chalk.dim('$')} chub search stripe/payments                ${chalk.dim('# exact id → full detail')}
-  ${chalk.dim('$')} chub get stripe/api                        ${chalk.dim('# print doc to terminal')}
-  ${chalk.dim('$')} chub get stripe/api -o doc.md              ${chalk.dim('# save to file')}
-  ${chalk.dim('$')} chub get openai/chat --lang py             ${chalk.dim('# specific language')}
-  ${chalk.dim('$')} chub get pw-community/login-flows          ${chalk.dim('# fetch a skill')}
-  ${chalk.dim('$')} chub get openai/chat stripe/api            ${chalk.dim('# fetch multiple')}
+  if (args[0] === 'help') {
+    return args.slice(1).every((arg) => arg.startsWith('-'));
+  }
 
-${chalk.bold.underline('Learn & Improve')}
-
-  After using a doc, save what you learned so future sessions start smarter:
-
-  ${chalk.dim('$')} chub annotate stripe/api "Webhook needs raw body"   ${chalk.dim('# persists across sessions')}
-  ${chalk.dim('$')} chub annotate --list                                 ${chalk.dim('# see all saved notes')}
-  ${chalk.dim('$')} chub annotate stripe/api --clear                     ${chalk.dim('# remove a note')}
-
-  Always rate docs after using them — helps authors fix issues and prioritize:
-
-  ${chalk.dim('$')} chub feedback stripe/api up --label accurate "Clear examples"
-  ${chalk.dim('$')} chub feedback stripe/api down --label outdated "Missing v3 API"
-
-${chalk.bold.underline('Commands')}
-
-  ${chalk.bold('search')} [query]              Search docs and skills (no query = list all)
-  ${chalk.bold('get')} <ids...>                 Fetch docs or skills by ID
-  ${chalk.bold('annotate')} [id] [note]        Save a note — appears on future fetches
-  ${chalk.bold('feedback')} <id> <up|down>     Rate a doc (helps authors improve it)
-  ${chalk.bold('update')}                      Refresh the cached registry
-  ${chalk.bold('cache')} status|clear          Manage the local cache
-  ${chalk.bold('build')} <content-dir>        Build registry from content directory
-
-${chalk.bold.underline('Flags')}
-
-  --json                 Structured JSON output (for agents and piping)
-  --tags <csv>           Filter by tags (e.g. docs, skill, openai, browser)
-  --lang <language>      Language variant (required for docs): py | js | ts | rb | cs (or full name)
-  --full                 Fetch all files, not just the entry point
-  -o, --output <path>    Write content to file or directory
-
-${chalk.bold.underline('Agent Piping Patterns')}
-
-  ${chalk.dim('# Get the top result id')}
-  ${chalk.dim('$')} chub search "stripe" --json | jq -r '.results[0].id'
-
-  ${chalk.dim('# Search → pick → fetch → save')}
-  ${chalk.dim('$')} ID=$(chub search "stripe" --json | jq -r '.results[0].id')
-  ${chalk.dim('$')} chub get "$ID" --lang js -o .context/stripe.md
-
-  ${chalk.dim('# Fetch multiple at once')}
-  ${chalk.dim('$')} chub get openai/chat stripe/api -o .context/
-
-${chalk.bold.underline('Multi-Source Config')} ${chalk.dim('(~/.chub/config.yaml)')}
-
-  ${chalk.dim('sources:')}
-  ${chalk.dim('  - name: community')}
-  ${chalk.dim('    url: https://cdn.aichub.org/v1')}
-  ${chalk.dim('  - name: internal')}
-  ${chalk.dim('    path: /path/to/local/docs')}
-
-  ${chalk.dim('# On id collision, use source: prefix: chub get internal:openai/chat')}
-`);
+  // Preserve subcommand help, e.g. `chub search --help`.
+  return args.every((arg) => arg.startsWith('-'));
 }
 
-const program = new Command();
+function getHelpCommandOperands(argv) {
+  const args = argv.slice(2);
+  if (args[0] !== 'help') return [];
+  return args.slice(1).filter((arg) => !arg.startsWith('-'));
+}
+
+async function printBootstrapHelp() {
+  const globalOpts = {
+    json: process.argv.slice(2).includes('--json'),
+  };
+  const help = await loadHelpContent(pkg.version);
+  output(help, printHelpContent, globalOpts);
+}
 
 program
   .name('chub')
   .description('Context Hub - search and retrieve LLM-optimized docs and skills')
   .version(pkg.version, '-V, --cli-version')
+  .addHelpCommand(false)
   .option('--json', 'Output as JSON (machine-readable)')
-  .action(() => {
-    printUsage();
+  .action(async () => {
+    const globalOpts = program.optsWithGlobals();
+    const help = await loadHelpContent(pkg.version);
+    output(help, printHelpContent, globalOpts);
   });
 
 // Commands that don't need registry
@@ -148,8 +107,19 @@ registerGetCommand(program);
 registerBuildCommand(program);
 registerFeedbackCommand(program);
 registerAnnotateCommand(program);
+registerHelpCommand(program, pkg.version);
 
-program.parse();
+const helpCommandOperands = getHelpCommandOperands(process.argv);
+if (helpCommandOperands.length > 0) {
+  error(
+    `Unexpected operand for help: "${helpCommandOperands.join(' ')}". Use \`chub <command> --help\` for command syntax help.`,
+    { json: process.argv.slice(2).includes('--json') }
+  );
+} else if (isBootstrapHelpRequest(process.argv)) {
+  await printBootstrapHelp();
+} else {
+  program.parse();
+}
 
 // Flush analytics before exit (best-effort)
 process.on('beforeExit', () => shutdownAnalytics().catch(() => {}));

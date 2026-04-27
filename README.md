@@ -14,9 +14,28 @@ chub search openai                 # find what's available
 chub get openai/chat --lang py     # fetch current docs (Python version) 
 ```
 
+## Agent Setup
+
+Install `@aisuite/chub`, then copy the packaged `get-api-docs` skill into your
+agent's skill or rule directory:
+
+```bash
+cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md <agent-skill-dir>/get-api-docs.md
+```
+
+The source for that packaged skill lives in this repo at
+[cli/skills/get-api-docs/SKILL.md](cli/skills/get-api-docs/SKILL.md). The CLI
+also exposes `chub help` so agents can read versioned runtime instructions for
+the installed CLI.
+
 ## How It Works
 
-Chub is designed for your coding agent to use (not for you to use!). You can prompt your agent to use it (e.g., "Use the CLI command chub to get the latest API documentation for calling OpenAI. Run 'chub help' to understand how it works.") Or by creating an agent skill to use Chub using [SKILL.md](cli/skills/get-api-docs/SKILL.md), and ideally prompting your agent to remember to use this skill. (If you are using Claude Code, create the directory ~/.claude/skills/get-api-docs and put SKILL.md there.) 
+Chub is designed for your coding agent to use (not for you to use!). The
+recommended pattern is: install the packaged `get-api-docs` skill, then have
+the agent run `chub help` to get the matching remote instructions for its
+installed CLI version before it searches or fetches anything. That remote help
+can be revised over time for the same CLI version, and the CLI falls back to
+bundled local help if the exact remote document is unavailable.
 
 **Most of the time, it's simple — search, fetch, use:**
 

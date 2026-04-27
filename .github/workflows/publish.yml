@@ -7,6 +7,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: npm-publish
     permissions:
       contents: read
       id-token: write
@@ -16,6 +17,7 @@ jobs:
         with:
           node-version: 22
           registry-url: 'https://registry.npmjs.org'
+      - run: npm install -g npm@latest
       - run: npm install
       - run: cd cli && npm test
       - name: Verify versioned help is already live on the CDN
@@ -38,6 +40,4 @@ jobs:
 
             sleep 10
           done
-      - run: cd cli && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: cd cli && npm publish --access public --provenance

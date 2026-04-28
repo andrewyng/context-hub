@@ -1,6 +1,6 @@
 ---
 name: document-extraction
-description: "Parses, extracts, and classifies documents using LandingAI's Agentic Document Extraction (ADE). Supports PDFs, images, spreadsheets, and presentations; outputs structured Markdown with hierarchical JSON. Covers schema-based field extraction (JSON Schema or Pydantic), document classification and splitting by type, async processing for large files, and visual grounding (bounding boxes, page numbers). Use when parsing documents into structured Markdown, extracting specific fields with a schema, classifying mixed document batches, processing large files asynchronously, or when the user mentions bounding boxes, word locations, grounding, or highlighting where data appears in a document."
+description: "Parses, extracts, and classifies documents using LandingAI's Agentic Document Extraction (ADE). Supports PDFs, images, spreadsheets, and presentations; outputs structured Markdown with hierarchical JSON. Covers schema-based field extraction (JSON Schema or Pydantic), document classification and splitting by type, page-level classification (Classify API), hierarchical table of contents generation (Section API), async processing for large files, and visual grounding (bounding boxes, page numbers). Use when parsing documents into structured Markdown, extracting specific fields with a schema, classifying mixed document batches, classifying pages before parsing, generating a table of contents from a document, processing large files asynchronously, or when the user mentions bounding boxes, word locations, grounding, or highlighting where data appears in a document."
 ---
 
 # Document Extraction (ADE)
@@ -17,6 +17,8 @@ ADE provides these core API functions:
 | **Extract** | `client.extract()` | Pulls specific fields from Markdown using a JSON schema. |
 | **Build Extract Schema** | `client.extract_build_schema()` | Generates or refines a JSON extraction schema from Markdown using AI. |
 | **Split** | `client.split()` | Classifies and separates multi-document batches by document type. |
+| **Classify** | `client.classify()` | Classifies each page in a document by type. Use to route pages before parsing. (Preview) |
+| **Section** | `client.section()` | Generates a hierarchical table of contents from parsed Markdown. (Preview) |
 | **Parse Jobs (Create)** | `client.parse_jobs.create()` | Creates an async parse job for large files (up to 6,000 pages). |
 | **Parse Jobs (Get)** | `client.parse_jobs.get()` | Retrieves the status and results of an async parse job. |
 | **Parse Jobs (List)** | `client.parse_jobs.list()` | Lists all async parse jobs with optional status filtering. |
@@ -664,6 +666,108 @@ split_response = client.split(
 )
 ```
 
+## Page Classification (Classify API) {#classify}
+
+> **Preview:** The Classify API is in public preview. Do not use in production environments.
+
+Use the Classify API to assign a class to each page in a document. Unlike Split (which classifies sections of pre-parsed Markdown), Classify works on the raw document and returns per-page labels. Use the results to route pages to different processing pipelines.
+
+**Supported file types:** All Parse-supported formats except CSV and XLSX. Maximum 200 MB.
+
+```python
+import json
+from dotenv import load_dotenv
+load_dotenv()
+
+from landingai_ade import LandingAIADE
+from pathlib import Path
+
+client = LandingAIADE()
+
+classes = [
+    {"class": "invoice", "description": "Commercial bill with line items and totals"},
+    {"class": "bank_statement", "description": "Monthly summary of account transactions"},
+    {"class": "pay_stub"},
+]
+
+response = client.classify(
+    document=Path("batch.pdf"),
+    classes=json.dumps(classes),
+    model="classify-latest"
+)
+
+for page_result in response.classification:
+    print(f"Page {page_result.page}: {page_result.class_}")
+    if page_result.class_ == "unknown":
+        print(f"  Suggested: {page_result.suggested_class}")
+```
+
+**Parameters:**
+- **classes** (required): List of class objects. Each has a `"class"` key (required) and optional `"description"`. Include descriptions when class names may be ambiguous.
+- **document** or **document_url** (one required): File upload or URL.
+- **model** (optional): Classification model version. Default: latest (`classify-20260420`).
+
+**Response (`ClassifyResponse`):**
+- `classification`: List of per-page results (one per page, 0-indexed):
+  - `page`: Page number (0-indexed)
+  - `class_`: Assigned class label. Note the trailing underscore: `class` is a Python reserved word.
+  - `reason`: Explanation of the classification decision.
+  - `suggested_class`: Nearest class when `class_` is `"unknown"`; otherwise `None`.
+- `metadata`: `filename`, `org_id`, `page_count`, `duration_ms`, `credit_usage`, `job_id`, `version`
+
+## Document Sectioning (Section API) {#section}
+
+> **Preview:** The Section API is in public preview. Do not use in production environments.
+
+Use the Section API to generate a hierarchical table of contents (TOC) from a parsed document. Section requires the Markdown output from Parse as input; the Markdown must contain `<a id="..."></a>` reference anchors that Parse generates automatically.
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+
+from landingai_ade import LandingAIADE
+from pathlib import Path
+
+client = LandingAIADE()
+
+# Step 1: Parse document (produces Markdown with reference anchors)
+parse_response = client.parse(
+    document=Path("contract.pdf"),
+    model="dpt-2-latest"
+)
+
+# Step 2: Generate table of contents
+section_response = client.section(
+    markdown=parse_response.markdown,
+    model="section-latest"
+)
+
+# Print hierarchical TOC
+for entry in section_response.table_of_contents:
+    indent = "  " * (entry.level - 1)
+    print(f"{indent}{entry.section_number}. {entry.title}")
+    # entry.start_reference is the chunk ID where this section begins
+
+# Or use the ready-to-use Markdown TOC string
+print(section_response.table_of_contents_md)
+```
+
+**Parameters:**
+- **markdown** or **markdown_url** (one required): Markdown output from Parse (file, string, or URL). Must include `<a id="..."></a>` anchors.
+- **guidelines** (optional): Natural-language instructions to control hierarchy (e.g., `"Treat each numbered article as a top-level section"`).
+- **model** (optional): Section model version. Default: latest (`section-20260406`).
+
+**Response (`SectionResponse`):**
+- `table_of_contents`: Flat, reading-order list of `TableOfContent` objects:
+  - `title`: Generated section heading text
+  - `level`: Hierarchy depth (1 = top-level, 2 = subsection, 3 = sub-subsection)
+  - `section_number`: Hierarchical number (e.g., `"1"`, `"1.2"`, `"1.2.3"`)
+  - `start_reference`: Chunk ID where this section begins (matches `chunks[].id` from Parse response)
+- `table_of_contents_md`: Markdown-formatted TOC string with anchor links, ready to prepend to the document.
+- `metadata`: `filename`, `org_id`, `duration_ms`, `credit_usage`, `job_id`, `version`
+
+**Note:** The Section API does not accept raw documents. Always run Parse first. TOC entries are always in English regardless of source language.
+
 ## Output Formats
 
 ### Markdown
@@ -844,6 +948,8 @@ See [references/troubleshooting.md](references/troubleshooting.md) for HTTP erro
 - [Extract API Reference](https://docs.landing.ai/api-reference/tools/ade-extract)
 - [Build Extract Schema API Reference](https://docs.landing.ai/api-reference/tools/ade-build-schema)
 - [Split API Reference](https://docs.landing.ai/api-reference/tools/ade-split)
+- [Classify API Reference](https://docs.landing.ai/api-reference/tools/ade-classify)
+- [Section API Reference](https://docs.landing.ai/api-reference/tools/ade-section)
 - [Python Library (GitHub)](https://github.com/landing-ai/ade-python)
 
 ### API Key

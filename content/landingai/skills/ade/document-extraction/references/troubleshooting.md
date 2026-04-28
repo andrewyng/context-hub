@@ -1,6 +1,6 @@
 ---
 name: Troubleshooting
-description: Error codes, common issues, and fixes for ADE Parse, Extract, Split, and Parse Jobs
+description: Error codes, common issues, and fixes for ADE Parse, Extract, Split, Parse Jobs, Classify, and Section
 type: reference
 ---
 
@@ -128,3 +128,25 @@ At least one of `markdowns`, `markdown_urls`, or `prompt` is required. If you pa
 - **Improve accuracy**: Write detailed `description` values for each split class.
 - **`identifier` field**: Use `identifier` only when a document contains multiple instances of the same class that need to be separated.
 - **500 errors**: Retry. Verify that split class `name`, `description`, and `identifier` fields are properly formatted. Contact support@landing.ai if the issue persists.
+
+---
+
+## Classify (Preview)
+
+### Common issues
+
+- **`class_` attribute**: Access the assigned class as `result.class_` (trailing underscore) because `class` is a Python reserved word.
+- **Unknown pages**: When a page cannot be confidently classified, `class_` is `"unknown"`. Check `suggested_class` to see the nearest match and refine your class list or descriptions.
+- **Spreadsheets not supported**: CSV and XLSX files are not accepted by Classify. All other Parse-supported formats are supported, up to 200 MB.
+- **Improve accuracy**: Add `description` to each class when the class name alone may be ambiguous.
+
+---
+
+## Section (Preview)
+
+### Common issues
+
+- **Must use Parse output**: Section requires Markdown from Parse with `<a id="..."></a>` reference anchors. Passing plain Markdown or manually formatted content returns a 422 error. Run Parse first, then pass `parse_response.markdown` directly to Section.
+- **Only accepts Markdown files**: Section does not accept PDF, DOCX, or other document formats. Convert to Markdown via Parse before calling Section.
+- **No `save_to` parameter**: Section does not support `save_to`. Save the response manually if needed.
+- **TOC language**: The table of contents is always returned in English, regardless of the source document language.

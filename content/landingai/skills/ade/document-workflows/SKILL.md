@@ -192,6 +192,8 @@ the wrong section.
 | 19 | Hierarchical chunking | Group ADE chunks into semantic units for embedding | [rag-pipelines.md](references/rag-pipelines.md) |
 | 20 | Multi-granularity RAG | Chunk vs hierarchical vs document-level strategy | [rag-pipelines.md](references/rag-pipelines.md) |
 | 21 | Table stitching | Parse-only or parse+extract merge of multi-page tables | [table-stitching.md](references/table-stitching.md) |
+| 22 | Page routing (Classify API) | Per-page class labels before parsing (Preview) | [Below](#classify-then-extract) |
+| 23 | TOC generation (Section API) | Hierarchical TOC from parsed markdown (Preview) | [Below](#section-extraction) |
 | — | Schema catalog | Ready-to-use Pydantic models | [schema-catalog.md](references/schema-catalog.md) |
 
 ---
@@ -364,95 +366,70 @@ def split_classify_extract(
 > - **Split API**: One PDF contains multiple separate documents
 > - **Classification extraction**: Each file is one document, but types vary
 
+### Approach 3: Classify API (page-level routing, Preview)
+
+Use `client.classify()` to assign a class to every page without parsing first. This is useful for pre-screening a document before committing to a full parse, or when you need page-level labels to route pages to different pipelines.
+
+```python
+from landingai_ade import LandingAIADE
+from pathlib import Path
+
+client = LandingAIADE()
+
+classify_response = client.classify(
+    document=Path("batch.pdf"),
+    classes=[
+        {"class": "invoice", "description": "Commercial bill with line items"},
+        {"class": "bank_statement", "description": "Monthly account summary"},
+        {"class": "other"},
+    ],
+    model="classify-latest"
+)
+
+# Group pages by class
+from collections import defaultdict
+pages_by_class: dict[str, list[int]] = defaultdict(list)
+for result in classify_response.classification:
+    pages_by_class[result.class_].append(result.page)
+
+# Route accordingly (e.g., parse only invoice pages, skip others)
+print(f"Invoice pages: {pages_by_class['invoice']}")
+print(f"Bank statement pages: {pages_by_class['bank_statement']}")
+```
+
+> Note: `result.class_` uses a trailing underscore because `class` is a Python reserved word.
+> See the `document-extraction` skill for full Classify API reference.
+
 ---
 
 ## Section Extraction
 
-Extract a named section (e.g. "Introduction", "Abstract") from a parsed
-document's markdown. Two approaches — choose based on document diversity
-and whether the extra API cost is justified.
-
-**Decision:** If the diagnostic parse (Tool 2) shows consistent ATX headers (`## Introduction`, `## 2. Methods`) across all your documents, use Approach A. If you see any plain-text numbered headings (`1. Introduction`) or formatting variation across documents, skip Approach A entirely and go straight to Approach B.
-
-| Approach | When to use |
-|----------|-------------|
-| **A — regex** | Uniform, well-structured docs (academic papers, reports). Free, fast. |
-| **B — ADE extract** | Mixed or unpredictable formatting (slides, scanned papers, varied templates). Costs an extra extract credit per document. |
-
-### Approach A — Rule-based regex (free, fast, brittle)
-
-ADE may emit headings as ATX markdown (`## 2. Related Work`) or plain-text
-(`1. Introduction`) even within the same document. Handle both patterns:
+Use `client.section()` to generate a full hierarchical table of contents from parsed Markdown. The Section API maps the entire document structure and returns chunk references for each entry. Use for navigable TOC generation, section-aware RAG chunking, or scoping extraction queries to specific sections.
 
 ```python
-import re
-
-def find_section(markdown: str, name: str) -> str | None:
-    """Extract a named section from ADE markdown, handling both ATX
-    headers (## Introduction) and plain-text numbered headings
-    (1. Introduction) which ADE may emit inconsistently."""
-
-    # Pattern 1: ATX header  (# Introduction, ## 1. Introduction …)
-    m = re.search(
-        r"^(#{1,6})\s+(?:\d+\.?\s+)?" + re.escape(name) + r"\b.*$",
-        markdown, re.IGNORECASE | re.MULTILINE,
-    )
-    if m:
-        level = len(m.group(1))
-        end = re.search(r"^#{1," + str(level) + r"}\s",
-                        markdown[m.end():], re.MULTILINE)
-        end_pos = m.end() + (end.start() if end else len(markdown[m.end():]))
-        return markdown[m.start():m.end() + end_pos].strip()
-
-    # Pattern 2: plain-text numbered heading  (1. Introduction)
-    m2 = re.search(r"^(?:\d+\.?\s+)?" + re.escape(name) + r"\s*$",
-                   markdown, re.IGNORECASE | re.MULTILINE)
-    if m2:
-        end2 = re.search(
-            r"^#{1,6}\s|^(?:\d+\.?\s+)[A-Z][a-zA-Z ]{3,}\s*$",
-            markdown[m2.end():], re.MULTILINE,
-        )
-        end_pos = m2.end() + (end2.start() if end2 else len(markdown[m2.end():]))
-        return markdown[m2.start():end_pos].strip()
-    return None
-```
-
-### Approach B — ADE extract (robust, handles document diversity)
-
-Use ADE's own extraction to semantically locate sections — no regex needed.
-The LLM understands section meaning even when formatting is inconsistent:
-
-```python
-from pydantic import BaseModel, Field
 from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
 from pathlib import Path
 
-
-class PaperSections(BaseModel):
-    abstract: str = Field(
-        description="The abstract section, plain text only, "
-                    "no markdown formatting or anchor tags."
-    )
-    introduction: str = Field(
-        description="The introduction section, plain text only, "
-                    "no markdown formatting or anchor tags."
-    )
-
-
 client = LandingAIADE()
-pr = client.parse(document=Path("paper.pdf"))
-er = client.extract(
-    schema=pydantic_to_json_schema(PaperSections),
-    markdown=pr.markdown,
-)
-intro_text = er.extraction["introduction"]
-```
 
-> **Cost note:** Each `extract()` call consumes additional credits on top of
-> `parse()`. For high-volume pipelines with uniform document types, Approach A
-> avoids this cost. For diverse or unpredictable documents the accuracy
-> improvement justifies the extra credit.
+parse_response = client.parse(
+    document=Path("contract.pdf"),
+    model="dpt-2-latest"
+)
+
+section_response = client.section(
+    markdown=parse_response.markdown,
+    model="section-latest"
+)
+
+# Flat reading-order list of all sections
+for entry in section_response.table_of_contents:
+    indent = "  " * (entry.level - 1)
+    print(f"{indent}{entry.section_number}. {entry.title} (chunk: {entry.start_reference})")
+
+# Use entry.start_reference to find the corresponding chunk in parse_response.chunks
+chunk_index = {c.id: c for c in parse_response.chunks}
+```
 
 ---
 

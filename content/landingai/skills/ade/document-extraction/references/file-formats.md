@@ -9,10 +9,10 @@ LandingAI ADE supports 20+ file formats across PDFs, images, documents, presenta
 | Category | Formats | Notes |
 |----------|---------|-------|
 | **PDF** | PDF | Up to 100 pages in Playground; see rate limits for API |
-| **Images** | JPEG, JPG, PNG, + 15 more | Common formats fully supported |
+| **Images** | JPEG, JPG, PNG, and many more | Common formats fully supported |
 | **Documents** | DOC, DOCX, ODT | Converted to PDF before parsing |
-| **Presentations** | PPT, PPTX, ODP | Converted to PDF before parsing |
-| **Spreadsheets** | CSV, XLSX | Up to 10 MB in Playground; no limit in API |
+| **Presentations** | PPT, PPTX | Converted to PDF before parsing |
+| **Spreadsheets** | CSV, XLSX | Up to 10 MB in Playground; up to 50 MB in API |
 
 ## PDFs
 
@@ -61,6 +61,7 @@ response = client.parse(
 - **PPM** - Portable Pixmap
 - **PSD** - Photoshop Document
 - **TGA** - Truevision Graphics Adapter
+- **TIF** - TIFF variant
 - **TIFF** - Tagged Image File Format
 - **WEBP** - Web Picture format
 
@@ -123,7 +124,6 @@ response = client.parse(
 ### Supported Formats
 - **PPT** - Microsoft PowerPoint (legacy)
 - **PPTX** - Microsoft PowerPoint
-- **ODP** - OpenDocument Presentation (LibreOffice)
 
 ### Important: File Conversion
 
@@ -160,10 +160,12 @@ response = client.parse(
 
 ### Limits
 
-| Environment | CSV Limit | XLSX Limit | Sheets/Rows/Columns |
-|-------------|-----------|------------|---------------------|
-| Playground | 10 MB | 10 MB | Unlimited |
-| API/Library | Unlimited | Unlimited | Unlimited |
+| Environment | CSV Limit | XLSX Limit | XLSX Rows/Columns |
+|-------------|-----------|------------|-------------------|
+| Playground | 10 MB | 10 MB | 65,536 rows and 65,536 columns |
+| API/Library | up to 50 MB | up to 50 MB | 65,536 rows and 65,536 columns |
+
+If an XLSX file exceeds the row or column limits, ADE parses the file and returns data within the supported limits. Content beyond the limits is not parsed.
 
 **Note:** In Playground, a render limit applies and only a truncated version is displayed. This does **not** affect parsing results.
 
@@ -287,7 +289,7 @@ response = client.parse(
 | Extended Images | ✗ | ✓ |
 | Documents | ✓ | ✓ |
 | Presentations | ✓ | ✓ |
-| Spreadsheets | Up to 10 MB | Unlimited |
+| Spreadsheets | Up to 10 MB | Up to 50 MB |
 | Parse Jobs | ✗ | ✓ |
 | Bytes Loading | ✗ | ✓ |
 

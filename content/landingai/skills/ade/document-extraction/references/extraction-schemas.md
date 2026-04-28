@@ -18,15 +18,14 @@ Every extraction schema must follow this structure:
       "type": "string",
       "description": "Description of what to extract"
     }
-  },
-  "required": ["field_name"]
+  }
 }
 ```
 
 **Key points:**
 - Top-level `type` must be `"object"`
 - Define fields in the `properties` object
-- Use `required` array for mandatory fields
+- The API attempts to extract all defined fields (`required` is ignored)
 - Add `description` for better accuracy
 
 ## Supported Field Types
@@ -62,14 +61,13 @@ Extract simple fields from a document:
       "type": "number",
       "description": "Copay that the patient is required to pay before services are rendered"
     }
-  },
-  "required": ["patient_name"]
+  }
 }
 ```
 
 ### 2. Nested Objects
 
-Extract hierarchical data with up to 5 levels of nesting:
+Extract hierarchical data in a nested structure:
 
 ```json
 {
@@ -154,74 +152,48 @@ Limit extracted values to a specific set (string enums only):
 }
 ```
 
-### 5. Document Classification
+### 5. Format
 
-Use enum to classify documents and extract different fields per type:
+Use the `format` keyword to specify how an extracted value should be formatted. It is most commonly applied to `string` fields and accepts natural-language instructions as well as standard JSON Schema format values.
+
+| `format` value | Output example |
+|---|---|
+| `YYYY-MM-DD` | `2026-01-17` |
+| `Month DD, YYYY` | `January 17, 2026` |
+| `Currency amount with the $ symbol, for example $12.50` | `$170.23` |
+| `Two-letter US state code` | `CA` |
 
 ```json
 {
   "type": "object",
   "properties": {
-    "document_type": {
+    "invoice_date": {
       "type": "string",
-      "enum": ["Passport", "Invoice", "Receipt", "Other"]
-    }
-  },
-  "required": ["document_type"]
-}
-```
-
-After classification, make a second extraction call with type-specific schema.
-
-### 6. Nullable Fields
-
-**For extract-20251024 (recommended):**
-```json
-{
-  "type": "object",
-  "properties": {
-    "middle_name": {
+      "format": "YYYY-MM-DD",
+      "description": "The date the invoice was issued."
+    },
+    "total_amount": {
       "type": "string",
-      "nullable": true,
-      "description": "Patient's middle name, if provided"
+      "format": "Currency amount with the $ symbol, for example $12.50",
+      "description": "Total amount due, including all charges and taxes."
     }
   }
 }
 ```
 
-**For extract-20250930:**
-```json
-{
-  "type": "object",
-  "properties": {
-    "middle_name": {
-      "type": ["string", "null"],
-      "description": "Patient's middle name, if provided"
-    }
-  }
-}
-```
+You can include formatting instructions in `description` instead, but using the dedicated `format` keyword is more effective. The API applies it more precisely than embedded description text.
 
-### 7. Union Types
+### 6. Missing Fields
 
-When a field can accept multiple types, use `anyOf` (especially with objects or arrays):
+The API always attempts to extract every field defined in your schema. When a field cannot be found in the document, the behavior depends on the field type:
 
-```json
-{
-  "type": "object",
-  "properties": {
-    "field1": {"type": "string"},
-    "field2": {
-      "anyOf": [
-        {"type": "number"},
-        {"type": "object"}
-      ]
-    }
-  }
-}
-```
+| Field type | Behavior when not found |
+|---|---|
+| Primitive fields (`boolean`, `integer`, `number`, `string`) | Returns `null`. |
+| `array` | Returns an empty array: `[]`. |
+| `object` | Never returns `null`, but all primitive fields within it return `null`. |
 
-> **Validation rule:** Every sub-schema within `anyOf` must include either a `type` or `anyOf` keyword. If a sub-schema is missing both, the API returns a **400 error** identifying the invalid path. For example, `"anyOf": [{"description": "a number"}]` will fail because the sub-schema has no `type`.
+The `nullable` keyword is silently ignored by the API.
 
 ## Pydantic Example (Python Library)
 
@@ -250,8 +222,9 @@ schema = pydantic_to_json_schema(Invoice)
 ### 2. Add Detailed Descriptions
 Include in descriptions:
 - Exactly what to extract
-- Format requirements ("in USD", "as YYYY-MM-DD")
 - What to include/exclude ("excluding tax", "including area code")
+
+Use the `format` keyword (not `description`) for formatting requirements. See [Pattern 5](#5-format).
 
 Example:
 ```json
@@ -263,17 +236,13 @@ Example:
 }
 ```
 
-### 3. Match Document Structure
-Order fields in your schema to match their order in the document.
-
-### 4. Limit Complexity
-- Keep schemas under 30 properties for optimal performance
+### 3. Keep It Focused
 - Start with a few fields, add more as needed
 - Keep names short but descriptive
 - Flatten nested arrays when possible
 - Reduce optional properties
 
-### 5. Use Appropriate Types
+### 4. Use Appropriate Types
 - Use `number` for monetary values or calculations
 - Use `integer` for counts
 - Use `array` for repeating items (tables, lists)
@@ -281,28 +250,49 @@ Order fields in your schema to match their order in the document.
 
 ## Model-Specific Considerations
 
-### extract-20251024 (Latest, Recommended)
+### extract-20260314 (Current Default)
+
+This is the default extraction model (also selected by `extract-latest`).
 
 **Supported Keywords:**
-- `type`, `properties`, `required`, `description`, `title`
-- `enum` (string only), `nullable`
-- `array`, `items`, `maxItems`, `minItems`
-- `number`, `maximum`, `minimum`
-- `anyOf`, `$ref`, `$defs`
-- `format`, `propertyOrdering`
+- `type`, `description`, `properties` (for objects), `items` (for arrays)
+- `enum` (string values only), `format`, `x-alternativeNames`
 
-**Behavior:**
-- Missing fields return `null` (even if required)
-- Falls back to extract-20250930 if schema is too complex
+**Silently ignored or resolved before extraction (no error):**
 
-### extract-20250930 (Previous Version)
+| Keyword(s) | How the API handles it |
+|---|---|
+| `required`, `nullable`, `title` | Removed. |
+| `anyOf` | If one of the types is `null`, the API removes `null` and uses the other type. If none are `null`, the API falls back to `string`. |
+| `default` | If `null`, the keyword is removed. If any other value, the API returns a 206. |
+| Reference keywords: `$ref`, `$defs`, `$anchor`, `$id`, `$schema`, `definitions` | All references are resolved, then the keywords are removed. |
+| Recursive keywords: `$dynamicAnchor`, `$dynamicRef`, `$recursiveAnchor`, `$recursiveRef` | All references are resolved, then the keywords are removed. |
 
-**Unsupported Keywords:**
-- `allOf`, `not`, `dependentRequired`, `dependentSchemas`, `if`, `then`, `else`
+**Cause errors**: `allOf`, `oneOf`, `const`, `maxItems`, `minItems`, `maxLength`, `minLength`, `maximum`, `minimum`, `pattern`, `propertyOrdering`, `uniqueItems`. See [Keyword Support](https://docs.landing.ai/ade/ade-extract-schema-json#keyword-support) for the full list.
 
-**Behavior:**
-- Inconsistent handling of missing fields (may return `null`, `0`, empty string, etc.)
-- Use type array for nullable: `"type": ["string", "null"]`
+**Key Capabilities:**
+- **Unlimited schema size**: No limits on number of fields, nesting levels, or characters
+- **Cross-page table reconstruction**: Tables spanning page breaks return as a single array
+- **Semantic field matching**: Use `x-alternativeNames` to map field name variations across documents
+
+**`x-alternativeNames` for Field Name Variations:**
+
+When the same data appears under different labels across document types or vendors (for example, "Invoice Total", "Grand Total", "Amount Due"), use `x-alternativeNames` to list the alternative labels. The model uses these to match fields by meaning rather than exact name:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "total_amount": {
+      "type": "number",
+      "description": "The total monetary value, including all charges and taxes.",
+      "x-alternativeNames": ["Invoice Total", "Grand Total", "Amount Due"]
+    }
+  }
+}
+```
+
+> **Deprecated models:** `extract-20250930` and `extract-20251024` are deprecated. Migrate to `extract-latest` or pin to `extract-20260314`.
 
 ## Troubleshooting
 
@@ -346,9 +336,9 @@ Order fields in your schema to match their order in the document.
         }
       }
     }
-  },
-  "required": ["invoice_number", "total_amount"]
+  }
 }
+
 ```
 
 ### Bank Statement
@@ -386,7 +376,7 @@ Order fields in your schema to match their order in the document.
       "type": "object",
       "properties": {
         "first_name": {"type": "string"},
-        "middle_name": {"type": "string", "nullable": true},
+        "middle_name": {"type": "string"},
         "last_name": {"type": "string"},
         "date_of_birth": {"type": "string"},
         "insurance_id": {"type": "string"}

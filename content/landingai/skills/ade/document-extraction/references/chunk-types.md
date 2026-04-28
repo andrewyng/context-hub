@@ -4,7 +4,7 @@
 
 A **chunk** is a discrete element extracted from a document during parsing. When you send a document to ADE, it analyzes the content, breaks it down into meaningful elements, and returns each as a chunk with structured metadata describing its content and location.
 
-## What is Semantic Chunking?
+## What Is Semantic Chunking?
 
 ADE uses **semantic chunking**, which intelligently groups content based on meaning rather than just layout or formatting. Instead of splitting at arbitrary points (like fixed lengths or paragraph breaks), ADE identifies coherent units of information and extracts them as individual chunks.
 
@@ -13,23 +13,6 @@ ADE uses **semantic chunking**, which intelligently groups content based on mean
 - Improves retrieval granularity for downstream tasks
 - Supports semantic search and embeddings
 - Maintains human readability and logical relationships
-
-## Chunk Type Comparison by Model
-
-| Chunk Type | DPT-1 ⚠️ | DPT-2 | Confidence | Description |
-|------------|-----------|-------|------------|-------------|
-| text | ✓ | ✓ | ✓ | Paragraphs, headings, lists, forms, code |
-| table | ✓ | ✓ | ✗ | Grids of data, receipts, spreadsheets |
-| figure | ✓ | ✓ | ✓ | Images, graphs, flowcharts, diagrams |
-| marginalia | ✓ | ✓ | ✓ | Headers, footers, page numbers, margin notes |
-| logo | ✗ | ✓ | ✓ | Company logos |
-| card | ✗ | ✓ | ✓ | ID cards, driver licenses |
-| attestation | ✗ | ✓ | ✓ | Signatures, stamps, seals |
-| scan_code | ✗ | ✓ | ✓ | QR codes, barcodes |
-
-> ⚠️ **DPT-1 Deprecation:** DPT-1 will be removed on **March 31, 2026**. Migrate to DPT-2 now.
-
-**Note:** DPT-2 provides more granular chunk types. In DPT-1, logos, QR codes, barcodes, stamps, signatures, and ID cards are all classified as `figure`. The **Confidence** column indicates which chunk types support confidence scores in top-level grounding (Preview feature).
 
 ## Chunk Type Details
 
@@ -105,8 +88,6 @@ _Confidential Report - Page 3_
 - Graphs (bar, line, pie charts)
 - Flowcharts
 - Diagrams
-
-**DPT-1 also includes:** logos, QR codes, barcodes, stamps, signatures, ID cards (these have dedicated types in DPT-2)
 
 **Example Output:**
 ```markdown
@@ -242,7 +223,7 @@ The top-level `grounding` dictionary in the Parse response uses **grounding type
 | `table` | _(grounding only)_ | HTML `<table>` element within a table chunk |
 | `tableCell` | _(grounding only)_ | Individual cell; includes `position` (row, col, rowspan, colspan, chunk_id) |
 
-**Example — looking up grounding type for a chunk:**
+**Example: looking up grounding type for a chunk:**
 ```python
 for chunk in response.chunks:
     grounding_entry = response.grounding.get(chunk.id)
@@ -299,22 +280,6 @@ for chunk in response.chunks:
 - Product identification
 - Link extraction from QR codes
 
-## Deprecated Chunk Types
-
-**Note:** The following chunk types were deprecated and consolidated (as of May 22, 2025):
-
-**Consolidated into `marginalia`:**
-- `page_header`
-- `page_footer`
-- `page_number`
-
-**Consolidated into `text`:**
-- `title`
-- `form`
-- `key_value`
-
-**Action Required:** If your code references these deprecated types, update to use the new consolidated types (`marginalia` or `text`).
-
 ## Best Practices
 
 ### 1. Choose the Right Model
@@ -351,5 +316,5 @@ if chunk.type in visual_types:
 ## References
 
 - [Official Chunk Types Documentation](https://docs.landing.ai/ade/ade-chunk-types)
-- [Parse Models (DPT-1 vs DPT-2)](https://docs.landing.ai/ade/ade-parse-models)
+- [Parse Models](https://docs.landing.ai/ade/ade-parse-models)
 - [JSON Response Structure](https://docs.landing.ai/ade/ade-json-response)

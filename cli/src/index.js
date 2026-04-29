@@ -31,6 +31,15 @@ function isRootHelpRequest(argv) {
   return args.every((arg) => arg.startsWith('-'));
 }
 
+function isRootVersionRequest(argv) {
+  const args = argv.slice(2);
+  const idx = args.findIndex((arg) => arg === '--version' || arg === '-v');
+  if (idx === -1) return false;
+
+  // Preserve subcommand --version, e.g. `chub get foo --version 1.0.0`.
+  return args.slice(0, idx).every((arg) => arg.startsWith('-'));
+}
+
 function isRootHelpAlias(argv) {
   const args = argv.slice(2);
   return args[0] === 'help' && args.slice(1).every((arg) => arg.startsWith('-'));
@@ -113,6 +122,8 @@ if (helpAliasOperands.length > 0) {
   );
 } else if (isRootHelpAlias(process.argv) || isRootHelpRequest(process.argv)) {
   await printRootHelp();
+} else if (isRootVersionRequest(process.argv)) {
+  process.stdout.write(`${pkg.version}\n`);
 } else {
   program.parse();
 }

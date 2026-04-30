@@ -1,16 +1,18 @@
 ---
 name: cortex-analyst
-description: "Snowflake Cortex Analyst — natural language to SQL engine powered by semantic views for self-serve analytics, REST API integration, and multi-turn conversations"
+description: "Snowflake Cortex Analyst (being superseded by Cortex Agents) — natural language to SQL engine powered by semantic views for self-serve analytics, REST API integration, and multi-turn conversations"
 metadata:
   languages: "sql,python"
   versions: "2026-03"
-  revision: 1
-  updated-on: "2026-03-17"
+  revision: 2
+  updated-on: "2026-03-24"
   source: community
-  tags: "snowflake,cortex,analyst,natural-language,sql,semantic-model,analytics,rest-api"
+  tags: "snowflake,cortex,analyst,natural-language,sql,semantic-model,analytics,rest-api,deprecated"
 ---
 
 # Cortex Analyst
+
+> **Deprecation Notice**: Cortex Analyst is being superseded by **Cortex Agents**, which provide the same text-to-SQL capabilities plus multi-tool orchestration, Cortex Search integration, web search, custom UDF/SP tools, and agentic reasoning. New projects should use Cortex Agents. See [cortex-agents-rest-api](../cortex-agents-rest-api/DOC.md) for the REST API reference and [cortex-agents-mcp](../cortex-agents-mcp/DOC.md) for the managed MCP server.
 
 Cortex Analyst is a fully managed Snowflake Cortex feature that converts natural language questions into accurate SQL queries against your structured data. Business users ask questions in plain English and get direct answers — no SQL required.
 

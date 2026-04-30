@@ -1,0 +1,690 @@
+{
+  "cases": [
+    {
+      "id": "wmma-how-to-use",
+      "query": "how to use wmma",
+      "passed": true,
+      "top_ids": [
+        "cuda/wmma-kernel-patterns",
+        "cuda/wmma-debugging-checklist",
+        "cuda/tensor-cores"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/wmma-kernel-patterns",
+          "name": "wmma-kernel-patterns",
+          "score": 42.72239226326069
+        },
+        {
+          "id": "cuda/wmma-debugging-checklist",
+          "name": "wmma-debugging-checklist",
+          "score": 41.09123189504223
+        },
+        {
+          "id": "cuda/tensor-cores",
+          "name": "tensor-cores",
+          "score": 12.49033613627519
+        },
+        {
+          "id": "cuda/ptx-wgmma-instructions",
+          "name": "ptx-wgmma-instructions",
+          "score": 8.015605451537379
+        },
+        {
+          "id": "cuda/tensor-core-numerical-validation",
+          "name": "tensor-core-numerical-validation",
+          "score": 7.672928478098094
+        }
+      ]
+    },
+    {
+      "id": "shared-memory-core",
+      "query": "shared memory cuda",
+      "passed": true,
+      "top_ids": [
+        "cuda/shared-memory",
+        "cuda/memory-hierarchy",
+        "cuda/unified-memory",
+        "cuda/memory-bound-kernel-optimization-playbook",
+        "cuda/memory-fences-and-ordering"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/shared-memory",
+          "name": "shared-memory",
+          "score": 657.8079742112991
+        },
+        {
+          "id": "cuda/memory-hierarchy",
+          "name": "memory-hierarchy",
+          "score": 73.17322342909286
+        },
+        {
+          "id": "cuda/unified-memory",
+          "name": "unified-memory",
+          "score": 60.3646893631704
+        },
+        {
+          "id": "cuda/memory-bound-kernel-optimization-playbook",
+          "name": "memory-bound-kernel-optimization-playbook",
+          "score": 57.53270604100074
+        },
+        {
+          "id": "cuda/memory-fences-and-ordering",
+          "name": "memory-fences-and-ordering",
+          "score": 54.23784477307811
+        }
+      ]
+    },
+    {
+      "id": "tensor-core-pipeline",
+      "query": "tensor core pipeline",
+      "passed": true,
+      "top_ids": [
+        "cuda/tensor-core-pipeline-patterns",
+        "cuda/tensor-core-numerical-validation",
+        "cuda/cuda-core-vs-tensor-core-path-selection",
+        "cuda/tensor-cores",
+        "cuda/cuda-core"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/tensor-core-pipeline-patterns",
+          "name": "tensor-core-pipeline-patterns",
+          "score": 644.1075200959514
+        },
+        {
+          "id": "cuda/tensor-core-numerical-validation",
+          "name": "tensor-core-numerical-validation",
+          "score": 61.48468932198023
+        },
+        {
+          "id": "cuda/cuda-core-vs-tensor-core-path-selection",
+          "name": "cuda-core-vs-tensor-core-path-selection",
+          "score": 60.74471140903582
+        },
+        {
+          "id": "cuda/tensor-cores",
+          "name": "tensor-cores",
+          "score": 47.81338301557305
+        },
+        {
+          "id": "cuda/cuda-core",
+          "name": "cuda-core",
+          "score": 33.3511979484339
+        }
+      ]
+    },
+    {
+      "id": "cuda-core-checklist",
+      "query": "cuda core optimization checklist",
+      "passed": true,
+      "top_ids": [
+        "cuda/cuda-core-optimization-checklist",
+        "cuda/production-readiness-checklist",
+        "cuda/cuda-core",
+        "cuda/wmma-debugging-checklist",
+        "cuda/compute-bound-kernel-optimization-playbook"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/cuda-core-optimization-checklist",
+          "name": "cuda-core-optimization-checklist",
+          "score": 759.407109261226
+        },
+        {
+          "id": "cuda/production-readiness-checklist",
+          "name": "production-readiness-checklist",
+          "score": 70.7996693382976
+        },
+        {
+          "id": "cuda/cuda-core",
+          "name": "cuda-core",
+          "score": 69.74042809797584
+        },
+        {
+          "id": "cuda/wmma-debugging-checklist",
+          "name": "wmma-debugging-checklist",
+          "score": 67.05937556573964
+        },
+        {
+          "id": "cuda/compute-bound-kernel-optimization-playbook",
+          "name": "compute-bound-kernel-optimization-playbook",
+          "score": 57.217605086477704
+        }
+      ]
+    },
+    {
+      "id": "ptx-mbarrier-patterns",
+      "query": "ptx cp.async mbarrier",
+      "passed": true,
+      "top_ids": [
+        "cuda/ptx-mbarrier-protocol-patterns",
+        "cuda/ptx",
+        "cuda/ptx-sync-comm-instructions"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/ptx-mbarrier-protocol-patterns",
+          "name": "ptx-mbarrier-protocol-patterns",
+          "score": 97.10445123474443
+        },
+        {
+          "id": "cuda/ptx",
+          "name": "ptx",
+          "score": 62.61826372079303
+        },
+        {
+          "id": "cuda/ptx-sync-comm-instructions",
+          "name": "ptx-sync-comm-instructions",
+          "score": 52.027086225402634
+        },
+        {
+          "id": "cuda/ptx-data-movement-instructions",
+          "name": "ptx-data-movement-instructions",
+          "score": 52.00293090969298
+        },
+        {
+          "id": "cuda/ptx-tma-instructions",
+          "name": "ptx-tma-instructions",
+          "score": 48.82956085700581
+        }
+      ]
+    },
+    {
+      "id": "wmma-debugging",
+      "query": "wmma debugging checklist",
+      "passed": true,
+      "top_ids": [
+        "cuda/wmma-debugging-checklist",
+        "cuda/production-readiness-checklist",
+        "cuda/cuda-core-optimization-checklist"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/wmma-debugging-checklist",
+          "name": "wmma-debugging-checklist",
+          "score": 750.2110571099413
+        },
+        {
+          "id": "cuda/production-readiness-checklist",
+          "name": "production-readiness-checklist",
+          "score": 51.353724997868376
+        },
+        {
+          "id": "cuda/cuda-core-optimization-checklist",
+          "name": "cuda-core-optimization-checklist",
+          "score": 47.219036371224455
+        },
+        {
+          "id": "cuda/performance-debugging",
+          "name": "performance-debugging",
+          "score": 46.88234948872761
+        },
+        {
+          "id": "cuda/wmma-kernel-patterns",
+          "name": "wmma-kernel-patterns",
+          "score": 42.72239226326069
+        }
+      ]
+    },
+    {
+      "id": "warp-primitives",
+      "query": "warp primitives shuffle ballot syncwarp",
+      "passed": true,
+      "top_ids": [
+        "cuda/warp-primitives",
+        "cuda/ptx-warp-synchronization-patterns",
+        "cuda/synchronization",
+        "cuda/atomics-and-reductions",
+        "cuda/wmma-kernel-patterns"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/warp-primitives",
+          "name": "warp-primitives",
+          "score": 150.16976993918206
+        },
+        {
+          "id": "cuda/ptx-warp-synchronization-patterns",
+          "name": "ptx-warp-synchronization-patterns",
+          "score": 42.529269747467985
+        },
+        {
+          "id": "cuda/synchronization",
+          "name": "synchronization",
+          "score": 25.93295374080112
+        },
+        {
+          "id": "cuda/atomics-and-reductions",
+          "name": "atomics-and-reductions",
+          "score": 13.001420566012728
+        },
+        {
+          "id": "cuda/wmma-kernel-patterns",
+          "name": "wmma-kernel-patterns",
+          "score": 12.05164899412507
+        }
+      ]
+    },
+    {
+      "id": "sync-basics",
+      "query": "cuda synchronization syncthreads syncwarp",
+      "passed": true,
+      "top_ids": [
+        "cuda/synchronization",
+        "cuda/ptx-warp-synchronization-patterns",
+        "cuda/ptx-sync-comm-instructions",
+        "cuda/cuda-graphs",
+        "cuda/cuda-core"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/synchronization",
+          "name": "synchronization",
+          "score": 115.53494858139211
+        },
+        {
+          "id": "cuda/ptx-warp-synchronization-patterns",
+          "name": "ptx-warp-synchronization-patterns",
+          "score": 51.064361100519484
+        },
+        {
+          "id": "cuda/ptx-sync-comm-instructions",
+          "name": "ptx-sync-comm-instructions",
+          "score": 35.1019026522119
+        },
+        {
+          "id": "cuda/cuda-graphs",
+          "name": "cuda-graphs",
+          "score": 32.66211358082386
+        },
+        {
+          "id": "cuda/cuda-core",
+          "name": "cuda-core",
+          "score": 31.781700957557508
+        }
+      ]
+    },
+    {
+      "id": "coalescing",
+      "query": "cuda memory coalescing global load store",
+      "passed": true,
+      "top_ids": [
+        "cuda/coalescing",
+        "cuda/memory-hierarchy",
+        "cuda/memory-bound-kernel-optimization-playbook"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/coalescing",
+          "name": "coalescing",
+          "score": 114.46137435508729
+        },
+        {
+          "id": "cuda/memory-hierarchy",
+          "name": "memory-hierarchy",
+          "score": 76.00414047531201
+        },
+        {
+          "id": "cuda/memory-bound-kernel-optimization-playbook",
+          "name": "memory-bound-kernel-optimization-playbook",
+          "score": 61.62359200788258
+        },
+        {
+          "id": "cuda/unified-memory",
+          "name": "unified-memory",
+          "score": 60.3646893631704
+        },
+        {
+          "id": "cuda/shared-memory",
+          "name": "shared-memory",
+          "score": 58.77381854116289
+        }
+      ]
+    },
+    {
+      "id": "occupancy-and-launch-bounds",
+      "query": "occupancy register pressure launch bounds",
+      "passed": true,
+      "top_ids": [
+        "cuda/launch-bounds-and-registers",
+        "cuda/occupancy",
+        "cuda/launch-bound-optimization-playbook",
+        "cuda/compute-bound-kernel-optimization-playbook"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/launch-bounds-and-registers",
+          "name": "launch-bounds-and-registers",
+          "score": 146.62780726587894
+        },
+        {
+          "id": "cuda/occupancy",
+          "name": "occupancy",
+          "score": 88.03880324897167
+        },
+        {
+          "id": "cuda/launch-bound-optimization-playbook",
+          "name": "launch-bound-optimization-playbook",
+          "score": 40.8986821615221
+        },
+        {
+          "id": "cuda/compute-bound-kernel-optimization-playbook",
+          "name": "compute-bound-kernel-optimization-playbook",
+          "score": 38.13732896303176
+        },
+        {
+          "id": "cuda/cuda-core-optimization-checklist",
+          "name": "cuda-core-optimization-checklist",
+          "score": 28.823017954994313
+        }
+      ]
+    },
+    {
+      "id": "unified-memory",
+      "query": "cuda unified memory prefetch advise",
+      "passed": true,
+      "top_ids": [
+        "cuda/unified-memory",
+        "cuda/memory-hierarchy",
+        "cuda/shared-memory",
+        "cuda/memory-fences-and-ordering",
+        "cuda/pinned-memory-and-transfers"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/unified-memory",
+          "name": "unified-memory",
+          "score": 125.91467276225826
+        },
+        {
+          "id": "cuda/memory-hierarchy",
+          "name": "memory-hierarchy",
+          "score": 63.70635719692105
+        },
+        {
+          "id": "cuda/shared-memory",
+          "name": "shared-memory",
+          "score": 58.77381854116289
+        },
+        {
+          "id": "cuda/memory-fences-and-ordering",
+          "name": "memory-fences-and-ordering",
+          "score": 54.23784477307811
+        },
+        {
+          "id": "cuda/pinned-memory-and-transfers",
+          "name": "pinned-memory-and-transfers",
+          "score": 53.704153789779426
+        }
+      ]
+    },
+    {
+      "id": "graphs",
+      "query": "cuda graphs stream capture",
+      "passed": true,
+      "top_ids": [
+        "cuda/cuda-graphs",
+        "cuda/launch-bound-optimization-playbook",
+        "cuda/streams-and-events",
+        "cuda/cuda-core",
+        "cuda/cublas-cudnn-integration-patterns"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/cuda-graphs",
+          "name": "cuda-graphs",
+          "score": 122.41291614046733
+        },
+        {
+          "id": "cuda/launch-bound-optimization-playbook",
+          "name": "launch-bound-optimization-playbook",
+          "score": 41.33640294345046
+        },
+        {
+          "id": "cuda/streams-and-events",
+          "name": "streams-and-events",
+          "score": 34.44998146409479
+        },
+        {
+          "id": "cuda/cuda-core",
+          "name": "cuda-core",
+          "score": 31.781700957557508
+        },
+        {
+          "id": "cuda/cublas-cudnn-integration-patterns",
+          "name": "cublas-cudnn-integration-patterns",
+          "score": 30.514857031952204
+        }
+      ]
+    },
+    {
+      "id": "numerics",
+      "query": "cuda numerics precision tf32 fp16 bf16",
+      "passed": true,
+      "top_ids": [
+        "cuda/numerics-and-precision",
+        "cuda/tensor-core-numerical-validation",
+        "cuda/cuda-graphs",
+        "cuda/cuda-core"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/numerics-and-precision",
+          "name": "numerics-and-precision",
+          "score": 183.59776324812412
+        },
+        {
+          "id": "cuda/tensor-core-numerical-validation",
+          "name": "tensor-core-numerical-validation",
+          "score": 52.00733109154891
+        },
+        {
+          "id": "cuda/cuda-graphs",
+          "name": "cuda-graphs",
+          "score": 32.66211358082386
+        },
+        {
+          "id": "cuda/cuda-core",
+          "name": "cuda-core",
+          "score": 31.781700957557508
+        },
+        {
+          "id": "cuda/cuda-core-vs-tensor-core-path-selection",
+          "name": "cuda-core-vs-tensor-core-path-selection",
+          "score": 31.402549363889474
+        }
+      ]
+    },
+    {
+      "id": "bottleneck-workflow",
+      "query": "kernel bottleneck diagnosis workflow",
+      "passed": true,
+      "top_ids": [
+        "cuda/kernel-bottleneck-diagnosis-workflow",
+        "cuda/nvtx-and-profiling-workflow",
+        "cuda/fused-kernel-design-patterns",
+        "cuda/kernel-api-design-guidelines",
+        "cuda/wmma-kernel-patterns"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/kernel-bottleneck-diagnosis-workflow",
+          "name": "kernel-bottleneck-diagnosis-workflow",
+          "score": 768.9931435006229
+        },
+        {
+          "id": "cuda/nvtx-and-profiling-workflow",
+          "name": "nvtx-and-profiling-workflow",
+          "score": 32.0504265214994
+        },
+        {
+          "id": "cuda/fused-kernel-design-patterns",
+          "name": "fused-kernel-design-patterns",
+          "score": 27.43176420745622
+        },
+        {
+          "id": "cuda/kernel-api-design-guidelines",
+          "name": "kernel-api-design-guidelines",
+          "score": 25.1148108398069
+        },
+        {
+          "id": "cuda/wmma-kernel-patterns",
+          "name": "wmma-kernel-patterns",
+          "score": 25.0716810325601
+        }
+      ]
+    },
+    {
+      "id": "production-readiness",
+      "query": "cuda production readiness checklist",
+      "passed": true,
+      "top_ids": [
+        "cuda/production-readiness-checklist",
+        "cuda/cuda-core-optimization-checklist",
+        "cuda/wmma-debugging-checklist",
+        "cuda/cuda-graphs",
+        "cuda/cuda-core"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/production-readiness-checklist",
+          "name": "production-readiness-checklist",
+          "score": 769.9486340479549
+        },
+        {
+          "id": "cuda/cuda-core-optimization-checklist",
+          "name": "cuda-core-optimization-checklist",
+          "score": 73.82898181666549
+        },
+        {
+          "id": "cuda/wmma-debugging-checklist",
+          "name": "wmma-debugging-checklist",
+          "score": 62.75565279395994
+        },
+        {
+          "id": "cuda/cuda-graphs",
+          "name": "cuda-graphs",
+          "score": 32.66211358082386
+        },
+        {
+          "id": "cuda/cuda-core",
+          "name": "cuda-core",
+          "score": 31.781700957557508
+        }
+      ]
+    },
+    {
+      "id": "ptx-wgmma",
+      "query": "ptx wgmma commit wait fence",
+      "passed": true,
+      "top_ids": [
+        "cuda/ptx-wgmma-instructions",
+        "cuda/ptx-mbarrier-protocol-patterns",
+        "cuda/ptx"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/ptx-wgmma-instructions",
+          "name": "ptx-wgmma-instructions",
+          "score": 79.69390442977547
+        },
+        {
+          "id": "cuda/ptx-mbarrier-protocol-patterns",
+          "name": "ptx-mbarrier-protocol-patterns",
+          "score": 49.434469077760816
+        },
+        {
+          "id": "cuda/ptx",
+          "name": "ptx",
+          "score": 47.42237009982906
+        },
+        {
+          "id": "cuda/ptx-integer-instructions",
+          "name": "ptx-integer-instructions",
+          "score": 42.656363750529316
+        },
+        {
+          "id": "cuda/ptx-tma-instructions",
+          "name": "ptx-tma-instructions",
+          "score": 41.23960122735729
+        }
+      ]
+    },
+    {
+      "id": "ptx-atomics",
+      "query": "ptx atom cas red redux",
+      "passed": true,
+      "top_ids": [
+        "cuda/ptx-atomic-and-reduction-patterns",
+        "cuda/ptx",
+        "cuda/ptx-integer-instructions"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/ptx-atomic-and-reduction-patterns",
+          "name": "ptx-atomic-and-reduction-patterns",
+          "score": 97.96228201139625
+        },
+        {
+          "id": "cuda/ptx",
+          "name": "ptx",
+          "score": 47.42237009982906
+        },
+        {
+          "id": "cuda/ptx-integer-instructions",
+          "name": "ptx-integer-instructions",
+          "score": 42.656363750529316
+        },
+        {
+          "id": "cuda/ptx-tma-instructions",
+          "name": "ptx-tma-instructions",
+          "score": 41.23960122735729
+        },
+        {
+          "id": "cuda/ptx-special-registers",
+          "name": "ptx-special-registers",
+          "score": 40.72920089806367
+        }
+      ]
+    },
+    {
+      "id": "ptx-integer-bitops",
+      "query": "ptx integer bit manipulation lop3 bfe bfi",
+      "passed": true,
+      "top_ids": [
+        "cuda/ptx-integer-bit-manipulation-patterns",
+        "cuda/ptx-integer-instructions",
+        "cuda/ptx"
+      ],
+      "top_items": [
+        {
+          "id": "cuda/ptx-integer-bit-manipulation-patterns",
+          "name": "ptx-integer-bit-manipulation-patterns",
+          "score": 199.73122717340425
+        },
+        {
+          "id": "cuda/ptx-integer-instructions",
+          "name": "ptx-integer-instructions",
+          "score": 103.62199663868175
+        },
+        {
+          "id": "cuda/ptx",
+          "name": "ptx",
+          "score": 47.42237009982906
+        },
+        {
+          "id": "cuda/ptx-tma-instructions",
+          "name": "ptx-tma-instructions",
+          "score": 41.23960122735729
+        },
+        {
+          "id": "cuda/ptx-special-registers",
+          "name": "ptx-special-registers",
+          "score": 40.72920089806367
+        }
+      ]
+    }
+  ]
+}

@@ -316,9 +316,9 @@ describe('chub CLI e2e', () => {
       expect(out).toContain('npm install @acme/widgets');
     });
 
-    itCli('errors on single-lang doc without --lang', () => {
-      const out = chub(['get', 'acme/widgets'], { expectError: true });
-      expect(out).toContain('--lang');
+    itCli('auto-selects language for single-lang doc without --lang', () => {
+      const out = chub(['get', 'acme/widgets']);
+      expect(out).toContain('npm install @acme/widgets');
     });
 
     itCli('fetches multi-language doc with --lang', () => {

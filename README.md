@@ -16,7 +16,12 @@ chub get openai/chat --lang py     # fetch current docs (Python version)
 
 ## How It Works
 
-Chub is designed for your coding agent to use (not for you to use!). You can prompt your agent to use it (e.g., "Use the CLI command chub to get the latest API documentation for calling OpenAI. Run 'chub help' to understand how it works.") Or by creating an agent skill to use Chub using [SKILL.md](cli/skills/get-api-docs/SKILL.md), and ideally prompting your agent to remember to use this skill. (If you are using Claude Code, create the directory ~/.claude/skills/get-api-docs and put SKILL.md there.) 
+Chub is designed for your coding agent to use (not for you to use!). You can prompt your agent to use it (e.g., "Use the CLI command chub to get the latest API documentation for calling OpenAI. Run 'chub help' to understand how it works.") or install the canonical [get-api-docs skill](cli/skills/get-api-docs/SKILL.md) into your agent's skill directory so it remembers to fetch docs with `chub` before answering.
+
+Common install targets:
+
+- Claude Code: `~/.claude/skills/get-api-docs/SKILL.md`
+- Codex: `$CODEX_HOME/skills/get-api-docs/SKILL.md` (typically `~/.codex/skills/get-api-docs/SKILL.md`)
 
 **Most of the time, it's simple — search, fetch, use:**
 

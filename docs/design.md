@@ -337,6 +337,9 @@ chub get openai/chat-api stripe/payments -o .context/
 # Install a skill into Claude Code's skill directory
 chub get pw-community/login-flows -o .claude/skills/login-flows/SKILL.md
 
+# Install a skill into Codex's skill directory
+chub get pw-community/login-flows -o "${CODEX_HOME:-$HOME/.codex}/skills/login-flows/SKILL.md"
+
 # Install a skill with all companion files
 chub get pw-community/login-flows --full -o .claude/skills/login-flows/
 

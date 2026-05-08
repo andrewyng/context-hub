@@ -49,12 +49,12 @@ async def send_events(api_key: str, events: list[dict]) -> None:
     auth = httpx.BasicAuth(api_key, "")
     payload = {
         "messageId": str(uuid.uuid4()),
-        "sentAt": datetime.now(timezone.utc).isoformat(),
+        "sentAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "batch": events,
     }
     async with httpx.AsyncClient(auth=auth) as client:
         r = await client.post(
-            "https://api.dreamdata.cloud/v1/batch",
+            BATCH_URL,
             json=payload,
         )
         r.raise_for_status()
@@ -68,19 +68,38 @@ events = [
             "email": "jane@example.com",
             "name": "Jane Smith",
         },
-        "context": {"ip": "1.2.3.4"},
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "context": {
+            "ip": "1.2.3.4",
+            "campaign": {
+                "source": "google",
+                "medium": "cpc",
+                "name": "q4-trial-signup",
+            },
+            "library": {"name": "custom-backend", "version": "1.0"},
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     },
     {
         "type": "track",
         "messageId": str(uuid.uuid4()),
         "userId": "user-123",
         "event": "form_submitted",
+        "properties": {
+            "form_name": "contact",
+            "plan": "pro",
+        },
         "context": {
             "ip": "1.2.3.4",
             "page": {"url": "https://example.com/contact"},
+            "campaign": {
+                "source": "google",
+                "medium": "cpc",
+                "name": "q4-trial-signup",
+            },
+            "library": {"name": "custom-backend", "version": "1.0"},
+            "userAgent": "python-httpx/0.27",
         },
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     },
 ]
 
@@ -107,8 +126,33 @@ page_event = {
             "medium": "cpc",
             "name": "brand",
         },
+        "library": {"name": "custom-backend", "version": "1.0"},
+        "userAgent": "Mozilla/5.0 ...",
     },
-    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+}
+```
+
+### Group Event (Account Association)
+
+Use `group` to associate a user with a company/account — critical for B2B revenue attribution.
+
+```python
+group_event = {
+    "type": "group",
+    "messageId": str(uuid.uuid4()),
+    "userId": "user-123",
+    "groupId": "company-456",
+    "traits": {
+        "name": "Acme Corp",
+        "industry": "SaaS",
+        "plan": "enterprise",
+        "employee_count": 500,
+    },
+    "context": {
+        "library": {"name": "custom-backend", "version": "1.0"},
+    },
+    "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
 }
 ```
 

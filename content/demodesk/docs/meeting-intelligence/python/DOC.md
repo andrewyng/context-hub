@@ -15,6 +15,15 @@ You are a Demodesk API coding expert. Help me write Python code using the Demode
 
 Official API documentation: https://help.demodesk.com/en/articles/8518816-api-reference
 
+## API Versions
+
+Demodesk has two API versions:
+
+- **v1** (covered in this guide) — REST API for scheduling, meetings, users, and webhooks. **Will be discontinued in the future.** Avoid v1 for new integrations where v2 is available.
+- **v2** (recommended) — Covers recordings, transcripts, AI summaries, and additional features. Use v2 for any meeting intelligence / transcript / AI use cases.
+
+v2 API reference: https://demodesk.com/api/docs/index.html
+
 ## Authentication
 
 Auth is via the `api-key` header. Three key types exist:
@@ -84,9 +93,20 @@ Available filters:
 - `filter[account_i_cont]` — meeting name substring
 - `filter[template_name_i_cont]` — meeting type name substring
 - `filter[recordings_present]` — `true` / `false`
+
+When `filter[recordings_present]=true`, recordings are in the `included` key of the response:
+
+```python
+payload = r.json()
+for item in payload.get("included", []):
+    if item.get("type") == "recording":
+        media_url = item["attributes"].get("customerUrl")
+```
+
+> **Note**: Transcripts and AI summaries are only available via the **v2 API** — see https://demodesk.com/api/docs/index.html
 - `filter[group_id_eq]` — group id
 
-Meeting object fields: `id`, `token`, `status` (scheduled/started/ended/canceled), `duration`, `account`, `link`, `startDate`, `userFirstName`, `userLastName`.
+Meeting object fields: `id`, `token`, `status` (`scheduled`/`starting`/`started`/`ending`/`ended`/`canceled`), `duration`, `account`, `link`, `startDate`, `userFirstName`, `userLastName`.
 
 ### Get a Single Meeting
 
@@ -214,6 +234,32 @@ Supported events:
 - `recording.uploaded`, `recording.transcription_postprocessed`
 
 Full webhook payload schema: https://demodesk.com/api/docs/index.html
+
+## Customer Booking (No Auth Required)
+
+These endpoints require no API key — designed for embedding in chatbots, voice agents, and booking widgets.
+
+```python
+import httpx
+
+async def get_available_slots(owner: str, slug: str) -> dict:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            "https://demodesk.com/api/v1/customer-booking-calendar",
+            params={"owner": owner, "slug": slug},
+        )
+        r.raise_for_status()
+        return r.json()
+
+async def book_meeting(owner: str, slug: str, booking_data: dict) -> dict:
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            f"https://demodesk.com/api/v1/book/{owner}/{slug}",
+            json=booking_data,
+        )
+        r.raise_for_status()
+        return r.json()
+```
 
 ## Installation
 

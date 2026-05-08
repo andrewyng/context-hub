@@ -42,7 +42,10 @@ async def query(payload: dict) -> dict:
     async with httpx.AsyncClient() as client:
         r = await client.post(GRAPHQL_URL, headers=headers, json=payload)
         r.raise_for_status()
-        return r.json()["data"]
+        result = r.json()
+        if "errors" in result:
+            raise ValueError(f"GraphQL errors: {result['errors']}")
+        return result["data"]
 ```
 
 ## Core Queries
@@ -73,6 +76,8 @@ data = await query({
           action_items
           overview
           shorthand_bullet
+          gist
+          bullet_gist
         }
       }
     }
@@ -106,6 +111,8 @@ data = await query({
           action_items
           overview
           shorthand_bullet
+          gist
+          bullet_gist
         }
       }
     }
@@ -119,7 +126,7 @@ transcript = data["transcript"]
 
 - **Transcript** — a recorded meeting: `id`, `title`, `date`, `duration`, `participants`, `sentences`, `summary`
 - **Sentence** — a single utterance: `index`, `text`, `start_time`, `end_time`, `speaker_name`, `speaker_id`
-- **Summary** — AI-generated meeting summary: `keywords`, `action_items`, `overview`, `shorthand_bullet`
+- **Summary** — AI-generated meeting summary: `keywords`, `action_items`, `overview`, `shorthand_bullet`, `gist` (1-sentence), `bullet_gist`
 - **User** — a Fireflies workspace user: `name`, `user_id`
 - **MeetingAttendee** — attendee details including email and name
 - **MeetingInfo** — metadata about the recorded meeting
@@ -156,9 +163,72 @@ async def fetch_all_transcripts() -> list:
     return results
 ```
 
+## Date Filtering
+
+```python
+data = await query({
+    "query": """
+    query GetTranscripts($fromDate: DateTime, $toDate: DateTime) {
+      transcripts(fromDate: $fromDate, toDate: $toDate) {
+        id
+        title
+        date
+        duration
+        participants
+      }
+    }
+    """,
+    "variables": {
+        "fromDate": "2025-01-01T00:00:00Z",
+        "toDate": "2025-12-31T23:59:59Z",
+    },
+})
+```
+
+## Upload Audio
+
+Upload an external recording URL for Fireflies to transcribe:
+
+```python
+data = await query({
+    "query": """
+    mutation UploadAudio($input: AudioUploadInput) {
+      uploadAudio(input: $input) {
+        success
+        title
+        message
+      }
+    }
+    """,
+    "variables": {
+        "input": {
+            "url": "https://your-storage.com/recording.mp3",
+            "title": "Sales call - 2025-01-15",
+            "meeting_attendees": [
+                {"displayName": "Alice", "email": "alice@example.com"},
+                {"displayName": "Bob", "email": "bob@example.com"},
+            ],
+        }
+    },
+})
+```
+
 ## Webhooks
 
 Fireflies supports webhooks (v1 and v2) to push transcript-ready events. See: https://docs.fireflies.ai/graphql-api/webhooks
+
+Minimal webhook payload when a transcript is ready:
+
+```json
+{
+  "meetingId": "abc123",
+  "clientReferenceId": null,
+  "title": "Team standup",
+  "fireflies_user": "user@example.com"
+}
+```
+
+Fetch the full transcript using `transcript(id: "abc123")` after receiving the webhook.
 
 ## Installation
 

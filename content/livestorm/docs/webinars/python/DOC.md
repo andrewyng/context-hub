@@ -29,7 +29,10 @@ import httpx
 API_TOKEN = "YOUR_API_TOKEN"
 BASE_URL = "https://api.livestorm.co/v1"
 
-headers = {"Authorization": API_TOKEN}
+headers = {
+    "Authorization": API_TOKEN,
+    "Content-Type": "application/vnd.api+json",
+}
 ```
 
 Note: the header value is the token directly (no `Bearer` prefix).
@@ -53,7 +56,7 @@ Response headers on every request:
 
 ## Pagination
 
-List endpoints use cursor-style pagination with JSON:API conventions:
+List endpoints use page-number pagination with JSON:API conventions:
 
 - `page[number]` — zero-indexed page number (default: `0`)
 - `page[size]` — items per page (default: `20`, max: `50`)
@@ -140,11 +143,84 @@ import httpx
 async def get_with_retry(client: httpx.AsyncClient, url: str, headers: dict, params: dict = None):
     r = await client.get(url, headers=headers, params=params)
     if r.status_code == 429:
-        wait = int(r.headers.get("Retry-After", 1))
+        if r.headers.get("RateLimit-Monthly-Remaining") == "0":
+            raise RuntimeError("Monthly API quota exhausted — resets per RateLimit-Reset header")
+        wait = int(r.headers.get("Retry-After", 60))
         await asyncio.sleep(wait)
         r = await client.get(url, headers=headers, params=params)
     r.raise_for_status()
     return r.json()
+```
+
+## Data Model: Events and Sessions
+
+Livestorm uses a two-level hierarchy:
+
+- **Event** — the recurring template (e.g., "Monthly Product Demo"). Created once, holds settings and branding.
+- **Session** — a specific scheduled occurrence of an Event with its own date/time and attendee list.
+
+Most attendee data (registrants, attendance, engagement) lives at the Session level.
+
+## Single vs List Response Access
+
+Livestorm's API follows JSON:API spec. List and single-resource responses have different shapes:
+
+```python
+# List response: payload["data"] is an array
+events = payload["data"]
+for event in events:
+    title = event["attributes"]["title"]
+
+# Single-resource response (create, get by ID): payload["data"] is an object
+payload = r.json()
+event_id = payload["data"]["id"]
+title = payload["data"]["attributes"]["title"]
+```
+
+## Create and Fetch Events
+
+```python
+async with httpx.AsyncClient(headers=headers) as client:
+    # Create an event
+    r = await client.post(
+        f"{BASE_URL}/events",
+        json={
+            "data": {
+                "type": "events",
+                "attributes": {
+                    "title": "Product Demo",
+                    "estimated_duration": 60,
+                    "slug": "product-demo",
+                },
+            }
+        },
+    )
+    r.raise_for_status()
+    event_id = r.json()["data"]["id"]
+
+    # Get a single event by ID
+    r = await client.get(f"{BASE_URL}/events/{event_id}")
+    r.raise_for_status()
+    event = r.json()["data"]
+    title = event["attributes"]["title"]
+```
+
+## Sessions and People
+
+```python
+async with httpx.AsyncClient(headers=headers) as client:
+    # List sessions for an event
+    r = await client.get(f"{BASE_URL}/events/{event_id}/sessions")
+    r.raise_for_status()
+    sessions = r.json()["data"]
+
+    # List people (registrants + attendees) for a session
+    r = await client.get(f"{BASE_URL}/sessions/{session_id}/people")
+    r.raise_for_status()
+    people = r.json()["data"]
+    for person in people:
+        email = person["attributes"]["email"]
+        attended = person["attributes"]["attended"]
 ```
 
 ## Notes

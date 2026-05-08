@@ -89,7 +89,7 @@ async with httpx.AsyncClient(auth=auth) as client:
     calls = r.json()["data"]["items"]
 ```
 
-Call fields include: `id`, `agent_id`, `direction` (`inbound`/`outbound`).
+Call fields include: `id`, `agent_id`, `direction` (`inbound`/`outgoing`).
 
 ### Groups (Queues)
 
@@ -126,6 +126,12 @@ async def fetch_all(resource: str, auth: httpx.BasicAuth) -> list:
     return results
 ```
 
+## Known Limitations
+
+> **CDR ID mismatch**: CloudTalk does not expose agent IDs or call IDs via the API in a way that cross-references with their CDR (Call Detail Records) export page. IDs from the API and CDR report are separate — they cannot be reliably joined without manual mapping.
+
+> **PUT is full-replace**: `PUT` endpoints are full-replace operations. Omitting any field silently resets it to its default value. Always fetch the current resource first, then send the complete updated object.
+
 ## Rate Limits
 
 CloudTalk does not publicly document rate limit thresholds. Implement exponential backoff on HTTP 429.
@@ -156,6 +162,24 @@ Documented webhook events:
 - `call.missed`
 - `voicemail.received`
 - `sms.received`
+
+## Contacts
+
+```python
+async with httpx.AsyncClient(auth=auth) as client:
+    # List contacts
+    r = await client.get(
+        f"{BASE_URL}/contacts.json",
+        params={"page": 1, "limit": 100},
+    )
+    contacts = r.json()["data"]["items"]
+
+    # Add tags to a contact
+    r = await client.post(
+        f"{BASE_URL}/contacts/addTags/{contact_id}.json",
+        json={"tags": ["vip", "enterprise"]},
+    )
+```
 
 ## Installation
 

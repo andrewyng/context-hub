@@ -44,7 +44,7 @@ BASE_URL = "https://api.aircall.io/v1"
 Use the `/v1/ping` endpoint to validate a token:
 
 ```python
-async with httpx.AsyncClient(auth=auth) as client:
+async with httpx.AsyncClient(headers=headers) as client:
     r = await client.get(f"{BASE_URL}/ping")
     # 200 OK → {"ping": "pong"}
 ```
@@ -57,7 +57,7 @@ async with httpx.AsyncClient(auth=auth) as client:
 ## API Versioning
 
 - Most endpoints: `/v1/` (stable)
-- Users: `/v2/users` available (v2 adds fields)
+- Users: `/v2/users` available (v2 adds `substatus` field, per-user number listing via `GET /v2/users/:id/numbers`, and v2-specific webhook events)
 - Webhooks: v2 event names are suffixed `.v2` (e.g. `user.connected.v2`)
 
 ## Core Resources
@@ -74,7 +74,7 @@ async with httpx.AsyncClient(auth=auth) as client:
     r = await client.get(f"{BASE_URL}/calls/{call_id}")
     call = r.json()["call"]
 
-    # Get call transcription (requires AI Assist Pro)
+    # Get call transcription (requires AI Assist or AI Assist Pro)
     r = await client.get(f"{BASE_URL}/calls/{call_id}/transcription")
 ```
 
@@ -145,11 +145,43 @@ async def get_with_retry(client: httpx.AsyncClient, url: str, max_retries: int =
     for attempt in range(max_retries):
         r = await client.get(url)
         if r.status_code == 429:
+            # X-AircallApi-Reset header gives exact reset timestamp — use it for precise retry timing
             await asyncio.sleep(2 ** attempt)
             continue
         r.raise_for_status()
         return r.json()
     raise RuntimeError("Max retries exceeded after rate limiting")
+```
+
+## Webhooks
+
+Common events: `call.created`, `call.answered`, `call.ended`, `call.transferred`, `call.external_transferred`, `call.evaluation.created`, `contact.created`, `contact.updated`, `user.created.v2`, `user.connected.v2`, `number.deleted`
+
+Configure webhooks in Dashboard → Integrations → Webhooks or via API (`POST /v1/webhooks`).
+
+## Numbers
+
+```python
+async with httpx.AsyncClient(auth=auth) as client:
+    # List all numbers
+    r = await client.get(f"{BASE_URL}/numbers")
+    numbers = r.json()["numbers"]
+
+    # Get numbers for a specific user (v2)
+    r = await client.get(f"https://api.aircall.io/v2/users/{user_id}/numbers")
+    user_numbers = r.json()["numbers"]
+```
+
+## Outbound Calls
+
+```python
+async with httpx.AsyncClient(auth=auth) as client:
+    # Initiate an outbound call from a user
+    r = await client.post(
+        f"{BASE_URL}/users/{user_id}/calls",
+        json={"to": "+15551234567"},
+    )
+    call = r.json()["call"]
 ```
 
 ## Installation

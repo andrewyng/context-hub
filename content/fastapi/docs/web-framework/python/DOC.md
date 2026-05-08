@@ -3,8 +3,8 @@ name: web-framework
 description: "FastAPI framework for building high-performance REST APIs with Python, featuring automatic OpenAPI docs, Pydantic v2 validation, async support, dependency injection, and type safety"
 metadata:
   languages: "python"
-  versions: "0.115.0"
-  updated-on: "2026-03-12"
+  versions: "0.115.12"
+  updated-on: "2026-05-07"
   source: community
   tags: "fastapi,python,web,api,rest,pydantic,async"
 ---

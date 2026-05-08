@@ -124,6 +124,38 @@ transcript = data["transcript"]
 - **MeetingAttendee** — attendee details including email and name
 - **MeetingInfo** — metadata about the recorded meeting
 
+## Common Pattern: Fetch All Transcripts (Paginated)
+
+For workspaces with many meetings, use `limit` and `skip` to page through results:
+
+```python
+async def fetch_all_transcripts() -> list:
+    results = []
+    skip = 0
+    limit = 50
+    while True:
+        data = await query({
+            "query": """
+            query GetTranscripts($limit: Int, $skip: Int) {
+              transcripts(limit: $limit, skip: $skip) {
+                id
+                title
+                date
+                duration
+                participants
+              }
+            }
+            """,
+            "variables": {"limit": limit, "skip": skip},
+        })
+        batch = data["transcripts"]
+        results.extend(batch)
+        if len(batch) < limit:
+            break
+        skip += limit
+    return results
+```
+
 ## Webhooks
 
 Fireflies supports webhooks (v1 and v2) to push transcript-ready events. See: https://docs.fireflies.ai/graphql-api/webhooks

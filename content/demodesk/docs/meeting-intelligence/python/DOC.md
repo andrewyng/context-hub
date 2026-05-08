@@ -136,6 +136,8 @@ async with httpx.AsyncClient() as client:
 
 ### Users
 
+Your `company_id` is available in Demodesk dashboard → Settings → Company Info, or from the `company_id` field in any user object returned by the API.
+
 ```python
 async with httpx.AsyncClient() as client:
     # List users in a company

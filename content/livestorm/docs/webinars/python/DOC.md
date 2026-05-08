@@ -29,10 +29,10 @@ import httpx
 API_TOKEN = "YOUR_API_TOKEN"
 BASE_URL = "https://api.livestorm.co/v1"
 
-headers = {"authorization": API_TOKEN}
+headers = {"Authorization": API_TOKEN}
 ```
 
-Note: the header name is lowercase `authorization` and the value is the token directly (no `Bearer` prefix).
+Note: the header value is the token directly (no `Bearer` prefix).
 
 ### OAuth2 (Technology Partners — public integrations only)
 
@@ -108,7 +108,7 @@ params = {
 import httpx
 
 async def fetch_all_events(api_token: str) -> list:
-    headers = {"authorization": api_token}
+    headers = {"Authorization": api_token}
     base_url = "https://api.livestorm.co/v1"
     results = []
     page = 0

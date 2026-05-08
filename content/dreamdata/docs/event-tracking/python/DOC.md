@@ -24,17 +24,10 @@ HTTP Basic Auth. API key is the username; password is empty.
 Get your Source API Key in the Dreamdata platform under: Data Platform → Sources → Server Side Analytics APIs.
 
 ```python
-import base64
 import httpx
 
 API_KEY = "YOUR_DREAMDATA_API_KEY"
-credentials = base64.b64encode(f"{API_KEY}:".encode()).decode()
-
-headers = {
-    "Authorization": f"Basic {credentials}",
-    "Content-Type": "application/json",
-}
-
+auth = httpx.BasicAuth(API_KEY, "")  # API key as username, empty password
 BATCH_URL = "https://api.dreamdata.cloud/v1/batch"
 ```
 
@@ -53,20 +46,15 @@ from datetime import datetime, timezone
 import httpx
 
 async def send_events(api_key: str, events: list[dict]) -> None:
-    credentials = base64.b64encode(f"{api_key}:".encode()).decode()
-    headers = {
-        "Authorization": f"Basic {credentials}",
-        "Content-Type": "application/json",
-    }
+    auth = httpx.BasicAuth(api_key, "")
     payload = {
         "messageId": str(uuid.uuid4()),
         "sentAt": datetime.now(timezone.utc).isoformat(),
         "batch": events,
     }
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(auth=auth) as client:
         r = await client.post(
             "https://api.dreamdata.cloud/v1/batch",
-            headers=headers,
             json=payload,
         )
         r.raise_for_status()
@@ -126,7 +114,7 @@ page_event = {
 
 ### Link Anonymous to Known User
 
-When a visitor identifies (e.g. signs up), send an `alias` event:
+When a visitor identifies (e.g. signs up), send an `alias` event to merge the anonymous and known identities:
 
 ```python
 alias_event = {

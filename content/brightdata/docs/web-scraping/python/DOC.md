@@ -3,7 +3,7 @@ name: web-scraping
 description: "Bright Data Python SDK for web scraping, SERP results, and browser automation using the Unlocker, SERP, and Browser APIs."
 metadata:
   languages: "python"
-  versions: "latest"
+  versions: "v1"
   updated-on: "2026-05-08"
   source: community
   tags: "brightdata,web-scraping,serp,proxy,browser-automation,data-collection"
@@ -30,7 +30,7 @@ Or pass it directly to the client.
 ## Installation
 
 ```bash
-pip install brightdata
+pip install brightdata-sdk
 ```
 
 ## Core Products
@@ -85,7 +85,7 @@ async def search_google(query: str, location: str = "United States"):
 
 ## Browser API (Playwright)
 
-For JavaScript-heavy pages:
+For JavaScript-heavy pages. Bright Data's browser integration uses the Chrome DevTools Protocol (CDP) — connect Playwright to Bright Data's managed browser via `client.connect_browser()`:
 
 ```python
 from brightdata import BrightDataClient
@@ -94,7 +94,7 @@ from playwright.sync_api import sync_playwright
 def scrape_with_browser(url: str) -> str:
     client = BrightDataClient()
     with sync_playwright() as playwright:
-        browser = client.browser.launch(playwright)
+        browser = playwright.chromium.connect_over_cdp(client.connect_browser())
         try:
             page = browser.new_page()
             page.goto(url)

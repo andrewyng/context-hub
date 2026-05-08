@@ -20,14 +20,11 @@ Official API documentation: https://developers.cloudtalk.io/
 Auth method: HTTP Basic Auth. Generate an API key in the CloudTalk dashboard under Account Settings → Integrations → API. Note both the Key ID and Key Secret.
 
 ```python
-import base64
 import httpx
 
 key_id = "YOUR_KEY_ID"
 key_secret = "YOUR_KEY_SECRET"
-credentials = base64.b64encode(f"{key_id}:{key_secret}".encode()).decode()
-
-headers = {"Authorization": f"Basic {credentials}"}
+auth = httpx.BasicAuth(key_id, key_secret)
 BASE_URL = "https://my.cloudtalk.io/api"
 ```
 
@@ -64,11 +61,10 @@ params = {"page": 1, "limit": 100}
 ### Agents
 
 ```python
-async with httpx.AsyncClient() as client:
+async with httpx.AsyncClient(auth=auth) as client:
     # List all agents (paginated)
     r = await client.get(
         f"{BASE_URL}/agents.json",
-        headers=headers,
         params={"page": 1, "limit": 100},
     )
     data = r.json()
@@ -76,7 +72,7 @@ async with httpx.AsyncClient() as client:
     total = data["data"]["total"]
 
     # Get a single agent
-    r = await client.get(f"{BASE_URL}/agents/{agent_id}.json", headers=headers)
+    r = await client.get(f"{BASE_URL}/agents/{agent_id}.json")
     agent = r.json()["data"]
 ```
 
@@ -85,10 +81,9 @@ Agent fields: `id`, `name`, `email`, `role`, `status`, `extension`, `phone_numbe
 ### Calls
 
 ```python
-async with httpx.AsyncClient() as client:
+async with httpx.AsyncClient(auth=auth) as client:
     r = await client.get(
         f"{BASE_URL}/calls.json",
-        headers=headers,
         params={"page": 1, "limit": 100},
     )
     calls = r.json()["data"]["items"]
@@ -99,8 +94,8 @@ Call fields include: `id`, `agent_id`, `direction` (`inbound`/`outbound`).
 ### Groups (Queues)
 
 ```python
-async with httpx.AsyncClient() as client:
-    r = await client.get(f"{BASE_URL}/groups.json", headers=headers)
+async with httpx.AsyncClient(auth=auth) as client:
+    r = await client.get(f"{BASE_URL}/groups.json")
     groups = r.json()["data"]["items"]
 ```
 
@@ -109,20 +104,21 @@ async with httpx.AsyncClient() as client:
 ```python
 import httpx
 
-async def fetch_all(resource: str, headers: dict) -> list:
+async def fetch_all(resource: str, auth: httpx.BasicAuth) -> list:
     results = []
     page = 1
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(auth=auth) as client:
         while True:
             r = await client.get(
                 f"https://my.cloudtalk.io/api/{resource}.json",
-                headers=headers,
                 params={"page": page, "limit": 100},
             )
             r.raise_for_status()
             body = r.json()
             items = body["data"]["items"]
             results.extend(items)
+            if not items:
+                break
             total = body["data"]["total"]
             if len(results) >= total:
                 break
@@ -138,9 +134,9 @@ CloudTalk does not publicly document rate limit thresholds. Implement exponentia
 import asyncio
 import httpx
 
-async def get_with_backoff(client: httpx.AsyncClient, url: str, headers: dict, params: dict = None):
+async def get_with_backoff(client: httpx.AsyncClient, url: str, params: dict = None):
     for attempt in range(5):
-        r = await client.get(url, headers=headers, params=params)
+        r = await client.get(url, params=params)
         if r.status_code == 429:
             await asyncio.sleep(2 ** attempt)
             continue

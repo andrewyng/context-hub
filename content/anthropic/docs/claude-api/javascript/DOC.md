@@ -4,7 +4,7 @@ description: "Claude AI assistant API for text generation, analysis, conversatio
 metadata:
   languages: "javascript"
   versions: "0.78.0"
-  updated-on: "2026-03-05"
+  updated-on: "2026-05-12"
   source: maintainer
   tags: "anthropic,sdk,llm,ai,claude"
 ---
@@ -57,14 +57,21 @@ const client = new Anthropic({});
 
 ## Models
 
-- By default, use the following models as of March 2026:
-  - **General Tasks:** `claude-sonnet-4-6-20250827`
-  - **High-performance:** `claude-opus-4-6-20250826`
-  - **Fast and Efficient:** `claude-haiku-4-5-20251001`
+- By default, use the following models as of May 2026:
+  - **High-performance / Agentic coding:** `claude-opus-4-7` (flagship; step-change improvement in agentic coding over Opus 4.6)
+  - **General Tasks (best speed/intelligence balance):** `claude-sonnet-4-6`
+  - **Fast and Efficient:** `claude-haiku-4-5-20251001` (alias: `claude-haiku-4-5`)
 
-- Previous generation models (still supported):
-  - `claude-sonnet-4-20250514`, `claude-opus-4-20250514`
+- Note: starting with the 4.6 generation, Anthropic uses dateless model IDs as the canonical pinned snapshot (e.g. `claude-opus-4-7`, `claude-sonnet-4-6`). For older generations the alias is a pointer that resolves to a dated ID.
+
+- Legacy models (still supported, consider migrating):
+  - `claude-opus-4-6`, `claude-sonnet-4-5-20250929` (alias `claude-sonnet-4-5`)
+  - `claude-opus-4-5-20251101`, `claude-opus-4-1-20250805`
   - `claude-3-5-haiku-20241022`
+
+- Deprecated — retiring June 15, 2026 (migrate now):
+  - `claude-sonnet-4-20250514` → migrate to `claude-sonnet-4-6`
+  - `claude-opus-4-20250514` → migrate to `claude-opus-4-7`
 
 - Do not use deprecated models: `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-opus`
 
@@ -81,7 +88,7 @@ async function run() {
   const message = await client.messages.create({
     max_tokens: 1024,
     messages: [{ role: 'user', content: 'Hello, Claude' }],
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
   });
 
   console.log(message.content);
@@ -121,7 +128,7 @@ const client = new Anthropic();
 const stream = await client.messages.create({
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Hello, Claude' }],
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6',
   stream: true,
 });
 
@@ -142,7 +149,7 @@ const client = new Anthropic();
 async function main() {
   const stream = client.messages
     .stream({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [
         {
@@ -179,7 +186,7 @@ const client = new Anthropic();
 
 async function run() {
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1024,
     messages: [{ role: 'user', content: "What's the weather like in San Francisco?" }],
     tools: [
@@ -218,7 +225,7 @@ The beta API provides specialized built-in tools.
 
 ```javascript
 const response = await client.beta.messages.create({
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6',
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'List the files in the current directory' }],
   tools: [{ type: 'bash_20250124', name: 'bash' }],
@@ -229,7 +236,7 @@ const response = await client.beta.messages.create({
 
 ```javascript
 const response = await client.beta.messages.create({
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6',
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Take a screenshot' }],
   tools: [
@@ -247,7 +254,7 @@ const response = await client.beta.messages.create({
 
 ```javascript
 const response = await client.beta.messages.create({
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6',
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Create a Python script' }],
   tools: [{ type: 'text_editor_20250124', name: 'str_replace_editor' }],
@@ -275,7 +282,7 @@ await client.messages.batches.create({
     {
       custom_id: 'my-first-request',
       params: {
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         messages: [{ role: 'user', content: 'Hello, world' }],
       },
@@ -283,7 +290,7 @@ await client.messages.batches.create({
     {
       custom_id: 'my-second-request',
       params: {
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         messages: [{ role: 'user', content: 'Hi again, friend' }],
       },
@@ -311,7 +318,7 @@ Guide Claude's behavior with system instructions:
 
 ```javascript
 const response = await client.messages.create({
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6',
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Hello' }],
   system: [{ text: 'You are a helpful assistant that responds in a pirate voice.', type: 'text' }],
@@ -320,11 +327,11 @@ const response = await client.messages.create({
 
 ### Thinking
 
-Configure Claude's extended thinking (reasoning process):
+Configure Claude's extended thinking (reasoning process). Supported on Sonnet 4.6 and Haiku 4.5. **Opus 4.7 uses adaptive thinking only** (no manual `budget_tokens` — omit the `thinking` parameter for Opus 4.7).
 
 ```javascript
 const response = await client.messages.create({
-  model: 'claude-sonnet-4-6-20250827',
+  model: 'claude-sonnet-4-6',
   max_tokens: 16000,
   messages: [{ role: 'user', content: 'Solve this complex problem...' }],
   thinking: { type: 'enabled', budget_tokens: 10000 },
@@ -337,7 +344,7 @@ Control randomness and output:
 
 ```javascript
 const response = await client.messages.create({
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6',
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Write a creative story' }],
   temperature: 0.7,
@@ -353,7 +360,7 @@ Count tokens before making requests:
 ```javascript
 const tokenCount = await client.messages.countTokens({
   messages: [{ role: 'user', content: 'Hello, Claude' }],
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6',
 });
 console.log(tokenCount); // { input_tokens: 25, output_tokens: 13 }
 ```
@@ -386,7 +393,7 @@ try {
   const message = await client.messages.create({
     max_tokens: 1024,
     messages: [{ role: 'user', content: 'Hello, Claude' }],
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
   });
 } catch (err) {
   if (err instanceof Anthropic.APIError) {
@@ -423,7 +430,7 @@ All responses include a `_request_id` property for debugging:
 const message = await client.messages.create({
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Hello, Claude' }],
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6',
 });
 console.log(message._request_id);
 ```
@@ -442,7 +449,7 @@ const client = new Anthropic({
 
 // Or configure per-request
 await client.messages.create(
-  { max_tokens: 1024, messages: [{ role: 'user', content: 'Hello, Claude' }], model: 'claude-sonnet-4-20250514' },
+  { max_tokens: 1024, messages: [{ role: 'user', content: 'Hello, Claude' }], model: 'claude-sonnet-4-6' },
   { maxRetries: 5 },
 );
 ```
@@ -459,7 +466,7 @@ const client = new Anthropic({
 
 // Override per-request
 await client.messages.create(
-  { max_tokens: 1024, messages: [{ role: 'user', content: 'Hello, Claude' }], model: 'claude-sonnet-4-20250514' },
+  { max_tokens: 1024, messages: [{ role: 'user', content: 'Hello, Claude' }], model: 'claude-sonnet-4-6' },
   { timeout: 5 * 1000 },
 );
 ```

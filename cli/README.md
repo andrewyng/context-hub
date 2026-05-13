@@ -52,4 +52,4 @@ chub annotate stripe/api "note"      # local annotation
 chub feedback stripe/api up          # rate a doc
 ```
 
-For the full command reference, see [CLI Reference](../docs/cli-reference.md).
+For the full command reference, see [CLI Reference](https://github.com/andrewyng/context-hub/blob/main/docs/cli-reference.md).

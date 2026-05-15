@@ -4,6 +4,12 @@ Three approaches for processing multiple documents, from simplest to most
 scalable. All patterns include per-document error handling so one failure
 doesn't stop the batch.
 
+> **SDK version:** These patterns use `save_to` in directory mode and
+> full-path mode (for per-document filenames when the input is a raw
+> Markdown string). Full-path mode and async `save_to` require
+> `landingai-ade` v1.13.0+. On older versions, fall back to a manual
+> `model_dump()`+`json.dumps` write.
+
 ---
 
 ## 1. Sync Parallel — ThreadPoolExecutor
@@ -11,8 +17,6 @@ doesn't stop the batch.
 Best for: moderate batches (10–200 docs), simple scripts, notebooks.
 
 ```python
-import io
-import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, List, Tuple, Type
@@ -29,40 +33,19 @@ def parse_extract_save(
     output_dir: Path,
 ) -> Tuple[Any, Any]:
     """Parse one document, extract with schema, save both
-    results as JSON. Returns (parse_result, extract_result)."""
-    output_dir.mkdir(parents=True, exist_ok=True)
+    results as JSON via save_to.
+    Returns (parse_result, extract_result)."""
     stem = doc_path.stem
-
-    # Step 1 — Parse
-    parse_result = client.parse(document=doc_path)
-    _save_json(
-        parse_result, output_dir / f"parse_{stem}.json"
+    parse_result = client.parse(
+        document=doc_path,
+        save_to=output_dir,
     )
-
-    # Step 2 — Extract
-    json_schema = pydantic_to_json_schema(schema_cls)
     extract_result = client.extract(
-        schema=json_schema,
-        markdown=io.BytesIO(
-            parse_result.markdown.encode("utf-8")
-        ),
-    )
-    _save_json(
-        extract_result, output_dir / f"extract_{stem}.json"
+        schema=pydantic_to_json_schema(schema_cls),
+        markdown=parse_result.markdown,
+        save_to=output_dir / f"{stem}_extract_output.json",
     )
     return parse_result, extract_result
-
-
-def _save_json(obj: Any, path: Path) -> None:
-    data = (
-        obj.model_dump()
-        if hasattr(obj, "model_dump")
-        else obj
-    )
-    path.write_text(
-        json.dumps(data, indent=2, default=str),
-        encoding="utf-8",
-    )
 
 
 def batch_parse_extract(
@@ -131,7 +114,6 @@ Uses `asyncio` + `aiolimiter` for rate-limited concurrency.
 
 ```python
 import asyncio
-import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -159,18 +141,12 @@ async def process_document(
     """Parse one document async, save JSON + markdown."""
     try:
         async with rate_limiter:
-            result = await client.parse(document=file_path)
+            result = await client.parse(
+                document=file_path,
+                save_to=output_dirs["json"],
+            )
 
-        stem = file_path.stem
-        # Save JSON
-        (output_dirs["json"] / f"{stem}.json").write_text(
-            json.dumps(
-                result.model_dump(), indent=2, default=str
-            ),
-            encoding="utf-8",
-        )
-        # Save markdown
-        (output_dirs["markdown"] / f"{stem}.md").write_text(
+        (output_dirs["markdown"] / f"{file_path.stem}.md").write_text(
             result.markdown, encoding="utf-8"
         )
         return {"path": file_path, "result": result}

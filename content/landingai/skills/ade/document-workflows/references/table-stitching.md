@@ -100,16 +100,16 @@ from landingai_ade.lib import pydantic_to_json_schema
 
 client = LandingAIADE()
 
-# Step 1: Parse (cache the result to avoid re-parsing)
+# Step 1: Parse (cache the result to avoid re-parsing).
+# save_to full-path mode requires landingai-ade v1.13.0+.
 parse_json = Path("output/parsed.json")
 if parse_json.exists():
     data = json.loads(parse_json.read_text())
     markdown = data["markdown"]
 else:
-    pr = client.parse(document=Path("document.pdf"))
-    parse_json.parent.mkdir(parents=True, exist_ok=True)
-    parse_json.write_text(
-        json.dumps(pr.model_dump(), indent=2, default=str)
+    pr = client.parse(
+        document=Path("document.pdf"),
+        save_to=parse_json,
     )
     markdown = pr.markdown
 
@@ -416,8 +416,8 @@ def fmt_amount(val: object) -> str:
    catch errors that structural parsing misses and resolve ambiguities
    in column assignment.
 
-5. **Cache parse results** — save `pr.model_dump()` to JSON after the
-   first parse. Load it for development instead of calling
+5. **Cache parse results** by passing `save_to="output/parsed.json"`
+   to `client.parse()`. Load that JSON in later runs instead of calling
    `client.parse()` again. Only re-parse when the document changes.
 
 ---

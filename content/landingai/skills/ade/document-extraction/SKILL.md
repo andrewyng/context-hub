@@ -345,43 +345,46 @@ For detailed chunk type reference, see [references/chunk-types.md](references/ch
 
 ### Saving Parse Responses
 
-The SDK provides a built-in `save_to` parameter on `parse()`, `extract()`, and `split()` that automatically saves the JSON response to a folder:
+The SDK provides a built-in `save_to` parameter on `parse()`, `extract()`, and `split()` (both sync and async clients) that saves the full JSON response to disk after the API call. It accepts two modes.
+
+**Directory mode** (auto-generated filename):
 
 ```python
 from pathlib import Path
 
-# Parse and auto-save response JSON to output/ folder
 response = client.parse(
     document=Path("document.pdf"),
     model="dpt-2-latest",
-    save_to="output/"  # Creates output/document_parse_output.json
+    save_to="output/",  # Creates output/document_parse_output.json
 )
-
-# Response is still returned normally for immediate use
-print(response.markdown[:200])
+print(response.markdown[:200])  # response is still returned for immediate use
 ```
 
-The `save_to` parameter:
-- Creates the folder if it doesn't exist
-- Names the file `{input_filename}_{method}_output.json` (e.g., `document_parse_output.json`)
-- Works on `client.parse()`, `client.extract()`, and `client.split()`
-- Is a **client-side convenience** that saves the full response locally after the API call
+The filename pattern is `{input_filename}_{method}_output.json`. If `save_to` can't derive a filename (for example, when `markdown=` is passed as a raw string), the file is named `{method}_output.json`.
 
-For manual serialization (e.g., custom filenames or selective saving), use `model_dump()`:
+**Full-path mode** (exact filename):
 
 ```python
-import json
+response = client.parse(
+    document=Path("document.pdf"),
+    save_to="output/parsed.json",  # Saves exactly to this path
+)
+```
 
-response_dict = response.model_dump()
-with open("parse_response.json", "w", encoding="utf-8") as f:
-    json.dump(response_dict, f, indent=2, ensure_ascii=False)
+If `save_to` ends in `.json`, the SDK writes to that path and creates any missing parent directories.
 
-# Save markdown separately for extraction
+`save_to` is a client-side convenience: it does not change the API response, just writes it to disk.
+
+> **SDK version note:** Directory mode is available from `landingai-ade` v1.4.0. The full-path mode and async `save_to` (on `AsyncLandingAIADE.parse/extract/split`) require v1.13.0 or later.
+
+**Saving just the Markdown field.** `save_to` only writes the full JSON response. To save the Markdown string on its own (for example, to run Extract on it later), write it directly:
+
+```python
 with open("document_parsed.md", "w", encoding="utf-8") as f:
     f.write(response.markdown)
 ```
 
-**Important:** Always use `model_dump()` to serialize the complete response. Do not manually construct dictionaries with selected fields, as you may miss important data like the `splits` array or complete grounding information.
+For any other custom serialization, dump the full response with `response.model_dump()` rather than hand-picking fields, so you don't drop important data like the `splits` array or complete grounding information.
 
 ### Parse Parameters
 

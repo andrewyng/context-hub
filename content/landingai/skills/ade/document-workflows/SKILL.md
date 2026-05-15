@@ -112,9 +112,10 @@ print(f"\nPages: {pr.metadata.page_count}  "
 EOF
 ```
 
-> **Cost note:** Save the parse result with `pr.model_dump()` to a JSON file
-> after the first run. Load it for later development instead of calling
-> `client.parse()` again. Only re-parse when the document set changes.
+> **Cost note:** Cache the parse result on the first run by passing
+> `save_to="output/parsed.json"` to `client.parse()`. Load that JSON in
+> later development runs instead of re-parsing. Only re-parse when the
+> document set changes.
 
 ### What to look for
 
@@ -203,7 +204,6 @@ the wrong section.
 The fundamental two-step ADE pattern. Every other workflow builds on this.
 
 ```python
-import io
 from pathlib import Path
 from typing import Any, Tuple, Type
 
@@ -215,29 +215,29 @@ def parse_extract_save(
     doc_path: Path,
     client: LandingAIADE,
     schema_cls: Type[Any],
-    output_dir: str = "./ade_results",
+    output_dir: Path = Path("./ade_results"),
 ) -> Tuple[Any, Any]:
     """Parse a document, extract structured data, save both
     as JSON via save_to. Returns (parse_result, extract_result)."""
-    # Step 1 — Parse (auto-saves {stem}_parse_output.json)
+    stem = doc_path.stem
     parse_result = client.parse(
-        document=doc_path, save_to=output_dir,
+        document=doc_path,
+        save_to=output_dir,
     )
-
-    # Step 2 — Extract (auto-saves {stem}_extract_output.json)
     extract_result = client.extract(
         schema=pydantic_to_json_schema(schema_cls),
-        markdown=io.BytesIO(
-            parse_result.markdown.encode("utf-8")
-        ),
-        save_to=output_dir,
+        markdown=parse_result.markdown,
+        save_to=output_dir / f"{stem}_extract_output.json",
     )
     return parse_result, extract_result
 ```
 
-> **`save_to` parameter:** Available on `parse()`, `extract()`, and `split()`.
-> Creates the folder if needed and writes `{input_filename}_{method}_output.json`.
-> This is a client-side convenience — the full response is saved locally after the API call.
+> **`save_to` parameter:** Available on `parse()`, `extract()`, and `split()`
+> (both sync and async clients). Pass a directory to auto-name the file
+> `{input_filename}_{method}_output.json`, or pass a path ending in `.json`
+> to save to that exact location. Parent directories are created
+> automatically. Full-path mode and async `save_to` require
+> `landingai-ade` v1.13.0+.
 
 ### Parse-Only (no extraction)
 

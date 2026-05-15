@@ -400,34 +400,26 @@ def extractions_to_summary_csv(
 
 ### Per-Document JSON + Combined CSV
 
+Use `save_to` directly on `client.parse()` and `client.extract()` to persist each
+document's JSON response (no separate save helper needed):
+
 ```python
-import json
-
-def save_results(
-    file_path: Path,
-    parse_result: Any,
-    extract_result: Any,
-    output_dir: Path,
-) -> None:
-    """Save individual JSON files + append to combined CSV."""
-    stem = file_path.stem
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Individual JSON
-    for prefix, obj in [
-        ("parse", parse_result),
-        ("extract", extract_result),
-    ]:
-        data = (
-            obj.model_dump()
-            if hasattr(obj, "model_dump")
-            else obj
-        )
-        (output_dir / f"{prefix}_{stem}.json").write_text(
-            json.dumps(data, indent=2, default=str),
-            encoding="utf-8",
-        )
+parse_result = client.parse(
+    document=file_path,
+    save_to=output_dir,  # writes output_dir/{stem}_parse_output.json
+)
+extract_result = client.extract(
+    schema=schema_json,
+    markdown=parse_result.markdown,
+    save_to=output_dir / f"{file_path.stem}_extract_output.json",
+)
 ```
+
+Then call `extractions_to_summary_csv()` (above) on the collected
+`extract_result.extraction` dicts to write the combined CSV.
+
+> Requires `landingai-ade` v1.13.0+ for full-path mode (the second call).
+> Directory mode (the first call) works on earlier versions too.
 
 ---
 

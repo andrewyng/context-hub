@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync, cpSync } from 'node:fs';
 import { join, relative, dirname, basename } from 'node:path';
 import chalk from 'chalk';
-import { parseFrontmatter } from '../lib/frontmatter.js';
+import { parseFrontmatter, FrontmatterParseError } from '../lib/frontmatter.js';
 import { info } from '../lib/output.js';
 import { trackEvent } from '../lib/analytics.js';
 import { buildIndex } from '../lib/bm25.js';
@@ -74,7 +74,17 @@ function discoverAuthor(authorDir, authorName, contentDir) {
 
   for (const ef of entryFiles) {
     const content = readFileSync(ef.path, 'utf8');
-    const { attributes } = parseFrontmatter(content);
+    let attributes;
+    try {
+      ({ attributes } = parseFrontmatter(content));
+    } catch (err) {
+      if (err instanceof FrontmatterParseError) {
+        const loc = err.line ? `:${err.line}${err.col ? ':' + err.col : ''}` : '';
+        errors.push(`${ef.relPath}${loc}: invalid YAML frontmatter — ${err.message}`);
+        continue;
+      }
+      throw err;
+    }
 
     if (!attributes.name) {
       errors.push(`${ef.relPath}: missing 'name' in frontmatter`);

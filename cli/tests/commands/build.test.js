@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -71,5 +71,51 @@ describe('chub build', () => {
       expect(err.stderr.toString()).toContain('not found');
     }
     expect(threw).toBe(true);
+  });
+
+  itBuild('reports YAML parse errors with file path and line, not a raw stack trace', () => {
+    // Regression test for issue #238: an invalid SKILL.md used to crash the
+    // build with an unhandled YAMLParseError from node_modules/yaml. The build
+    // should now collect the error with a file-relative location and exit cleanly.
+    const contentDir = mkdtempSync(join(tmpdir(), 'chub-bad-yaml-'));
+
+    try {
+      const brokenDir = join(contentDir, 'badauthor', 'skills', 'broken');
+      mkdirSync(brokenDir, { recursive: true });
+      writeFileSync(
+        join(brokenDir, 'SKILL.md'),
+        '---\nname: broken\ndescription: Unquoted colon: oops\n---\nbody\n',
+      );
+
+      // A valid sibling file proves the loop keeps going past the bad one.
+      const goodDir = join(contentDir, 'badauthor', 'skills', 'good');
+      mkdirSync(goodDir, { recursive: true });
+      writeFileSync(
+        join(goodDir, 'SKILL.md'),
+        '---\nname: good\ndescription: "Fine here"\n---\nbody\n',
+      );
+
+      let threw = false;
+      try {
+        execFileSync(
+          process.execPath,
+          [CLI_BIN, 'build', contentDir, '--validate-only'],
+          { encoding: 'utf8', stdio: 'pipe', env: TEST_ENV },
+        );
+      } catch (err) {
+        threw = true;
+        const stderr = err.stderr.toString();
+        // Path is relative to the author dir (matches existing error format).
+        expect(stderr).toContain(join('skills', 'broken', 'SKILL.md'));
+        // File-relative line number: `description:` is line 3 of the file.
+        expect(stderr).toMatch(/SKILL\.md:3:\d+: invalid YAML frontmatter/);
+        // The point of the fix: no raw stack trace leaking from node_modules.
+        expect(stderr).not.toContain('YAMLParseError');
+        expect(stderr).not.toMatch(/node_modules[\\/]yaml/);
+      }
+      expect(threw).toBe(true);
+    } finally {
+      rmSync(contentDir, { recursive: true, force: true });
+    }
   });
 });

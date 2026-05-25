@@ -36,6 +36,8 @@ Show bootstrap guidance for coding agents.
 ## chub search [query]
 
 Search docs and skills. No query lists all entries.
+Run `chub update` before the first search in a session to refresh registry
+metadata from remote sources.
 
 | Flag | Purpose |
 |------|---------|
@@ -140,6 +142,10 @@ chub feedback openai/chat down --label outdated --label wrong-examples
 ## chub update
 
 Download or refresh the cached registry from remote sources.
+Agents should run this before the first `chub search` in a task so search
+results include the latest available doc IDs, language variants, and version
+metadata. If the command fails while offline, agents can continue with an
+existing cache but should treat search results as potentially stale.
 
 | Flag | Purpose |
 |------|---------|

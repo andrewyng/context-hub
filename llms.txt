@@ -99,18 +99,21 @@ Flags:
 
 Recommended pattern for AI agents using Context Hub:
 
-1. SEARCH: Find relevant documentation
+1. UPDATE: Refresh registry metadata before searching
+   chub update
+
+2. SEARCH: Find relevant documentation
    chub search "stripe payments" --json | jq -r '.results[0].id'
 
-2. FETCH: Get the documentation
+3. FETCH: Get the documentation
    chub get stripe/api --lang js
 
-3. USE: Read the content, write code based on it
+4. USE: Read the content, write code based on it
 
-4. ANNOTATE: Record what you learned for future sessions
+5. ANNOTATE: Record what you learned for future sessions
    chub annotate stripe/api "Webhook verification requires raw body, not parsed JSON"
 
-5. NEXT SESSION: Fetch again — your annotation appears automatically
+6. NEXT SESSION: Fetch again — your annotation appears automatically
    chub get stripe/api --lang js
    # Content is followed by your previous annotation
 

@@ -9,8 +9,8 @@ description: >
   current API reference.  Fetch the docs with chub before answering, rather than relying on
   your pre-trained knowledge, which may be outdated because of recent changes to these APIs.
   Be sure to use this skill when the user asks for the latest docs, latest API behavior, or
-  explicitly mentions chub or Context Hub. Ensure `chub` is available, run `chub --help`, then
-  follow the instructions there.
+  explicitly mentions chub or Context Hub. Ensure `chub` is available, run `chub --help`, run
+  `chub update` before the first search, then follow the instructions there.
 
 ---
 
@@ -19,7 +19,7 @@ description: >
 When you need documentation for a library or API, fetch it with the `chub` CLI
 rather than guessing from training data. This gives you the current, correct API.
 
-## Step 1 - Ensure chub exists and get the latest instructions for using it
+## Step 1 - Ensure chub exists, get the latest instructions, and refresh the registry
 
 Run
 
@@ -34,6 +34,17 @@ install it as follows:
 ```bash
 npm install -g @aisuite/chub
 ```
+
+After `chub --help` succeeds, refresh the local registry before the first search
+so `chub search` uses the latest available doc IDs and version metadata:
+
+```bash
+chub update
+```
+
+If `chub update` fails because the network or remote registry is unavailable,
+continue with the cached registry only if one already exists, and mention that
+the search results may be stale.
 
 ## Step 2 — Find the right documents
 

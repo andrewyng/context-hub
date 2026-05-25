@@ -108,6 +108,7 @@ describe('loadHelpContent', () => {
     expect(help.content).toContain('Getting Started');
     expect(help.content).toContain('Agent Workflow');
     expect(help.fallbackReason).toContain('404 Not Found');
+    expect(help.content).toContain('Refresh the registry with `chub update` before the first search.');
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -214,6 +215,7 @@ describe('loadHelpContent', () => {
     expect(help.content).toContain('npx skills add https://github.com/andrewyng/context-hub --skill get-api-docs');
     expect(help.content).toContain('$(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md');
     expect(help.content).toContain('cli/skills/get-api-docs/SKILL.md');
+    expect(help.content).toContain('Refresh the registry with `chub update` before the first search.');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

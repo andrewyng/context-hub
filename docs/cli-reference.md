@@ -151,7 +151,7 @@ Download or refresh the cached registry from remote sources.
 Manage the local cache.
 
 - `cache status` — shows cache info (sources, registries, sizes, last updated)
-- `cache clear` — removes cached content (`--force` to skip confirmation)
+- `cache clear` — removes cached content
 
 ## chub build \<content-dir\>
 

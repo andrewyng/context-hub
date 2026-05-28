@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync, cpSync } from 'node:fs';
-import { join, relative, dirname, basename } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync, cpSync, accessSync, constants as fsConstants } from 'node:fs';
+import { join, relative, dirname, basename, resolve } from 'node:path';
 import chalk from 'chalk';
 import { parseFrontmatter, FrontmatterParseError } from '../lib/frontmatter.js';
 import { info } from '../lib/output.js';
@@ -60,6 +60,45 @@ function dirSize(dir) {
   };
   walk(dir);
   return total;
+}
+
+// Verify the build output directory is usable before doing any work.
+// Returns null on success, or a user-facing error string on failure.
+// Catches: parent path is a file (ENOTDIR), parent missing, target exists but
+// is a file, or no write permission. These otherwise surface as opaque Node
+// stack traces after the build has already done its parsing work.
+function validateOutputDir(outputDir) {
+  const absolute = resolve(outputDir);
+  if (existsSync(absolute)) {
+    const st = statSync(absolute);
+    if (!st.isDirectory()) {
+      return `Output path is not a directory: ${outputDir}. Remove the file or pass a different --output path.`;
+    }
+    try {
+      accessSync(absolute, fsConstants.W_OK);
+    } catch {
+      return `Output directory is not writable: ${outputDir}. Check permissions or pass a different --output path.`;
+    }
+    return null;
+  }
+  // Path doesn't exist — mkdirSync({ recursive: true }) will try to create it.
+  // Walk up to the nearest existing ancestor and check that it's a writable directory.
+  let ancestor = dirname(absolute);
+  while (ancestor !== dirname(ancestor) && !existsSync(ancestor)) {
+    ancestor = dirname(ancestor);
+  }
+  if (!existsSync(ancestor)) {
+    return `Cannot create output directory: ${outputDir}. No existing ancestor directory found.`;
+  }
+  if (!statSync(ancestor).isDirectory()) {
+    return `Cannot create output directory: ${outputDir}. Parent path "${ancestor}" is not a directory.`;
+  }
+  try {
+    accessSync(ancestor, fsConstants.W_OK);
+  } catch {
+    return `Cannot create output directory: ${outputDir}. No write permission on "${ancestor}".`;
+  }
+  return null;
 }
 
 /**
@@ -214,6 +253,18 @@ export function registerBuildCommand(program) {
       }
 
       const outputDir = opts.output || join(contentDir, 'dist');
+
+      // Fail fast on a bad output path so users get an actionable message
+      // instead of an ENOENT/EACCES stack trace after parsing all content.
+      // Skip when --validate-only since nothing is written.
+      if (!opts.validateOnly) {
+        const outputErr = validateOutputDir(outputDir);
+        if (outputErr) {
+          process.stderr.write(`Error: ${outputErr}\n`);
+          process.exit(1);
+        }
+      }
+
       const allDocs = [];
       const allSkills = [];
       const allWarnings = [];

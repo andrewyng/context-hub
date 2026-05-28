@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, closeSync, openSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -71,6 +71,69 @@ describe('chub build', () => {
       expect(err.stderr.toString()).toContain('not found');
     }
     expect(threw).toBe(true);
+  });
+
+  itBuild('rejects --output when the target path is an existing file, not a directory', () => {
+    const tmpFile = join(mkdtempSync(join(tmpdir(), 'chub-out-')), 'a-file-not-a-dir');
+    closeSync(openSync(tmpFile, 'w'));
+    let threw = false;
+    try {
+      execFileSync(
+        process.execPath,
+        [CLI_BIN, 'build', FIXTURES, '-o', tmpFile, '--json'],
+        { encoding: 'utf8', stdio: 'pipe', env: TEST_ENV },
+      );
+    } catch (err) {
+      threw = true;
+      expect(err.status).not.toBe(0);
+      const stderr = err.stderr.toString();
+      expect(stderr).toContain('Output path is not a directory');
+      expect(stderr).toContain(tmpFile);
+    } finally {
+      rmSync(tmpFile, { force: true });
+    }
+    expect(threw).toBe(true);
+  });
+
+  itBuild('rejects --output when the parent path is a file, not a directory', () => {
+    const tmpFile = join(mkdtempSync(join(tmpdir(), 'chub-out-')), 'parent-is-a-file');
+    closeSync(openSync(tmpFile, 'w'));
+    const badTarget = join(tmpFile, 'sub');
+    let threw = false;
+    try {
+      execFileSync(
+        process.execPath,
+        [CLI_BIN, 'build', FIXTURES, '-o', badTarget, '--json'],
+        { encoding: 'utf8', stdio: 'pipe', env: TEST_ENV },
+      );
+    } catch (err) {
+      threw = true;
+      expect(err.status).not.toBe(0);
+      const stderr = err.stderr.toString();
+      expect(stderr).toContain('Cannot create output directory');
+      expect(stderr).toContain('is not a directory');
+    } finally {
+      rmSync(tmpFile, { force: true });
+    }
+    expect(threw).toBe(true);
+  });
+
+  itBuild('skips output-path validation under --validate-only', () => {
+    const tmpFile = join(mkdtempSync(join(tmpdir(), 'chub-out-')), 'a-file-not-a-dir');
+    closeSync(openSync(tmpFile, 'w'));
+    try {
+      // Bad -o that would otherwise be rejected. With --validate-only, no
+      // output is written, so the check should be skipped and exit 0.
+      const result = execFileSync(
+        process.execPath,
+        [CLI_BIN, 'build', FIXTURES, '--validate-only', '-o', tmpFile, '--json'],
+        { encoding: 'utf8', env: TEST_ENV },
+      );
+      const parsed = JSON.parse(result.trim());
+      expect(parsed).toHaveProperty('docs');
+    } finally {
+      rmSync(tmpFile, { force: true });
+    }
   });
 
   itBuild('reports YAML parse errors with file path and line, not a raw stack trace', () => {

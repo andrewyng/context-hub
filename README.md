@@ -31,7 +31,8 @@ chub get stripe/api --lang js        # fetch the doc
 ```bash
 chub annotate stripe/api "Needs raw body for webhook verification"
 
-# Next session, the annotation appears automatically on chub get.
+# Next session, chub get notes that an annotation exists. Pass --with-annotations
+# to include it — annotations are treated as untrusted input by default.
 ```
 
 **Feedback flows back to authors** — `chub feedback stripe/api up` or `down` — vote the docs up or down so they can get better for everyone over time.
@@ -64,7 +65,7 @@ For the full list of commands, flags, and piping patterns, see the [CLI Referenc
 
 Context Hub is designed for a loop where agents get better over time.
 
-**Annotations** are local notes that agents attach to docs. They persist across sessions and appear automatically on future fetches — so agents learn from past experience. See [Feedback and Annotations](docs/feedback-and-annotations.md).
+**Annotations** are local notes that agents attach to docs. They persist across sessions and can be included on future fetches with `--with-annotations` — so agents can learn from past experience while treating prior notes as untrusted input. See [Feedback and Annotations](docs/feedback-and-annotations.md).
 
 **Feedback** (up/down ratings with optional labels) goes to doc authors, who update the content based on what's working and what isn't. The docs get better for everyone — not just your local annotations.
 
@@ -87,7 +88,7 @@ Docs can have multiple reference files beyond the main entry point. Fetch only w
 
 ### Annotations & Feedback
 
-Annotations are local notes that agents attach to docs — they persist across sessions and appear automatically on future fetches. Feedback (up/down ratings) goes to doc authors to improve the content for everyone. See [Feedback and Annotations](docs/feedback-and-annotations.md).
+Annotations are local notes that agents attach to docs — they persist across sessions and can be re-injected on future fetches with `--with-annotations` (off by default; the contents are treated as untrusted input). Feedback (up/down ratings) goes to doc authors to improve the content for everyone. See [Feedback and Annotations](docs/feedback-and-annotations.md).
 
 ## Contributing
 

@@ -58,6 +58,7 @@ server.tool(
     version: z.string().optional().describe('Specific version (e.g. "1.52.0"). Defaults to recommended.'),
     full: z.boolean().optional().describe('Fetch all files, not just the entry point (default false)'),
     file: z.string().optional().describe('Fetch a specific file by path (e.g. "references/streaming.md")'),
+    withAnnotations: z.boolean().optional().describe('Include local user-written annotations in output (default false — annotations are untrusted input)'),
   },
   async (args) => handleGet(args),
 );

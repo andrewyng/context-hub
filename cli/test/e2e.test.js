@@ -433,16 +433,23 @@ describe('chub CLI e2e', () => {
   });
 
   describe('annotate', () => {
-    itCli('saves and displays annotation on get', () => {
+    itCli('saves and displays annotation on get with --with-annotations', () => {
       chub(['annotate', 'acme/widgets', 'Use batch mode for large datasets']);
-      const out = chub(['get', 'acme/widgets', '--lang', 'js']);
-      expect(out).toContain('Agent note');
+      const out = chub(['get', 'acme/widgets', '--lang', 'js', '--with-annotations']);
+      expect(out).toContain('User-written note');
+      expect(out).toContain('untrusted input');
       expect(out).toContain('Use batch mode for large datasets');
+    });
+
+    itCli('does not inject annotation contents by default', () => {
+      const out = chub(['get', 'acme/widgets', '--lang', 'js']);
+      expect(out).not.toContain('Use batch mode for large datasets');
+      expect(out).toContain('--with-annotations');
     });
 
     itCli('replaces annotation on re-annotate', () => {
       chub(['annotate', 'acme/widgets', 'Updated: use streaming instead']);
-      const out = chub(['get', 'acme/widgets', '--lang', 'js']);
+      const out = chub(['get', 'acme/widgets', '--lang', 'js', '--with-annotations']);
       expect(out).toContain('use streaming instead');
       expect(out).not.toContain('batch mode');
     });
@@ -454,13 +461,13 @@ describe('chub CLI e2e', () => {
 
     itCli('clears annotation', () => {
       chub(['annotate', 'acme/widgets', '--clear']);
-      const out = chub(['get', 'acme/widgets', '--lang', 'js']);
-      expect(out).not.toContain('Agent note');
+      const out = chub(['get', 'acme/widgets', '--lang', 'js', '--with-annotations']);
+      expect(out).not.toContain('User-written note');
     });
 
     itCli('no annotation section when none set', () => {
-      const out = chub(['get', 'multilang/client', '--lang', 'js']);
-      expect(out).not.toContain('Agent note');
+      const out = chub(['get', 'multilang/client', '--lang', 'js', '--with-annotations']);
+      expect(out).not.toContain('User-written note');
     });
 
     itCli('--list shows all annotations', () => {
@@ -476,9 +483,9 @@ describe('chub CLI e2e', () => {
       chub(['annotate', 'multilang/client', '--clear']);
     });
 
-    itCli('--json includes annotation in get output', () => {
+    itCli('--json includes annotation in get output with --with-annotations', () => {
       chub(['annotate', 'acme/widgets', 'JSON test note']);
-      const data = chubJSON(['get', 'acme/widgets', '--lang', 'js']);
+      const data = chubJSON(['get', 'acme/widgets', '--lang', 'js', '--with-annotations']);
       expect(data.annotation).toBeDefined();
       expect(data.annotation.note).toBe('JSON test note');
       expect(data.annotation.id).toBe('acme/widgets');
@@ -486,9 +493,19 @@ describe('chub CLI e2e', () => {
       chub(['annotate', 'acme/widgets', '--clear']);
     });
 
+    itCli('--json signals annotationAvailable without leaking contents by default', () => {
+      chub(['annotate', 'acme/widgets', 'JSON test note']);
+      const data = chubJSON(['get', 'acme/widgets', '--lang', 'js']);
+      expect(data.annotation).toBeUndefined();
+      expect(data.annotationAvailable).toBe(true);
+      // Clean up
+      chub(['annotate', 'acme/widgets', '--clear']);
+    });
+
     itCli('--json omits annotation when none set', () => {
       const data = chubJSON(['get', 'acme/widgets', '--lang', 'js']);
       expect(data.annotation).toBeUndefined();
+      expect(data.annotationAvailable).toBeUndefined();
     });
   });
 

@@ -72,21 +72,6 @@ content/                # Public content registry source
 docs/                   # Design docs
 ```
 
-### Test Directory Rationale
-
-The project uses two test directories with distinct scopes:
-
-- **`cli/tests/`** — Unit tests using Vitest
-  - Fast, isolated tests with mocked dependencies
-  - Tests individual functions and modules
-  
-- **`cli/test/`** — E2E/integration tests
-  - Spawns the actual `chub` binary via `execFileSync`
-  - Tests full command pipelines end-to-end
-  - Uses real file system operations
-
-This separation makes the testing scope explicit: unit tests for fast feedback during development, E2E tests for validating complete workflows.
-
 ## Content Contributions
 
 Context Hub is only as useful as its content. Contributing curated documentation or skills is one of the most impactful ways to help.

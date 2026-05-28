@@ -103,7 +103,7 @@ program.hook('preAction', async (thisCommand) => {
     await ensureRegistry();
   } catch (err) {
     await trackEvent('command_error', { command: cmdName, error_type: 'registry_unavailable' });
-    error(`Registry not available: ${err.message}. Run \`chub update\` to refresh remote registries, or check that local source paths in ~/.chub/config.yaml are correct.`, globalOpts);
+    error(`Registry not available. Run \`chub update\` to refresh remote registries, or check that local source paths in ~/.chub/config.yaml are correct. (cause: ${err.message})`, globalOpts);
   }
 });
 

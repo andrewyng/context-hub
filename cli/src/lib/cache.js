@@ -4,6 +4,7 @@ import { pipeline } from 'node:stream/promises';
 import { createWriteStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { getChubDir, loadConfig } from './config.js';
+import { REGISTRY_FETCH_TIMEOUT_MS } from './constants.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -84,7 +85,7 @@ function shouldFetchRemoteRegistry(sourceName, force = false) {
 
 async function fetchRemoteText(url) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), REGISTRY_FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) {
@@ -179,7 +180,7 @@ export async function fetchFullBundle(sourceName) {
   const tmpPath = join(getSourceDir(sourceName), 'bundle.tar.gz');
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), REGISTRY_FETCH_TIMEOUT_MS);
   let res;
   try {
     res = await fetch(url, { signal: controller.signal });
@@ -246,7 +247,7 @@ export async function fetchDoc(source, docPath) {
   // Fetch from CDN (optional — only if source has a URL)
   const url = `${source.url}/${docPath}`;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), REGISTRY_FETCH_TIMEOUT_MS);
   let res;
   try {
     res = await fetch(url, { signal: controller.signal });

@@ -1,0 +1,2 @@
+export const REGISTRY_FETCH_TIMEOUT_MS = 30_000;
+export const FEEDBACK_FETCH_TIMEOUT_MS = 3_000;

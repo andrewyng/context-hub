@@ -198,18 +198,18 @@ export async function handleGet({ id, lang, version, full = false, file, withAnn
   }
 }
 
+// `chub_list` is a thin alias over `chub_search` (no query) so the two MCP
+// tools share one code path. The response uses `entries` instead of `results`
+// for backwards compatibility with agents that already call chub_list.
 export async function handleList({ tags, lang, limit = 50 }) {
-  try {
-    const entries = listEntries({ tags, lang });
-    const sliced = entries.slice(0, limit);
-    return textResult({
-      entries: sliced.map(simplifyEntry),
-      total: entries.length,
-      showing: sliced.length,
-    });
-  } catch (err) {
-    return errorResult(`List failed: ${err.message}`);
-  }
+  const result = await handleSearch({ tags, lang, limit });
+  if (result.isError) return result;
+  const data = JSON.parse(result.content[0].text);
+  return textResult({
+    entries: data.results,
+    total: data.total,
+    showing: data.showing,
+  });
 }
 
 export async function handleAnnotate({ id, note, clear = false, list = false }) {

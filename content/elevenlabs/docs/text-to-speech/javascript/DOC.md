@@ -3,8 +3,9 @@ name: text-to-speech
 description: "ElevenLabs JS library coding guidelines for text-to-speech, TTS, and audio voice generation"
 metadata:
   languages: "javascript"
-  versions: "1.59.0"
-  updated-on: "2026-03-02"
+  versions: "2.49.1"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "elevenlabs,text-to-speech,tts,audio,voice"
 ---
@@ -111,6 +112,48 @@ const voices = await elevenlabs.voices.search();
 
 // Get specific voice details
 const voice = await elevenlabs.voices.get("VOICE_ID");
+```
+
+## Voice Cloning (Instant Voice Clone)
+
+Clone a voice from audio sample files. In Node.js you can pass `Blob`s or
+`fs.ReadStream` instances as files.
+
+```javascript
+import * as fs from "fs";
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+
+const elevenlabs = new ElevenLabsClient();
+
+const voice = await elevenlabs.voices.ivc.create({
+    name: "Alex",
+    description: "An old American male voice with a slight hoarseness in his throat.",
+    files: [
+        new Blob([fs.readFileSync("./sample_0.mp3")], { type: "audio/mp3" }),
+        new Blob([fs.readFileSync("./sample_1.mp3")], { type: "audio/mp3" }),
+    ],
+});
+
+console.log("New voice id:", voice.voiceId);
+```
+
+## Saving Audio to Disk
+
+`textToSpeech.convert` returns a `ReadableStream` of audio bytes. Pipe it to a
+file or collect it into a `Buffer`.
+
+```javascript
+import * as fs from "fs";
+import { Readable } from "stream";
+
+const audio = await elevenlabs.textToSpeech.convert("VOICE_ID", {
+    text: "Save me to disk.",
+    modelId: "eleven_multilingual_v2",
+    outputFormat: "mp3_44100_128",
+});
+
+// Pipe a Web ReadableStream to a Node writable stream
+Readable.fromWeb(audio).pipe(fs.createWriteStream("output.mp3"));
 ```
 
 ## Streaming Audio

@@ -4,7 +4,7 @@ description: "Claude AI assistant API for text generation, analysis, conversatio
 metadata:
   languages: "python"
   versions: "0.84.0"
-  updated-on: "2026-03-05"
+  updated-on: "2026-05-12"
   source: maintainer
   tags: "anthropic,sdk,llm,ai,claude"
 ---
@@ -42,15 +42,22 @@ The `anthropic` library requires creating a client object for all API calls.
 
 ## Models
 
-By default, use the following models as of March 2026:
+By default, use the following models as of May 2026:
 
-- **General Tasks:** `claude-sonnet-4-6-20250827`
-- **High-performance:** `claude-opus-4-6-20250826`
-- **Fast and Efficient:** `claude-haiku-4-5-20251001`
+- **High-performance / Agentic coding:** `claude-opus-4-7` (flagship; step-change improvement in agentic coding over Opus 4.6)
+- **General Tasks (best speed/intelligence balance):** `claude-sonnet-4-6`
+- **Fast and Efficient:** `claude-haiku-4-5-20251001` (alias: `claude-haiku-4-5`)
 
-Previous generation models (still supported):
-- `claude-sonnet-4-20250514`, `claude-opus-4-20250514`
+Note: starting with the 4.6 generation, Anthropic uses dateless model IDs as the canonical pinned snapshot (e.g. `claude-opus-4-7`, `claude-sonnet-4-6`). For older generations the alias is a pointer that resolves to a dated ID.
+
+Legacy models (still supported, consider migrating):
+- `claude-opus-4-6`, `claude-sonnet-4-5-20250929` (alias `claude-sonnet-4-5`)
+- `claude-opus-4-5-20251101`, `claude-opus-4-1-20250805`
 - `claude-3-5-haiku-20241022`
+
+Deprecated — retiring June 15, 2026 (migrate now):
+- `claude-sonnet-4-20250514` → migrate to `claude-sonnet-4-6`
+- `claude-opus-4-20250514` → migrate to `claude-opus-4-7`
 
 Do not use deprecated models: `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-opus`
 
@@ -76,7 +83,7 @@ from anthropic import Anthropic
 client = Anthropic()
 
 message = client.messages.create(
-    model="claude-sonnet-4-20250514",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     messages=[
         {
@@ -94,7 +101,7 @@ print(message.content)
 
 ```python
 message = client.messages.create(
-    model="claude-sonnet-4-20250514",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     messages=[
         {
@@ -138,7 +145,7 @@ client = AsyncAnthropic()
 
 async def main():
     message = await client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=1024,
         messages=[
             {
@@ -158,7 +165,7 @@ asyncio.run(main())
 
 ```python
 message = client.messages.create(
-    model="claude-sonnet-4-20250514",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     system="You are a helpful assistant that speaks like a pirate.",
     messages=[
@@ -172,11 +179,11 @@ message = client.messages.create(
 
 ### Thinking
 
-Configure Claude's extended thinking (reasoning process):
+Configure Claude's extended thinking (reasoning process). Supported on Sonnet 4.6 and Haiku 4.5. **Opus 4.7 uses adaptive thinking only** (no manual `budget_tokens` — drop the `thinking` parameter for Opus 4.7).
 
 ```python
 message = client.messages.create(
-    model="claude-sonnet-4-6-20250827",
+    model="claude-sonnet-4-6",
     max_tokens=16000,
     messages=[
         {
@@ -198,7 +205,7 @@ def get_weather(location: str) -> str:
     return f"Weather in {location}: 72°F and sunny"
 
 message = client.messages.create(
-    model="claude-sonnet-4-20250514",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     messages=[
         {
@@ -230,7 +237,7 @@ message = client.messages.create(
 
 ```python
 stream = client.messages.create(
-    model="claude-sonnet-4-20250514",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     messages=[
         {
@@ -250,7 +257,7 @@ for event in stream:
 
 ```python
 async with client.messages.stream(
-    model="claude-sonnet-4-20250514",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     messages=[
         {
@@ -270,7 +277,7 @@ message = await stream.get_final_message()
 
 ```python
 count = client.messages.count_tokens(
-    model="claude-sonnet-4-20250514",
+    model="claude-sonnet-4-6",
     messages=[
         {"role": "user", "content": "Hello, world"}
     ]
@@ -286,7 +293,7 @@ batch = await client.messages.batches.create(
         {
             "custom_id": "request-1",
             "params": {
-                "model": "claude-sonnet-4-20250514",
+                "model": "claude-sonnet-4-6",
                 "max_tokens": 1024,
                 "messages": [{"role": "user", "content": "Hello"}]
             }
@@ -308,7 +315,7 @@ client = AnthropicBedrock(
 )
 
 message = client.messages.create(
-    model="anthropic.claude-sonnet-4-20250514-v1:0",
+    model="anthropic.claude-sonnet-4-6",
     max_tokens=1024,
     messages=[
         {
@@ -327,7 +334,7 @@ from anthropic import AnthropicVertex
 client = AnthropicVertex()
 
 message = client.messages.create(
-    model="claude-sonnet-4@20250514",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     messages=[
         {
@@ -345,7 +352,7 @@ import anthropic
 
 try:
     message = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=1024,
         messages=[
             {

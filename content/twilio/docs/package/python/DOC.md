@@ -3,9 +3,9 @@ name: package
 description: "Twilio Python helper library for REST API access, messaging, voice, and TwiML generation"
 metadata:
   languages: "python"
-  versions: "9.10.3"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "9.10.9"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "twilio,communications,sms,voice,twiml,oauth"
 ---
@@ -21,7 +21,7 @@ Use the official `twilio` helper library, import the REST client as `from twilio
 Pin the version your project expects:
 
 ```bash
-python -m pip install "twilio==9.10.3"
+python -m pip install "twilio==9.10.9"
 ```
 
 For a general install without a pin:
@@ -30,7 +30,7 @@ For a general install without a pin:
 python -m pip install twilio
 ```
 
-Twilio's PyPI metadata for `9.10.3` declares support for Python `3.7` through `3.13`.
+Twilio's PyPI metadata for `9.10.9` declares support for Python `3.7` through `3.13`.
 
 ## Authentication And Setup
 
@@ -249,9 +249,9 @@ except TwilioRestException as exc:
 - Region routing is easy to misconfigure. Set both `region` and `edge` together or stay on the default `US1`.
 - OAuth client credentials are still beta and not a universal replacement for account credentials.
 
-## Version-Sensitive Notes For 9.10.3
+## Version-Sensitive Notes For 9.10.9
 
-- PyPI and Twilio's official helper-library docs both list `9.10.3` as the current package version as of March 12, 2026.
+- PyPI and Twilio's official helper-library docs both list `9.10.9` as the current package version as of May 29, 2026.
 - Twilio's `9.0.0` upgrade guide says the helper library moved to OpenAPI-generated code and added JSON request-body support; most high-level resource patterns stayed compatible, but older code that relied on undocumented internals is riskier on `9.x`.
 - Twilio's versioning policy explicitly recommends pinning at least the major version because minor releases can require manual code changes.
-- The published versioning matrix says the current major version supports Python `3.7` through `3.13`. If your runtime is older than `3.7`, `9.10.3` is out of range.
+- The published versioning matrix says the current major version supports Python `3.7` through `3.13`. If your runtime is older than `3.7`, `9.10.9` is out of range.

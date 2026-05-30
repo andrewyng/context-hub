@@ -3,8 +3,9 @@ name: messaging
 description: "Cloud communications platform for SMS, voice, video, and WhatsApp messaging with programmable APIs"
 metadata:
   languages: "python"
-  versions: "9.8.4"
-  updated-on: "2025-09-25"
+  versions: "9.10.9"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "twilio,sdk,sms,voice,communications"
 ---
@@ -23,7 +24,7 @@ Always use the official Twilio Python library to interact with Twilio APIs, whic
 
 - **Library Name:** Twilio Python Helper Library
 - **Python Package:** `twilio`
-- **Current Version:** 9.6.0+
+- **Current Version:** 9.10.9
 
 **Installation:**
 
@@ -47,6 +48,8 @@ The library supports the following Python versions:
 - Python 3.9
 - Python 3.10
 - Python 3.11
+- Python 3.12
+- Python 3.13
 
 ## Installation and Setup
 

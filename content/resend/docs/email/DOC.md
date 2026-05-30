@@ -3,8 +3,9 @@ name: email
 description: "Modern email API platform with React Email integration, batch sending, scheduling, webhooks, and domain management"
 metadata:
   languages: "javascript"
-  versions: "6.2.2"
-  updated-on: "2025-10-26"
+  versions: "6.12.4"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "resend,sdk,email,messaging"
 ---
@@ -12,7 +13,7 @@ metadata:
 
 ## Golden Rule
 
-**Always use the official `resend` package from npm.** The current version is 6.2.2.
+**Always use the official `resend` package from npm.** The current version is 6.12.4.
 
 ```bash
 npm install resend

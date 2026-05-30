@@ -3,9 +3,9 @@ name: package
 description: "pytest package guide for Python with practical setup, fixtures, parametrization, plugin, and 9.0.x notes"
 metadata:
   languages: "python"
-  versions: "9.0.2"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "9.0.3"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "pytest,testing,python,fixtures,assertions,plugins"
 ---
@@ -29,14 +29,14 @@ Use it when a Python project needs:
 Install `pytest` into the project environment and pin it if the test suite depends on 9.0 behavior:
 
 ```bash
-python -m pip install "pytest==9.0.2"
+python -m pip install "pytest==9.0.3"
 ```
 
 Common alternatives:
 
 ```bash
-uv add --dev "pytest==9.0.2"
-poetry add --group dev "pytest==9.0.2"
+uv add --dev "pytest==9.0.3"
+poetry add --group dev "pytest==9.0.3"
 ```
 
 If you are authoring a package, also install your package in editable mode so tests exercise the local code cleanly:
@@ -294,8 +294,9 @@ Async tests are version-sensitive:
 - `pytest 9.0` added native TOML configuration with `[tool.pytest]`, plus `pytest.toml` / `.pytest.toml`.
 - `pytest 9.0` added `strict = true` as a bundled strict-mode switch.
 - `strict_xfail` is the 9.0 name; `xfail_strict` is still accepted as an alias.
-- `pytest 9.0.2` is the latest PyPI release as of March 12, 2026.
+- `pytest 9.0.3` is the latest PyPI release as of May 29, 2026.
 - `pytest 9.0.2` changed the terminal progress plugin defaults on non-Windows platforms. If your local output changed after upgrading, check terminal progress settings and related plugins before assuming collection is broken.
+- `pytest 9.0.3` is a bug-fix release. Notable changes: `pytest.approx()` now respects `Mapping` key order during comparisons, attempting to disable a `conftest.py` with `-p no:` now raises a clear error rather than failing internally, exception groups raised in tests with `__tracebackhide__ = True` no longer crash the reporter, non-string messages from `unittest.TestCase.subTest()` are now displayed, and an insecure temporary directory issue (CVE-2025-71176) was fixed.
 
 ## Official Sources
 

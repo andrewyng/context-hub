@@ -3,9 +3,9 @@ name: package
 description: "Ruff package guide for Python projects using the official Ruff docs"
 metadata:
   languages: "python"
-  versions: "0.15.5"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "0.15.15"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "ruff,python,linter,formatter,quality,pre-commit"
 ---
@@ -21,21 +21,21 @@ Use `ruff` as a project tool, not as a runtime library. Put configuration in `py
 Pin the version your project expects:
 
 ```bash
-python -m pip install "ruff==0.15.5"
+python -m pip install "ruff==0.15.15"
 ```
 
 Common alternatives:
 
 ```bash
-uv add --dev "ruff==0.15.5"
-poetry add --group dev "ruff==0.15.5"
+uv add --dev "ruff==0.15.15"
+poetry add --group dev "ruff==0.15.15"
 ```
 
 Tool-only install:
 
 ```bash
-uv tool install "ruff==0.15.5"
-pipx install "ruff==0.15.5"
+uv tool install "ruff==0.15.15"
+pipx install "ruff==0.15.15"
 ```
 
 Confirm the binary:
@@ -134,7 +134,7 @@ Use the official `ruff-pre-commit` hooks:
 ```yaml
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.5
+    rev: v0.15.15
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -161,11 +161,16 @@ Keep the hook revision aligned with the package version you expect in CI and loc
 - If a subdirectory has its own config file, Ruff uses that nearest config instead of the repo-root config. This surprises agents in monorepos.
 - Unsafe fixes can change behavior. Treat `--unsafe-fixes` as a deliberate review step, not the default path.
 
-## Version-Sensitive Notes For 0.15.5
+## Version-Sensitive Notes For 0.15.15
 
-- Ruff uses a documented custom versioning scheme rather than strict SemVer. Minor releases can include breaking changes, so moving from `0.15.x` to `0.16.x` should be reviewed like a meaningful upgrade.
+- Ruff uses a documented custom versioning scheme rather than strict SemVer. Minor releases can include breaking changes, so moving from `0.15.x` to `0.16.x` should be reviewed like a meaningful upgrade. Patch-level upgrades within `0.15.x` still occasionally add or extend rules.
 - The built-in language server is the current path; older `ruff-lsp` guidance is stale for modern setups.
 - If you copy snippets from older blog posts, verify section names against the current config reference. Modern Ruff config is split across `[tool.ruff]`, `[tool.ruff.lint]`, and `[tool.ruff.format]`.
+- Several preview rules have been added across the `0.15.x` patch line, including `RUF050` (unnecessary-if), `RUF072` (useless-finally), `RUF073` (f-string-percent-format), `RUF074` (incorrect-decorator-order), `RUF075` (fallible-context-manager), Airflow rules `AIR201`, `AIR202`, and `AIR004`, and the pylint rule `W0717` (too-many-try-statements). These are preview-gated; enabling `preview = true` is required to see them.
+- `F811` now reports duplicate imports inside `TYPE_CHECKING` blocks, and `F821` handling of bare annotations follows PEP 526 more closely. Suites that previously suppressed these will see new diagnostics.
+- The formatter gained a `nested-string-quote-style` option and improved handling of lambdas and nested f-strings on supported Python versions.
+- Logical-line suppression comments `#ruff:file-ignore` and `#ruff:ignore` are now supported alongside the existing `# noqa` syntax.
+- The maximum allowed `line-length` value has been increased, which only matters for projects that were previously hitting the cap.
 
 ## Official Sources
 

@@ -3,8 +3,9 @@ name: live
 description: "Google Gemini Live API for real-time bidirectional voice, video, and text streaming over WebSocket in Python"
 metadata:
   languages: "python"
-  versions: "1.56.0"
-  updated-on: "2026-03-29"
+  versions: "2.7.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: community
   tags: "gemini,google,live,realtime,voice,audio,streaming,websocket,vad,speech"
 ---
@@ -30,12 +31,12 @@ Always use the Google GenAI SDK (`google-genai`). Do not use legacy libraries.
 
 ## Models
 
-Use these models for the Live API as of March 2026:
+Use these models for the Live API as of May 2026:
 
 | Model | ID | Notes |
 |---|---|---|
-| **Gemini 3.1 Flash Live** (newest) | `gemini-3.1-flash-live-preview` | Recommended default |
-| **Gemini 2.5 Flash Live** | `gemini-2.5-flash-live-preview` | Supports async tools, proactive audio, affective dialog |
+| **Gemini 3.1 Flash Live** (newest) | `gemini-3.1-flash-live-preview` | Recommended default, audio-to-audio |
+| **Gemini 2.5 Flash Live (native audio)** | `gemini-2.5-flash-native-audio-preview-12-2025` | Supports async tools, proactive audio, affective dialog |
 
 **Key differences:**
 

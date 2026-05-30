@@ -3,8 +3,9 @@ name: client
 description: "Open-source Firebase alternative with PostgreSQL backend, authentication, storage, realtime subscriptions, and edge functions"
 metadata:
   languages: "javascript"
-  versions: "2.76.1"
-  updated-on: "2025-10-26"
+  versions: "2.106.2"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "supabase,sdk,database,auth,storage,realtime"
 ---
@@ -21,7 +22,7 @@ Always use the official Supabase JavaScript SDK (`@supabase/supabase-js`) for al
 
 - **Library Name:** Supabase JavaScript SDK
 - **NPM Package:** `@supabase/supabase-js`
-- **Current Version:** 2.76.1
+- **Current Version:** 2.106.2
 - **Legacy Libraries:** Do not use `@supabase/auth-js`, `@supabase/postgrest-js`, `@supabase/storage-js`, or other individual packages directly - these are bundled in the main SDK
 
 **Installation:**
@@ -308,6 +309,8 @@ const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 ## Database Queries
 
 The Supabase SDK uses PostgREST for database operations with a chainable API.
+
+> **Row-Level Security (RLS):** Every query made with the `anon` key is filtered by your table's RLS policies. If a query returns `[]` or "permission denied" when you expect data, RLS is almost always the cause. Verify policies in the Supabase Dashboard under Authentication > Policies, and only use the `service_role` key in trusted backend code (it bypasses RLS).
 
 ### Select All Rows
 

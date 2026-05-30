@@ -3,9 +3,9 @@ name: package
 description: "Supabase Python client for Postgres queries, auth, storage, edge functions, and realtime"
 metadata:
   languages: "python"
-  versions: "2.28.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "2.30.1"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "supabase,postgres,auth,storage,realtime,edge-functions,python"
 ---
@@ -21,19 +21,19 @@ Use the official `supabase` package, initialize it with your project URL and key
 Pin the version your project expects:
 
 ```bash
-python -m pip install "supabase==2.28.0"
+python -m pip install "supabase==2.30.1"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "supabase==2.28.0"
-poetry add "supabase==2.28.0"
+uv add "supabase==2.30.1"
+poetry add "supabase==2.30.1"
 ```
 
 Version note:
 
-- The Supabase install page still says Python `>3.8`, but PyPI metadata for `2.28.0` requires Python `>=3.9`. Follow PyPI for the package constraint you actually install.
+- The Supabase install page still says Python `>3.8`, but PyPI metadata for `2.30.1` requires Python `>=3.9`. Follow PyPI for the package constraint you actually install.
 
 ## Initialize The Client
 
@@ -281,11 +281,11 @@ Use a separate admin client rather than reusing a user-scoped client with mixed 
 - Realtime subscriptions should be removed explicitly in workers, daemons, and async applications instead of relying only on server-side cleanup.
 - Keep `service_role` keys strictly on the backend. The admin API bypasses normal end-user constraints and should be treated as a secret.
 
-## Version-Sensitive Notes For 2.28.0
+## Version-Sensitive Notes For 2.30.1
 
-- PyPI lists `2.28.0` as the current release and requires Python `>=3.9`.
+- PyPI lists `2.30.1` as the current release and requires Python `>=3.9`.
 - The release history shows several yanked `2.19.0` to `2.23.3` builds because of dependency issues or minor breaking auth changes. If you find examples pinned in that range, prefer `2.24.0` or later unless the project is already locked to an older wheel.
-- The `auth.get_user()` reference for `2.28.0` documents additional user fields such as `is_anonymous`, `factors`, `app_metadata`, `user_metadata`, and `identities`. If your code inspects user objects from older examples, re-check the returned shape before relying on it.
+- The `auth.get_user()` reference for `2.30.1` documents additional user fields such as `is_anonymous`, `factors`, `app_metadata`, `user_metadata`, and `identities`. If your code inspects user objects from older examples, re-check the returned shape before relying on it.
 
 ## Official Sources
 

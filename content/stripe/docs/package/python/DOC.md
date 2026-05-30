@@ -3,9 +3,9 @@ name: package
 description: "Stripe Python package guide for authenticating, calling the Stripe API, handling webhooks, and working with StripeClient"
 metadata:
   languages: "python"
-  versions: "14.4.1"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "15.2.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "stripe,payments,billing,api,webhooks,checkout"
 ---
@@ -21,20 +21,20 @@ Use the official `stripe` PyPI package, initialize it with a secret key from the
 Pin the version your project expects:
 
 ```bash
-python -m pip install "stripe==14.4.1"
+python -m pip install "stripe==15.2.0"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "stripe==14.4.1"
-poetry add "stripe==14.4.1"
+uv add "stripe==15.2.0"
+poetry add "stripe==15.2.0"
 ```
 
 If you plan to use the async client helpers, install the async extra:
 
 ```bash
-python -m pip install "stripe[async]==14.4.1"
+python -m pip install "stripe[async]==15.2.0"
 ```
 
 ## Authentication And Setup
@@ -152,7 +152,7 @@ client = StripeClient("sk_test_platform_...")
 charges = client.v1.charges.list(
     options={
         "stripe_account": "acct_123",
-        "stripe_version": "2026-02-25.clover",
+        "stripe_version": "2026-05-27.dahlia",
     }
 )
 ```
@@ -253,13 +253,12 @@ Webhook rules that matter in practice:
 - Do not mix account-level API version assumptions with SDK defaults. Webhook payload shapes and typed objects can differ if your endpoint or request overrides the Stripe version.
 - Do not treat test mode and live mode objects as interchangeable; IDs and data are isolated by environment.
 
-## Version-Sensitive Notes For `14.4.1`
+## Version-Sensitive Notes For `15.2.0`
 
-- PyPI lists `14.4.1` as the current release as of March 12, 2026, so the version used here does not appear stale.
-- The `14.4.1` changelog entry is a patch release on top of `14.4.0`. The `14.4.0` release changed the SDK's pinned API version to `2026-02-25.clover`.
-- That means `14.4.1` code examples should assume the post-`2026-02-25.clover` API surface unless you explicitly override `stripe_version`.
-- Stripe's Python wiki notes that the `v1` namespace on `StripeClient` arrived in major version `13`, so pre-v13 upgrade guides and older blog posts can have materially different call shapes.
-- Stripe's type annotations can change in minor releases even when runtime behavior remains semver-compatible. If strict type checking matters, pin to a minor line such as `~=14.4`.
+- PyPI lists `15.2.0` as the current release as of May 29, 2026.
+- `15.x` ships a pinned default Stripe API version aligned with the current `2026-05-27.dahlia` release. `15.2.0` code examples should assume that API surface unless you explicitly override `stripe_version`.
+- The `v1` namespace on `StripeClient` arrived in major version `13`, so pre-v13 upgrade guides and older blog posts can have materially different call shapes (`client.customers.create(...)` vs. `client.v1.customers.create(...)`).
+- Stripe's type annotations can change in minor releases even when runtime behavior remains semver-compatible. If strict type checking matters, pin to a minor line such as `~=15.2`.
 
 ## Official Sources
 

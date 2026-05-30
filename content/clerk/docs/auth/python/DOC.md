@@ -3,8 +3,9 @@ name: auth
 description: "Clerk Backend API Python SDK for server-side authentication and user management operations"
 metadata:
   languages: "python"
-  versions: "3.3.1"
-  updated-on: "2026-03-01"
+  versions: "5.0.7"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "clerk,auth,authentication,user-management,backend"
 ---
@@ -271,4 +272,74 @@ The SDK includes the following key dependencies:
 
 ## SDK Configuration
 
-The SDK is automatically generated and maintained using Speakeasy configuration. The current version is `2.0.2` and includes comprehensive type hints and documentation.
+The SDK is automatically generated and maintained using Speakeasy configuration. The current version is `5.0.7` and includes comprehensive type hints and documentation.
+
+## Session Token / JWT Verification
+
+For verifying Clerk-issued session JWTs in your own request middleware, use the SDK's `authenticate_request` helper alongside the secret key. The helper validates the token's signature against Clerk's JWKS, checks the issuer, and returns the request state.
+
+### Authenticate a Request
+
+```python
+from clerk_backend_api import Clerk
+from clerk_backend_api.jwks_helpers import AuthenticateRequestOptions
+import httpx
+
+clerk = Clerk(bearer_auth="sk_test_your_secret_key_here")
+
+def verify(request_headers: dict) -> dict | None:
+    httpx_request = httpx.Request(
+        method="GET",
+        url="https://your-app.example.com/api/protected",
+        headers=request_headers,
+    )
+    state = clerk.authenticate_request(
+        httpx_request,
+        AuthenticateRequestOptions(
+            authorized_parties=["https://your-app.example.com"],
+        ),
+    )
+    if not state.is_signed_in:
+        return None
+    return state.payload  # JWT claims (sub, sid, etc.)
+```
+
+### FastAPI Dependency Example
+
+```python
+from fastapi import Depends, FastAPI, HTTPException, Request
+from clerk_backend_api import Clerk
+from clerk_backend_api.jwks_helpers import AuthenticateRequestOptions
+import httpx
+import os
+
+app = FastAPI()
+clerk = Clerk(bearer_auth=os.environ["CLERK_SECRET_KEY"])
+
+async def current_user(request: Request):
+    httpx_req = httpx.Request(
+        method=request.method,
+        url=str(request.url),
+        headers=dict(request.headers),
+    )
+    state = clerk.authenticate_request(
+        httpx_req,
+        AuthenticateRequestOptions(),
+    )
+    if not state.is_signed_in:
+        raise HTTPException(status_code=401, detail=state.reason)
+    return state.payload
+
+@app.get("/me")
+async def me(claims = Depends(current_user)):
+    return {"user_id": claims["sub"], "session_id": claims["sid"]}
+```
+
+### Environment Variables
+
+```
+CLERK_SECRET_KEY=sk_live_your_secret_key
+CLERK_PUBLISHABLE_KEY=pk_live_your_publishable_key
+```
+
+Never check secret keys into source control; load them from environment variables and never expose them to client code.

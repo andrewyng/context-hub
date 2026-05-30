@@ -3,9 +3,9 @@ name: react-dom
 description: "React DOM runtime for browser roots, hydration, portals, synchronous DOM flushes, and server rendering in JavaScript apps."
 metadata:
   languages: "javascript"
-  versions: "19.2.4"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "19.2.6"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "react,react-dom,dom,hydration,ssr,portal"
 ---
@@ -222,6 +222,21 @@ app.listen(3000, () => {
 
 Hydrate the resulting HTML on the client with `hydrateRoot(...)` and use the same `identifierPrefix` if your tree uses `useId`.
 
+## Render to a String (Non-Streaming)
+
+Use `renderToString` for the simplest synchronous server render. It produces a full HTML string in one call. It does not support Suspense for data, so prefer `renderToPipeableStream` or `renderToReadableStream` for real apps.
+
+```javascript
+import { renderToString } from "react-dom/server";
+import App from "./src/App.js";
+
+export function renderHtml() {
+  const body = renderToString(<App />);
+
+  return `<!doctype html><html><body><div id="root">${body}</div><script type="module" src="/client.js"></script></body></html>`;
+}
+```
+
 ## Stream HTML in Web Streams Runtimes
 
 Use `renderToReadableStream` in runtimes that return a standard `Response`, such as edge or worker-style servers.
@@ -256,7 +271,7 @@ export default async function handleRequest() {
 
 ## Version Notes
 
-This guide covers the stable `react-dom` npm package at `19.2.4`.
+This guide covers the stable `react-dom` npm package at `19.2.6`.
 
 The stable React DOM reference groups the runtime APIs by entry point:
 

@@ -3,9 +3,9 @@ name: workers-runtime
 description: "Cloudflare Workers runtime for building edge functions in Python with D1 databases, R2 storage, KV key-value, Durable Objects, and Queues bindings"
 metadata:
   languages: "python"
-  versions: "4.0.0"
-  revision: 1
-  updated-on: "2026-03-11"
+  versions: "4.95.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: community
   tags: "cloudflare,workers,edge,python,d1,r2,kv,durable-objects,queues"
 ---

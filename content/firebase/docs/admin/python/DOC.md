@@ -3,9 +3,9 @@ name: package
 description: "Firebase Admin Python SDK guide for server-side authentication, messaging, database, Firestore, storage, and admin workflows"
 metadata:
   languages: "python"
-  versions: "7.2.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "7.4.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "firebase,firebase-admin,python,authentication,messaging,firestore,realtime-database,storage"
 ---
@@ -21,17 +21,17 @@ Use `firebase-admin` only in trusted server environments, initialize it once per
 Pin the package version your project expects:
 
 ```bash
-python -m pip install "firebase-admin==7.2.0"
+python -m pip install "firebase-admin==7.4.0"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "firebase-admin==7.2.0"
-poetry add "firebase-admin==7.2.0"
+uv add "firebase-admin==7.4.0"
+poetry add "firebase-admin==7.4.0"
 ```
 
-The current PyPI latest release is also `7.2.0`, published on February 25, 2026.
+The current PyPI latest release is `7.4.0`, published on April 9, 2026.
 
 ## Authentication And Initialization
 
@@ -283,7 +283,7 @@ async def load_config():
     template = await remote_config.get_server_template(
         default_config={"feature_enabled": "false"}
     )
-    config = template.evaluate({"app_version": "7.2.0"})
+    config = template.evaluate({"app_version": "7.4.0"})
     return config.get_boolean("feature_enabled")
 
 enabled = asyncio.run(load_config())
@@ -326,6 +326,8 @@ In `7.2.0`, task queue support gained Cloud Tasks emulator support through `CLOU
 
 ## Version-Sensitive Notes
 
+- `7.4.0` was released on April 9, 2026, and is the current latest release on PyPI.
+- `7.3.0` was released on March 19, 2026.
 - `7.2.0` was released on February 25, 2026. It added Cloud Tasks emulator support for task-queue functions via `CLOUD_TASKS_EMULATOR_HOST`, fixed a cold-start credential-loading issue for enqueued tasks, and fixed auth error-code parsing when responses contained extra whitespace.
 - `7.1.0` added `ActionCodeSettings.link_domain` and deprecated `dynamic_link_domain` for email action flows.
 - `7.0.0` dropped Python `3.7` and `3.8`, and the release notes explicitly deprecated Python `3.9` for deployed admin SDK usage even though PyPI still allows installation on `>=3.9`.

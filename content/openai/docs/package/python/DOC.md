@@ -3,9 +3,9 @@ name: package
 description: "openai package guide for Python with OpenAI(), AsyncOpenAI(), Responses API, streaming, webhooks, pagination, and AzureOpenAI notes"
 metadata:
   languages: "python"
-  versions: "2.26.0"
-  revision: 1
-  updated-on: "2026-04-27"
+  versions: "2.38.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "openai,python,sdk,llm,responses,chat,streaming,webhooks"
 ---
@@ -20,16 +20,16 @@ metadata:
 
 ## Version-Sensitive Notes
 
-- This entry is pinned to the version used here `2.26.0`.
-- Do not treat this package entry as "latest SDK" without refreshing the package-release binding. The API/model guidance below is current as of April 27, 2026, but the SDK pin remains intentionally version-specific.
+- This entry is pinned to the version used here `2.38.0`.
+- Do not treat this package entry as "latest SDK" without refreshing the package-release binding. The API/model guidance below is current as of May 29, 2026, but the SDK pin remains intentionally version-specific.
 - `openai` requires Python `>=3.9`.
 - The maintainers describe the package as generally following SemVer, but they reserve some backwards-incompatible changes for minor releases when the impact is limited to static typing, internals, or low-impact runtime behavior. Do not assume every `2.x` minor bump is completely frictionless.
 - The SDK README describes the Responses API as the primary API for model interaction. Chat Completions remains supported, but it is no longer the default shape to copy for new code.
 - `AzureOpenAI` is a separate client class, and the README explicitly warns that Azure API shapes differ from the core OpenAI API shapes, so static response and parameter types may not always line up perfectly.
 
-## Latest Official API/Model Update (April 2026)
+## Latest Official API/Model Update (May 2026)
 
-OpenAI's current official API docs recommend starting new complex reasoning and coding work with `gpt-5.5`. The docs also recommend `gpt-5.4-mini` and `gpt-5.4-nano` when latency or cost is more important.
+OpenAI's current official API docs recommend starting new complex reasoning and coding work with `gpt-5.5` (1M-token context). The docs also recommend `gpt-5.4`, `gpt-5.4-mini`, and `gpt-5.4-nano` when latency or cost is more important.
 
 For new Python SDK examples in this entry:
 
@@ -44,13 +44,13 @@ For new Python SDK examples in this entry:
 Pin the version when you need reproducible behavior:
 
 ```bash
-python -m pip install "openai==2.26.0"
+python -m pip install "openai==2.38.0"
 ```
 
 If you want the optional `aiohttp` backend for the async client:
 
 ```bash
-python -m pip install "openai[aiohttp]==2.26.0"
+python -m pip install "openai[aiohttp]==2.38.0"
 ```
 
 ## Recommended Setup
@@ -122,7 +122,7 @@ from openai import OpenAI
 client = OpenAI()
 
 completion = client.chat.completions.create(
-    model="gpt-4.1",
+    model="gpt-5.5",
     messages=[
         {"role": "developer", "content": "Be concise."},
         {"role": "user", "content": "Give me a Python dict comprehension example."},
@@ -200,7 +200,7 @@ from openai import OpenAI
 client = OpenAI()
 
 response = client.responses.create(
-    model="gpt-4.1-mini",
+    model="gpt-5.4-mini",
     input=[
         {
             "role": "user",
@@ -230,7 +230,7 @@ class Summary(BaseModel):
 client = OpenAI()
 
 completion = client.chat.completions.parse(
-    model="gpt-4o-2024-08-06",
+    model="gpt-5.5",
     messages=[
         {"role": "system", "content": "Return a short structured summary."},
         {"role": "user", "content": "Summarize how Python context managers work."},
@@ -415,7 +415,7 @@ from openai import AsyncOpenAI
 async def main() -> None:
     client = AsyncOpenAI()
 
-    async with client.realtime.connect(model="gpt-realtime") as connection:
+    async with client.realtime.connect(model="gpt-realtime-2") as connection:
         await connection.session.update(
             session={"type": "realtime", "output_modalities": ["text"]}
         )
@@ -454,9 +454,8 @@ Realtime pitfall: upstream documents that `error` events are delivered on the op
 - OpenAI Python SDK README: `https://github.com/openai/openai-python`
 - OpenAI Python SDK helpers: `https://github.com/openai/openai-python/blob/main/helpers.md`
 - OpenAI models guide: `https://developers.openai.com/api/docs/models`
-- OpenAI GPT-5.5 model page: `https://developers.openai.com/api/docs/models/gpt-5.5`
 - OpenAI text generation guide: `https://developers.openai.com/api/docs/guides/text`
 - OpenAI GPT Image 2 model page: `https://developers.openai.com/api/docs/models/gpt-image-2`
 - OpenAI image generation guide: `https://developers.openai.com/api/docs/guides/image-generation`
 - OpenAI Responses API reference: `https://developers.openai.com/api/reference/responses`
-- PyPI package page: `https://pypi.org/project/openai/2.26.0/`
+- PyPI package page: `https://pypi.org/project/openai/2.38.0/`

@@ -3,8 +3,9 @@ name: chat
 description: "OpenAI API for text generation, chat completions, streaming, function calling, vision, embeddings, and assistants"
 metadata:
   languages: "python"
-  versions: "2.26.0"
-  updated-on: "2026-04-27"
+  versions: "2.38.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "openai,chat,llm,ai"
 ---
@@ -49,7 +50,7 @@ client = OpenAI()
 
 Use `python-dotenv` or your secret manager of choice to keep keys out of source control.
 
-## Latest Official OpenAI Docs Update (April 2026)
+## Latest Official OpenAI Docs Update (May 2026)
 
 OpenAI's current official API docs list `gpt-5.5` as the recommended starting point for complex reasoning and coding. The same docs recommend smaller `gpt-5.4` variants when latency or cost is more important.
 
@@ -58,69 +59,40 @@ Use this update as API/model guidance layered on top of the SDK version pin in t
 - **Default for new Responses API work:** `gpt-5.5`
 - **More affordable frontier option:** `gpt-5.4`
 - **Fast and cost-efficient:** `gpt-5.4-mini`
-- **Cheapest high-volume GPT-5.4-class option:** `gpt-5.4-nano`
-- **Non-reasoning compatibility option:** `gpt-4.1`
+- **Cheapest high-volume option:** `gpt-5.4-nano`
 - **Image API generation and editing:** `gpt-image-2`
 
-The official text-generation guide now shows `client.responses.create(model="gpt-5.5", ...)` for the basic Python example. Continue to use the Responses API for new work unless an existing codebase already depends on Chat Completions.
+The official text-generation guide shows `client.responses.create(model="gpt-5.5", ...)` for the basic Python example. The Responses API is the primary surface for new code; Chat Completions remains supported for existing codebases.
 
-## Models (as of April 2026)
+## Models (as of May 2026)
 
 Default choices:
-- **General Text Tasks:** `gpt-5.5` (frontier) or `gpt-4.1` (non-reasoning)
-- **Complex Reasoning Tasks:** `gpt-5.5` or `gpt-5.5-pro`
-- **Fast & Cost-Efficient:** `gpt-5.4-mini` or `gpt-4.1-mini`
-- **Cheapest / Fastest:** `gpt-5.4-nano` or `gpt-4.1-nano`
-- **Audio Processing:** `gpt-audio` or `gpt-audio-mini`
-- **Vision Tasks:** `gpt-5.5` or `gpt-4.1`
-- **Agentic Coding:** `gpt-5.3-codex`
-- **Search (Chat Completions):** `gpt-5-search-api`, `gpt-4o-search-preview`, or `gpt-4o-mini-search-preview`
+- **General Text Tasks:** `gpt-5.5` (1M context, flagship) or `gpt-5.4` (more affordable, same capabilities)
+- **Complex Reasoning / Coding:** `gpt-5.5`
+- **Fast & Cost-Efficient:** `gpt-5.4-mini`
+- **Cheapest / Fastest:** `gpt-5.4-nano`
+- **Vision / Multimodal:** `gpt-5.5` or `gpt-5.4-mini`
+- **Image Generation:** `gpt-image-2`
 
-Frontier (reasoning, configurable effort):
-- `gpt-5.5`, `gpt-5.5-pro`
-- `gpt-5.4`, `gpt-5.4-2026-03-05`, `gpt-5.4-pro`, `gpt-5.4-pro-2026-03-05`
-- `gpt-5.2`, `gpt-5.2-2025-12-11`, `gpt-5.2-pro`
-- `gpt-5.1`, `gpt-5.1-2025-11-13`, `gpt-5.1-pro`
-- `gpt-5`, `gpt-5-2025-08-07`, `gpt-5-pro`
-- `gpt-5.4-mini`, `gpt-5.4-nano`
-- `gpt-5-mini`, `gpt-5-mini-2025-08-07`
-- `gpt-5-nano`, `gpt-5-nano-2025-08-07`
+Frontier (Responses API recommended):
+- `gpt-5.5` — flagship, 1M context window
+- `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`
+- Previous `gpt-5.x` snapshots remain accessible for pinning
 
-Non-reasoning:
-- `gpt-4.1`, `gpt-4.1-2025-04-14`
-- `gpt-4.1-mini`, `gpt-4.1-mini-2025-04-14`
-- `gpt-4.1-nano`, `gpt-4.1-nano-2025-04-14`
-
-Reasoning (o-series, succeeded by GPT-5):
-- `o3`, `o3-2025-04-16`, `o3-pro`, `o3-pro-2025-06-10`
-- `o4-mini`, `o4-mini-2025-04-16`
-- `o3-mini`, `o3-mini-2025-01-31`
-- `o1`, `o1-2024-12-17`
-
-Deep research: `o3-deep-research`, `o4-mini-deep-research`
-
-Codex (agentic coding, Responses API only):
-- `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.1-codex`, `gpt-5.1-codex-max`, `gpt-5.1-codex-mini`, `gpt-5-codex`
-
-Audio chat: `gpt-audio`, `gpt-audio-2025-08-28`, `gpt-audio-mini`
-Realtime: `gpt-realtime`, `gpt-realtime-2025-08-28`, `gpt-realtime-mini`
-TTS: `gpt-4o-mini-tts`, `gpt-4o-mini-tts-2025-12-15`, `tts-1`, `tts-1-hd`
-STT: `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `gpt-4o-mini-transcribe-2025-12-15`, `gpt-4o-transcribe-diarize`, `whisper-1`
-Image generation: `gpt-image-2`, `gpt-image-2-2026-04-21`, `gpt-image-1.5`, `gpt-image-1.5-2025-12-16`, `gpt-image-1`, `gpt-image-1-mini`, `chatgpt-image-latest`
+Realtime: `gpt-realtime-2`, `gpt-realtime-1.5`, `gpt-realtime-mini`, `gpt-realtime-whisper`
+TTS: `gpt-4o-mini-tts`, `tts-1`, `tts-1-hd`
+STT: `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `gpt-realtime-whisper`, `whisper-1`
+Image generation: `gpt-image-2`
 Embeddings: `text-embedding-3-large`, `text-embedding-3-small`, `text-embedding-ada-002`
 Moderation: `omni-moderation-latest`
-Search (Chat Completions only): `gpt-5-search-api`, `gpt-4o-search-preview`, `gpt-4o-mini-search-preview`
 
-Legacy (still available): `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-3.5-turbo`
+Legacy (still available): `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`, `gpt-4o`, `gpt-4o-mini`
 
-Deprecated (shutdown scheduled):
-- `dall-e-3`, `dall-e-2` → May 12, 2026 (use `gpt-image-2`)
-- `o1-preview`, `o1-mini` → deprecated (use `o3` or `gpt-5`)
-- `codex-mini-latest` → shut down Feb 12, 2026
-- `chatgpt-4o-latest` → shut down Feb 17, 2026
-- `gpt-4o-realtime-preview` → Mar 24, 2026 (use `gpt-realtime`)
-- `gpt-4o-mini-audio-preview` → Mar 24, 2026 (use `gpt-audio-mini`)
-- `gpt-4.5-preview` → deprecated
+Deprecated:
+- `dall-e-3`, `dall-e-2` (use `gpt-image-2`)
+- `o1`, `o1-preview`, `o1-mini`, `o3-mini` (succeeded by GPT-5 series)
+- `gpt-4o-realtime-preview` (use `gpt-realtime-2`)
+- `gpt-4.5-preview`
 - Assistants API → sunset Aug 26, 2026 (migrate to Responses API)
 
 ## Basic Inference (Text Generation)
@@ -149,7 +121,7 @@ from openai import OpenAI
 client = OpenAI()
 
 completion = client.chat.completions.create(
-    model="gpt-4.1",
+    model="gpt-5.5",
     messages=[
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": "How do I reverse a string in Python?"},
@@ -168,7 +140,7 @@ from openai import OpenAI
 client = OpenAI()
 
 response = client.responses.create(
-    model="gpt-4.1-mini",
+    model="gpt-5.4-mini",
     input=[
         {
             "role": "user",
@@ -193,7 +165,7 @@ with open("path/to/image.png", "rb") as image_file:
     b64_image = base64.b64encode(image_file.read()).decode("utf-8")
 
 response = client.responses.create(
-    model="gpt-4.1-mini",
+    model="gpt-5.4-mini",
     input=[
         {
             "role": "user",
@@ -251,7 +223,7 @@ from openai import OpenAI
 client = OpenAI()
 
 stream = client.chat.completions.create(
-    model="gpt-4.1",
+    model="gpt-5.5",
     messages=[{"role": "user", "content": "Tell me a joke"}],
     stream=True,
 )
@@ -278,7 +250,7 @@ class WeatherQuery(BaseModel):
 client = OpenAI()
 
 completion = client.chat.completions.parse(
-    model="gpt-4.1",
+    model="gpt-5.5",
     messages=[{"role": "user", "content": "What's the weather like in Paris?"}],
     tools=[openai.pydantic_function_tool(WeatherQuery)],
 )
@@ -308,7 +280,7 @@ class MathResponse(BaseModel):
 
 client = OpenAI()
 completion = client.chat.completions.parse(
-    model="gpt-4.1",
+    model="gpt-5.5",
     messages=[
         {"role": "system", "content": "You are a helpful math tutor."},
         {"role": "user", "content": "solve 8x + 31 = 2"},
@@ -498,7 +470,7 @@ from openai import AsyncOpenAI
 async def main():
     client = AsyncOpenAI()
 
-    async with client.realtime.connect(model="gpt-realtime") as connection:
+    async with client.realtime.connect(model="gpt-realtime-2") as connection:
         await connection.session.update(session={'modalities': ['text']})
 
         await connection.conversation.item.create(
@@ -589,9 +561,8 @@ if first_page.has_next_page():
 
 ## Official Sources Used For This Update
 
+- OpenAI Python SDK on PyPI: `https://pypi.org/project/openai/2.38.0/`
+- OpenAI Python SDK README: `https://github.com/openai/openai-python`
 - OpenAI models guide: `https://developers.openai.com/api/docs/models`
-- OpenAI GPT-5.5 model page: `https://developers.openai.com/api/docs/models/gpt-5.5`
 - OpenAI text generation guide: `https://developers.openai.com/api/docs/guides/text`
-- OpenAI GPT Image 2 model page: `https://developers.openai.com/api/docs/models/gpt-image-2`
-- OpenAI image generation guide: `https://developers.openai.com/api/docs/guides/image-generation`
 - OpenAI API reference: `https://developers.openai.com/api/reference`

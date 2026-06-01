@@ -5,25 +5,98 @@
  */
 
 const STOP_WORDS = new Set([
-  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from',
-  'has', 'have', 'in', 'is', 'it', 'its', 'of', 'on', 'or', 'that',
-  'the', 'to', 'was', 'were', 'will', 'with', 'this', 'but', 'not',
-  'you', 'your', 'can', 'do', 'does', 'how', 'if', 'may', 'no',
-  'so', 'than', 'too', 'very', 'just', 'about', 'into', 'over',
-  'such', 'then', 'them', 'these', 'those', 'through', 'under',
-  'use', 'using', 'used',
+  'a',
+  'an',
+  'and',
+  'are',
+  'as',
+  'at',
+  'be',
+  'by',
+  'for',
+  'from',
+  'has',
+  'have',
+  'in',
+  'is',
+  'it',
+  'its',
+  'of',
+  'on',
+  'or',
+  'that',
+  'the',
+  'to',
+  'was',
+  'were',
+  'will',
+  'with',
+  'this',
+  'but',
+  'not',
+  'you',
+  'your',
+  'can',
+  'do',
+  'does',
+  'how',
+  'if',
+  'may',
+  'no',
+  'so',
+  'than',
+  'too',
+  'very',
+  'just',
+  'about',
+  'into',
+  'over',
+  'such',
+  'then',
+  'them',
+  'these',
+  'those',
+  'through',
+  'under',
+  'use',
+  'using',
+  'used',
 ]);
+
+const GENERIC_PATH_SEGMENTS = new Set([
+  'doc',
+  'docs',
+  'skill',
+  'skills',
+  'readme',
+  'reference',
+  'references',
+  'guide',
+  'guides',
+  'example',
+  'examples',
+  'snippet',
+  'snippets',
+  'index',
+  'overview',
+  'api',
+]);
+
+const MAIN_ENTRY_FILES = new Set(['doc.md', 'skill.md']);
 
 // BM25 default parameters
 const DEFAULT_K1 = 1.5;
 const DEFAULT_B = 0.75;
 
-// Field weights for multi-field scoring
+// Field weights for multi-field scoring.
+// Expansion is intentionally lower than explicit metadata so exact id/name matches still dominate,
+// while reference-file topics remain searchable in the first pass.
 const FIELD_WEIGHTS = {
   id: 4.0,
   name: 3.0,
   tags: 2.0,
   description: 1.0,
+  expansion: 0.9,
 };
 
 function getDefaultParams() {
@@ -52,6 +125,7 @@ function splitAlphaNumeric(text) {
  */
 export function tokenize(text) {
   if (!text) return [];
+
   return text
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, ' ')
@@ -84,15 +158,114 @@ export function tokenizeIdentifier(text) {
 
   for (const segment of segments) {
     if (!segment) continue;
+
     if (isSearchableToken(segment)) {
       tokens.add(segment);
     }
+
     for (const token of tokenize(splitAlphaNumeric(segment))) {
       tokens.add(token);
     }
   }
 
   return [...tokens];
+}
+
+function stripFileExtension(fileName) {
+  return String(fileName || '').replace(/\.[a-z0-9]+$/i, '');
+}
+
+function addWeightedTokens(target, tokens, weight = 1, maxPerToken = 3) {
+  const counts = Object.create(null);
+  for (const existing of target) {
+    counts[existing] = (counts[existing] || 0) + 1;
+  }
+
+  for (let idx = 0; idx < weight; idx++) {
+    for (const token of tokens) {
+      if (!token) continue;
+      if ((counts[token] || 0) >= maxPerToken) continue;
+      target.push(token);
+      counts[token] = (counts[token] || 0) + 1;
+    }
+  }
+}
+
+function collectEntryFiles(entry) {
+  const files = new Set();
+
+  for (const file of entry.files || []) {
+    if (file) files.add(String(file));
+  }
+
+  for (const language of entry.languages || []) {
+    for (const version of language.versions || []) {
+      for (const file of version.files || []) {
+        if (file) files.add(String(file));
+      }
+    }
+  }
+
+  return [...files];
+}
+
+function extractExpansionTokensFromFile(filePath) {
+  const normalizedPath = String(filePath || '').replace(/\\/g, '/').toLowerCase();
+  if (!normalizedPath || MAIN_ENTRY_FILES.has(normalizedPath)) {
+    return [];
+  }
+
+  const segments = normalizedPath
+    .split('/')
+    .map((segment) => stripFileExtension(segment))
+    .filter(Boolean);
+
+  if (segments.length === 0) {
+    return [];
+  }
+
+  const isReferenceLike = segments.some((segment) => segment === 'reference' || segment === 'references');
+  const isGuideLike = segments.some((segment) => segment === 'guide' || segment === 'guides');
+  const isExampleLike = segments.some((segment) => segment === 'example' || segment === 'examples');
+
+  const expansionTokens = [];
+
+  for (let idx = 0; idx < segments.length; idx++) {
+    const segment = segments[idx];
+    const compact = compactIdentifier(segment);
+    if (!compact || GENERIC_PATH_SEGMENTS.has(compact)) {
+      continue;
+    }
+
+    const tokens = tokenizeIdentifier(segment);
+    if (tokens.length === 0) {
+      continue;
+    }
+
+    const isBasename = idx === segments.length - 1;
+    let weight = isBasename ? 2 : 1;
+
+    if (isBasename && isReferenceLike) weight = 3;
+    else if (isBasename && (isGuideLike || isExampleLike)) weight = 2;
+
+    addWeightedTokens(expansionTokens, tokens, weight);
+  }
+
+  return expansionTokens;
+}
+
+function collectExpansionTokens(entry) {
+  const files = collectEntryFiles(entry);
+  const tokens = [];
+
+  for (const filePath of files) {
+    addWeightedTokens(tokens, extractExpansionTokensFromFile(filePath), 1);
+    if (tokens.length >= 192) {
+      return tokens.slice(0, 192);
+    }
+  }
+
+  return tokens;
 }
 
 function buildInvertedIndex(documents) {
@@ -104,6 +277,7 @@ function buildInvertedIndex(documents) {
       ...(doc.tokens.name || []),
       ...(doc.tokens.description || []),
       ...(doc.tokens.tags || []),
+      ...(doc.tokens.expansion || []),
     ]);
 
     for (const term of allTerms) {
@@ -117,20 +291,29 @@ function buildInvertedIndex(documents) {
 
 export function buildIndexFromDocuments(documents, params = getDefaultParams()) {
   const dfMap = Object.create(null); // document frequency per term (across all fields)
-  const fieldLengths = { id: [], name: [], description: [], tags: [] };
+  const fieldLengths = { id: [], name: [], description: [], tags: [], expansion: [] };
 
   for (const doc of documents) {
     const idTokens = doc.tokens.id || [];
     const nameTokens = doc.tokens.name || [];
     const descTokens = doc.tokens.description || [];
     const tagTokens = doc.tokens.tags || [];
+    const expansionTokens = doc.tokens.expansion || [];
 
     fieldLengths.id.push(idTokens.length);
     fieldLengths.name.push(nameTokens.length);
     fieldLengths.description.push(descTokens.length);
     fieldLengths.tags.push(tagTokens.length);
+    fieldLengths.expansion.push(expansionTokens.length);
 
-    const allTerms = new Set([...idTokens, ...nameTokens, ...descTokens, ...tagTokens]);
+    const allTerms = new Set([
+      ...idTokens,
+      ...nameTokens,
+      ...descTokens,
+      ...tagTokens,
+      ...expansionTokens,
+    ]);
+
     for (const term of allTerms) {
       dfMap[term] = (dfMap[term] || 0) + 1;
     }
@@ -138,11 +321,13 @@ export function buildIndexFromDocuments(documents, params = getDefaultParams()) 
 
   const N = documents.length;
   const idf = Object.create(null);
+
   for (const [term, df] of Object.entries(dfMap)) {
     idf[term] = Math.log((N - df + 0.5) / (df + 0.5) + 1);
   }
 
-  const avg = (arr) => arr.length === 0 ? 0 : arr.reduce((a, b) => a + b, 0) / arr.length;
+  const avg = (arr) => (arr.length === 0 ? 0 : arr.reduce((a, b) => a + b, 0) / arr.length);
+
   return {
     version: '1.0.0',
     algorithm: 'bm25',
@@ -153,6 +338,7 @@ export function buildIndexFromDocuments(documents, params = getDefaultParams()) 
       name: avg(fieldLengths.name),
       description: avg(fieldLengths.description),
       tags: avg(fieldLengths.tags),
+      expansion: avg(fieldLengths.expansion),
     },
     idf,
     documents,
@@ -175,6 +361,7 @@ export function buildIndex(entries) {
     const nameTokens = tokenize(entry.name);
     const descTokens = tokenize(entry.description || '');
     const tagTokens = (entry.tags || []).flatMap((t) => tokenize(t));
+    const expansionTokens = collectExpansionTokens(entry);
 
     documents.push({
       id: entry.id,
@@ -183,9 +370,11 @@ export function buildIndex(entries) {
         name: nameTokens,
         description: descTokens,
         tags: tagTokens,
+        expansion: expansionTokens,
       },
     });
   }
+
   return buildIndexFromDocuments(documents);
 }
 

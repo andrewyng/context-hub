@@ -44,6 +44,7 @@ The skill is a standard markdown file at `skills/get-api-docs/SKILL.md`. Copy it
 ## Commands
 
 ```bash
+chub update                          # refresh registry metadata
 chub search "stripe"                 # find docs
 chub get stripe/api                  # fetch a doc
 chub get stripe/api --lang js        # specific language

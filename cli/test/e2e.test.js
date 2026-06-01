@@ -154,6 +154,7 @@ describe('chub CLI e2e', () => {
       expect(out).toContain('Help source: local');
       expect(out).toContain('Getting Started');
       expect(out).toContain('Agent Workflow');
+      expect(out).toContain('Refresh the registry with `chub update` before the first search.');
       expect(out).toContain('npx skills add https://github.com/andrewyng/context-hub --skill get-api-docs');
       expect(out).toContain('$(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md');
       expect(out).toContain('cli/skills/get-api-docs/SKILL.md');

@@ -12,13 +12,13 @@ param = pybamm.ParameterValues("Chen2020")
 
 | Name | Chemistry | Cell type | Notes |
 |------|-----------|-----------|-------|
-| `"Chen2020"` | Graphite/LFP | 21700 cylindrical | Most widely used default; validated against discharge curves |
-| `"Marquis2019"` | Graphite/LiCoO2 | Pouch | Original SPMe paper parameters |
-| `"OKane2022"` | Graphite/LFP | 21700 cylindrical | Extends Chen2020 with degradation (SEI, lithium plating) |
-| `"Mohtat2020"` | Graphite/NMC | — | SPM-focused parameter set |
-| `"Ai2020"` | Graphite/LiCoO2 | — | Thermal model parameters |
-| `"Ecker2015"` | Graphite/NMC | Pouch | Frequently cited in literature |
-| `"NCA_Kim2011"` | Graphite/NCA | 18650 cylindrical | NCA chemistry |
+| `"Chen2020"` | Graphite/NMC811 | 21700 cylindrical | LG M50 cell; most widely used default; validated against discharge curves |
+| `"Marquis2019"` | Graphite/NMC | Pouch | Kokam SLPB78205130H; original SPMe paper parameters |
+| `"OKane2022"` | Graphite/NMC811 | 21700 cylindrical | LG M50; extends Chen2020 with degradation (SEI, lithium plating) |
+| `"Mohtat2020"` | Graphite/NMC532 | Pouch | SPM-focused parameter set |
+| `"Ai2020"` | Graphite/LiCoO2 | Pouch | Enertech cell; thermal model parameters |
+| `"Ecker2015"` | Graphite/NMC | Pouch | Kokam SLPB 75106100; frequently cited in literature |
+| `"NCA_Kim2011"` | Graphite/NCA | Pouch | NCA chemistry |
 | `"Prada2013"` | Graphite/LFP | 26650 cylindrical | LFP, lower voltage plateau |
 | `"Ramadass2004"` | Graphite/LiCoO2 | — | Early foundational set |
 

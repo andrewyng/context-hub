@@ -4,8 +4,8 @@ description: "MiniMax API for chat completions, streaming, function calling, and
 metadata:
   languages: "javascript"
   versions: "1.0.0"
-  revision: 1
-  updated-on: "2026-03-14"
+  revision: 2
+  updated-on: "2026-06-03"
   source: community
   tags: "minimax,llm,chat,streaming,openai-compatible"
 ---
@@ -14,7 +14,7 @@ metadata:
 
 ## When To Use
 
-Use the MiniMax API when you need high-performance text generation with large context windows (up to 204K tokens). MiniMax exposes an OpenAI-compatible endpoint, so you can use the standard `openai` Node.js SDK with a custom `baseURL`.
+Use the MiniMax API when you need high-performance text generation with large context windows (up to 512K tokens). MiniMax exposes an OpenAI-compatible endpoint, so you can use the standard `openai` Node.js SDK with a custom `baseURL`.
 
 ## Install
 
@@ -47,12 +47,11 @@ const client = new OpenAI({
 
 | Model | Context Window | Notes |
 |-------|---------------|-------|
-| `MiniMax-M2.7` | 204K tokens | Latest flagship model with enhanced reasoning and coding |
-| `MiniMax-M2.7-highspeed` | 204K tokens | High-speed version of M2.7 for low-latency scenarios |
-| `MiniMax-M2.5` | 204K tokens | Previous generation flagship model |
-| `MiniMax-M2.5-highspeed` | 204K tokens | Previous generation high-speed model |
+| `MiniMax-M3` | 512K tokens | Latest flagship model with 128K max output and image input support (default) |
+| `MiniMax-M2.7` | 204K tokens | Previous generation flagship model |
+| `MiniMax-M2.7-highspeed` | 204K tokens | Previous generation high-speed model for low-latency scenarios |
 
-Use `MiniMax-M2.7` for quality-sensitive tasks. Use `MiniMax-M2.7-highspeed` when latency matters more than peak quality.
+Use `MiniMax-M3` for quality-sensitive tasks. Use `MiniMax-M2.7-highspeed` when latency matters more than peak quality.
 
 ## Core Usage
 
@@ -67,7 +66,7 @@ const client = new OpenAI({
 });
 
 const completion = await client.chat.completions.create({
-  model: "MiniMax-M2.7",
+  model: "MiniMax-M3",
   messages: [
     { role: "system", content: "You are a helpful assistant." },
     { role: "user", content: "Explain the difference between TCP and UDP." },
@@ -91,7 +90,7 @@ const client = new OpenAI({
 });
 
 const stream = await client.chat.completions.create({
-  model: "MiniMax-M2.7",
+  model: "MiniMax-M3",
   messages: [{ role: "user", content: "Write a haiku about programming." }],
   stream: true,
   temperature: 0.7,
@@ -139,7 +138,7 @@ const tools = [
 ];
 
 const completion = await client.chat.completions.create({
-  model: "MiniMax-M2.7",
+  model: "MiniMax-M3",
   messages: [{ role: "user", content: "What's the weather in Tokyo?" }],
   tools,
   temperature: 0.7,
@@ -163,7 +162,7 @@ MiniMax requires `temperature` to be strictly between 0.0 (exclusive) and 1.0 (i
 ```javascript
 // Valid
 const completion = await client.chat.completions.create({
-  model: "MiniMax-M2.7",
+  model: "MiniMax-M3",
   messages: [{ role: "user", content: "Hello" }],
   temperature: 0.01, // near-deterministic
 });
@@ -188,7 +187,7 @@ const client = new OpenAI({
 
 try {
   const completion = await client.chat.completions.create({
-    model: "MiniMax-M2.7",
+    model: "MiniMax-M3",
     messages: [{ role: "user", content: "Hello" }],
     temperature: 0.7,
   });
@@ -209,10 +208,10 @@ try {
 ## Common Pitfalls
 
 - **Temperature must be > 0.** Setting `temperature: 0.0` raises an error. Use `0.01` for near-deterministic behavior.
-- **Model names are case-sensitive.** Use `MiniMax-M2.7`, not `minimax-m2.7`.
+- **Model names are case-sensitive.** Use `MiniMax-M3`, not `minimax-m3`.
 - **Always set `baseURL`.** Without `baseURL: "https://api.minimax.io/v1"`, requests go to OpenAI instead of MiniMax.
 - **Use a dedicated env var.** Store the key in `MINIMAX_API_KEY` (not `OPENAI_API_KEY`) to avoid confusion when working with multiple providers.
-- **Large context window.** MiniMax supports up to 204K tokens, but longer inputs cost more and take longer to process. Only send what you need.
+- **Large context window.** MiniMax-M3 supports up to 512K tokens with 128K max output, but longer inputs cost more and take longer to process. Only send what you need.
 
 ## Official Resources
 

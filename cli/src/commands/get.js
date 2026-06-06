@@ -6,6 +6,7 @@ import { fetchDoc, fetchDocFull } from '../lib/cache.js';
 import { output, error, info } from '../lib/output.js';
 import { trackEvent } from '../lib/analytics.js';
 import { readAnnotation } from '../lib/annotations.js';
+import { detectEnvVersion } from '../lib/env-version.js';
 
 /**
  * Fetch one or more entries by ID. Auto-detects doc vs skill per entry.
@@ -33,7 +34,22 @@ async function fetchEntries(ids, opts, globalOpts) {
 
     const entry = result.entry;
     const type = entry.languages ? 'doc' : 'skill';
-    const resolved = resolveDocPath(entry, opts.lang, opts.version);
+    
+    // Auto-detect version from env if --version not passed
+    let resolvedVersion = opts.version ?? null;
+    if (!resolvedVersion && type === 'doc') {
+      const detected = detectEnvVersion(id);
+      if (detected) {
+        resolvedVersion = detected.version;
+        if (!globalOpts.json) {
+          process.stderr.write(
+            `[env] using ${id} ${detected.version} (from ${detected.source})\n`
+          );
+        }
+      }
+    }
+    
+    const resolved = resolveDocPath(entry, opts.lang, resolvedVersion);
 
     if (!resolved) {
       if (opts.lang && entry.languages) {

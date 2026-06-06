@@ -78,12 +78,23 @@ author/docs/entry-name/
 
 Agents request a specific version with `--version`:
 
-```bash
-chub get author/entry-name                    # latest version (recommended)
-chub get author/entry-name --version 1.0.0    # specific version
 ```
+chub get author/entry-name                    # latest version (recommended)
+chub get author/entry-name --version 1.0.0    # pin to an exact version
+chub get author/entry-name --version 1.0.0 --lang py  # version + language
+```
+If the requested version is not available, the CLI lists available versions
+so you can choose the closest match.
 
-If a requested version doesn't exist, the CLI lists available versions.
+#### When to use `--version`
+
+- Your project has a pinned dependency (e.g. `stripe==5.4.0` in `requirements.txt`)
+- You are working in a production environment that cannot upgrade
+- You want to validate behaviour against a specific historical API version
+
+The `versions` field in a DOC.md frontmatter controls which version strings
+are supported for a given doc entry. Use `chub search author/entry-name` (exact
+ID form) to see which versions are indexed before fetching.
 
 ### Skills
 

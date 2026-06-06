@@ -65,11 +65,13 @@ Fetch one or more docs or skills by ID. Auto-detects type (doc vs skill). Auto-i
 | `-o, --output <path>` | Write to file or directory |
 
 ```bash
-chub get stripe/api                  # single doc (auto-infers lang)
-chub get openai/chat-api --lang py   # specific language
-chub get pw-community/login-flows    # fetch a skill
-chub get stripe/api openai/chat-api  # multiple entries
-chub get stripe/api -o .context/     # save to file
+chub get stripe/api                                  # single doc (auto-infers lang)
+chub get openai/chat-api --lang py                   # specific language
+chub get stripe/api --version 19.1.0                 # specific package version
+chub get openai/chat-api --lang py --version 1.0.0   # language + version pinned
+chub get pw-community/login-flows                    # fetch a skill
+chub get stripe/api openai/chat-api                  # multiple entries
+chub get stripe/api -o .context/                     # save to file
 ```
 
 ### Incremental Fetch
@@ -99,6 +101,21 @@ With `--json`, the response includes an `additionalFiles` array listing availabl
 If a doc is available in multiple languages and `--lang` is not specified, the CLI lists available languages and asks you to choose.
 
 If a doc has only one language, `--lang` is not required — it's auto-inferred.
+
+### Version pinning
+
+By default `chub get` fetches the latest (recommended) version of a doc.
+Use `--version` to fetch docs for a specific package version — useful when
+your project is pinned to an older SDK or you need to match a production
+environment exactly.
+```
+chub get stripe/api --version 19.1.0
+chub get openai/chat --lang py --version 1.0.0
+```
+
+If the requested version is not available, the CLI lists all available
+versions so you can pick the closest match.
+
 
 ## chub annotate [id] [note]
 

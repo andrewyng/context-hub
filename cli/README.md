@@ -14,18 +14,20 @@ The CLI ships with a skill that teaches agents to fetch docs automatically inste
 
 ### Claude Code
 
-Copy the skill into your project:
+Copy the skill into Claude Code's global skill directory:
 
 ```bash
-mkdir -p .claude/skills
-cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md .claude/skills/get-api-docs.md
+mkdir -p ~/.claude/skills/get-api-docs
+cp "$(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md" ~/.claude/skills/get-api-docs/SKILL.md
 ```
 
-Or install it globally (applies to all projects):
+### Codex
+
+Copy the same skill into Codex's skill directory:
 
 ```bash
-mkdir -p ~/.claude/skills
-cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md ~/.claude/skills/get-api-docs.md
+mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills/get-api-docs"
+cp "$(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md" "${CODEX_HOME:-$HOME/.codex}/skills/get-api-docs/SKILL.md"
 ```
 
 ### Cursor
@@ -34,7 +36,7 @@ Copy the skill into your project's rules directory:
 
 ```bash
 mkdir -p .cursor/rules
-cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md .cursor/rules/get-api-docs.md
+cp "$(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md" .cursor/rules/get-api-docs.md
 ```
 
 ### Other Agent Tools

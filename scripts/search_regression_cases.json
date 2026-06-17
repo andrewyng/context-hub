@@ -1,0 +1,546 @@
+[
+  {
+    "id": "wmma-how-to-use",
+    "query": "how to use wmma",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_top1": "cuda/wmma-kernel-patterns",
+    "expect_any": ["cuda/tensor-cores"]
+  },
+  {
+    "id": "shared-memory-core",
+    "query": "shared memory cuda",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/shared-memory"
+  },
+  {
+    "id": "tensor-core-pipeline",
+    "query": "tensor core pipeline",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/tensor-core-pipeline-patterns"
+  },
+  {
+    "id": "cuda-core-checklist",
+    "query": "cuda core optimization checklist",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/cuda-core-optimization-checklist"
+  },
+  {
+    "id": "ptx-mbarrier-patterns",
+    "query": "ptx cp.async mbarrier",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_top1": "cuda/ptx-mbarrier-protocol-patterns",
+    "expect_any": [
+      "cuda/ptx-sync-comm-instructions",
+      "cuda/ptx-data-movement-instructions",
+      "cuda/ptx"
+    ]
+  },
+  {
+    "id": "wmma-debugging",
+    "query": "wmma debugging checklist",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_any": [
+      "cuda/wmma-debugging-checklist",
+      "cuda/wmma-kernel-patterns"
+    ]
+  },
+  {
+    "id": "warp-primitives",
+    "query": "warp primitives shuffle ballot syncwarp",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/warp-primitives"
+  },
+  {
+    "id": "sync-basics",
+    "query": "cuda synchronization syncthreads syncwarp",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/synchronization"
+  },
+  {
+    "id": "coalescing",
+    "query": "cuda memory coalescing global load store",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_any": ["cuda/coalescing", "cuda/memory-bound-kernel-optimization-playbook"]
+  },
+  {
+    "id": "occupancy-and-launch-bounds",
+    "query": "occupancy register pressure launch bounds",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 4,
+    "expect_any": ["cuda/occupancy", "cuda/launch-bounds-and-registers"]
+  },
+  {
+    "id": "unified-memory",
+    "query": "cuda unified memory prefetch advise",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/unified-memory"
+  },
+  {
+    "id": "graphs",
+    "query": "cuda graphs stream capture",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/cuda-graphs"
+  },
+  {
+    "id": "numerics",
+    "query": "cuda numerics precision tf32 fp16 bf16",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 4,
+    "expect_any": ["cuda/numerics-and-precision", "cuda/tensor-core-numerical-validation"]
+  },
+  {
+    "id": "bottleneck-workflow",
+    "query": "kernel bottleneck diagnosis workflow",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/kernel-bottleneck-diagnosis-workflow"
+  },
+  {
+    "id": "production-readiness",
+    "query": "cuda production readiness checklist",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/production-readiness-checklist"
+  },
+  {
+    "id": "ptx-wgmma",
+    "query": "ptx wgmma commit wait fence",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_any": ["cuda/ptx-wgmma-instructions", "cuda/tensor-core-pipeline-patterns"]
+  },
+  {
+    "id": "ptx-atomics",
+    "query": "ptx atom cas red redux",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_any": [
+      "cuda/ptx-atomic-and-reduction-patterns",
+      "cuda/ptx-sync-comm-instructions"
+    ]
+  },
+  {
+    "id": "ptx-integer-bitops",
+    "query": "ptx integer bit manipulation lop3 bfe bfi",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_any": [
+      "cuda/ptx-integer-bit-manipulation-patterns",
+      "cuda/ptx-integer-instructions"
+    ]
+  },
+  {
+    "id": "metal-kernel-basics",
+    "query": "metal kernel thread_position_in_grid threadgroup",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-kernel-basics"
+  },
+  {
+    "id": "metal-compute-launch",
+    "query": "metal compute pipeline dispatchthreads threadsperthreadgroup",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-compute-launch-patterns"
+  },
+  {
+    "id": "metal-debugging",
+    "query": "metal kernel debugging validation resource binding dispatch",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-kernel-debugging-checklist"
+  },
+  {
+    "id": "metal-buffer-alignment",
+    "query": "metal buffer alignment bytesperrow texture buffer",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-buffer-layout-and-alignment"
+  },
+  {
+    "id": "metal-simdgroup",
+    "query": "metal simdgroup subgroup warp-like",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-simdgroup-patterns"
+  },
+  {
+    "id": "metal-performance",
+    "query": "metal performance tuning dispatchthreads command buffer pipeline reuse",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_any": [
+      "apple/metal-performance-tuning",
+      "apple/metal-command-buffer-reuse-and-batching"
+    ]
+  },
+  {
+    "id": "pytorch-custom-metal",
+    "query": "pytorch mps vs custom metal",
+    "tags": "apple",
+    "lang": "python",
+    "limit": 5,
+    "top_k": 2,
+    "expect_any": [
+      "apple/pytorch-mps-vs-custom-metal",
+      "apple/metal-pytorch-custom-op-host-patterns"
+    ]
+  },
+  {
+    "id": "metal-host-wrapper",
+    "query": "metal host wrapper pipeline cache command encoder",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-host-wrapper-patterns"
+  },
+  {
+    "id": "metal-threadgroup-sizing",
+    "query": "metal threadExecutionWidth maxTotalThreadsPerThreadgroup threadgroup sizing",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-threadgroup-sizing-playbook"
+  },
+  {
+    "id": "metal-resource-binding",
+    "query": "metal resource binding useResource useHeap buffer index",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-resource-binding-checklist"
+  },
+  {
+    "id": "metal-tiled-matmul",
+    "query": "metal tiled matmul threadgroup memory gemm",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-tiled-matmul-patterns"
+  },
+  {
+    "id": "metal-reduction",
+    "query": "metal reduction threadgroup accumulation barrier",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-reduction-patterns"
+  },
+  {
+    "id": "metal-image-2d",
+    "query": "metal texture 2d kernel thread_position_in_grid read_write texture",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-image-and-2d-kernel-patterns"
+  },
+  {
+    "id": "metal-command-buffer-batching",
+    "query": "metal command buffer batching indirect command buffer persistent objects",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-command-buffer-reuse-and-batching"
+  },
+  {
+    "id": "metal-library-compilation",
+    "query": "metal metallib pipeline compilation runtime loading",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-library-and-pipeline-compilation"
+  },
+  {
+    "id": "metal-texture-vs-buffer",
+    "query": "metal texture vs buffer resource selection image linear memory",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-texture-vs-buffer-path-selection"
+  },
+  {
+    "id": "metal-edge-bounds",
+    "query": "metal edge tile bounds check rounded dispatch partial tile",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-edge-tile-and-bounds-check-playbook"
+  },
+  {
+    "id": "metal-validation-profiling",
+    "query": "metal validation profiling workflow debugger instruments system trace",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-validation-and-profiling-workflow"
+  },
+  {
+    "id": "metal-argument-buffers",
+    "query": "metal argument buffers residency useresource indirect resources",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-argument-buffers-and-residency"
+  },
+  {
+    "id": "metal-heaps-events",
+    "query": "metal heaps fences events temporary resources multistage pipeline",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-heaps-fences-and-events"
+  },
+  {
+    "id": "metal-convolution-stencil",
+    "query": "metal convolution stencil image filter neighborhood texture compute",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-convolution-and-stencil-patterns"
+  },
+  {
+    "id": "metal-prefix-scan",
+    "query": "metal prefix scan exclusive inclusive scan threadgroup",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-prefix-scan-patterns"
+  },
+  {
+    "id": "metal-transpose-layout",
+    "query": "metal transpose layout reorder tile threadgroup",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-transpose-and-layout-reorder-patterns"
+  },
+  {
+    "id": "metal-histogram-binning",
+    "query": "metal histogram binning atomic threadgroup local bins",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-histogram-and-binning-patterns"
+  },
+  {
+    "id": "metal-gather-scatter",
+    "query": "metal gather scatter indirect access argument buffers index table",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-gather-scatter-and-indirect-access-patterns"
+  },
+  {
+    "id": "metal-convolution-tiling",
+    "query": "metal convolution tiling halo threadgroup separable",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-convolution-tiling-playbook"
+  },
+  {
+    "id": "metal-persistent-objects",
+    "query": "metal persistent objects command buffer queue pipeline reuse submission overhead",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-persistent-objects-and-submission-overhead"
+  },
+  {
+    "id": "metal-gpu-driven-work",
+    "query": "metal gpu driven work generation indirect command buffer indirect dispatch",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-gpu-driven-work-generation-patterns"
+  },
+  {
+    "id": "metal-multistage-pipeline",
+    "query": "metal multistage tensor pipeline intermediate buffers stages",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-multistage-tensor-pipeline-patterns"
+  },
+  {
+    "id": "metal-numerical-drift",
+    "query": "metal numerical drift precision debugging half float accumulation",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-numerical-drift-debugging-checklist"
+  },
+  {
+    "id": "metal-segmented-reduction",
+    "query": "metal segmented reduction grouped irregular segments carry",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-segmented-reduction-patterns"
+  },
+  {
+    "id": "metal-ragged-masked",
+    "query": "metal ragged tensor masked kernel variable length bounds check",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-ragged-tensors-and-masked-kernels"
+  },
+  {
+    "id": "metal-streaming-online",
+    "query": "metal streaming online kernel chunked rolling buffer latency",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-streaming-and-online-kernel-patterns"
+  },
+  {
+    "id": "metal-memory-pressure",
+    "query": "metal memory pressure checklist heaps storage mode transient allocation",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-memory-pressure-checklist"
+  },
+  {
+    "id": "metal-double-buffered-pipeline",
+    "query": "metal double buffered pipeline overlap producer consumer alternating buffers",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-double-buffered-pipeline-patterns"
+  },
+  {
+    "id": "metal-producer-consumer-staging",
+    "query": "metal producer consumer staging handoff intermediate resource synchronization",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-producer-consumer-staging-playbook"
+  },
+  {
+    "id": "metal-scatter-conflict",
+    "query": "metal scatter conflict resolution atomics staged merge duplicate destinations",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-scatter-conflict-resolution-patterns"
+  },
+  {
+    "id": "metal-kernel-fusion",
+    "query": "metal kernel fusion tradeoff bandwidth occupancy intermediate resources",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-kernel-fusion-tradeoff-checklist"
+  },
+  {
+    "id": "metal-tensor-packing",
+    "query": "metal tensor packing unpacking layout transform contiguous staging",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-tensor-packing-and-unpacking-patterns"
+  },
+  {
+    "id": "metal-strided-views",
+    "query": "metal strided views subtensor slice offset math noncontiguous",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-strided-views-and-subtensor-access-patterns"
+  },
+  {
+    "id": "metal-broadcast-kernels",
+    "query": "metal broadcast kernel shape alignment scalar vector expansion",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-broadcast-kernel-patterns"
+  },
+  {
+    "id": "metal-host-device-sync",
+    "query": "metal host device synchronization completion resource lifetime wrapper",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-host-device-synchronization-checklist"
+  },
+  {
+    "id": "metal-softmax-logsumexp",
+    "query": "metal softmax logsumexp stability max subtraction precision",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-softmax-and-logsumexp-stability-patterns"
+  },
+  {
+    "id": "metal-nan-inf-debugging",
+    "query": "metal silent nan inf debugging overflow first bad intermediate",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-silent-nan-inf-debugging-checklist"
+  },
+  {
+    "id": "metal-prefetch-reuse",
+    "query": "metal prefetch reuse heuristics threadgroup memory locality",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-prefetch-and-reuse-heuristics"
+  },
+  {
+    "id": "metal-transpose-free-layout",
+    "query": "metal transpose free layout choice playbook packing reorder avoidance",
+    "tags": "apple",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "apple/metal-transpose-free-layout-choice-playbook"
+  }
+]

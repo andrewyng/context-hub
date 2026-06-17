@@ -1,0 +1,166 @@
+[
+  {
+    "id": "wmma-how-to-use",
+    "query": "how to use wmma",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_top1": "cuda/wmma-kernel-patterns",
+    "expect_any": ["cuda/tensor-cores"]
+  },
+  {
+    "id": "shared-memory-core",
+    "query": "shared memory cuda",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/shared-memory"
+  },
+  {
+    "id": "tensor-core-pipeline",
+    "query": "tensor core pipeline",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/tensor-core-pipeline-patterns"
+  },
+  {
+    "id": "cuda-core-checklist",
+    "query": "cuda core optimization checklist",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/cuda-core-optimization-checklist"
+  },
+  {
+    "id": "ptx-mbarrier-patterns",
+    "query": "ptx cp.async mbarrier",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_top1": "cuda/ptx-mbarrier-protocol-patterns",
+    "expect_any": ["cuda/ptx-sync-comm-instructions"]
+  },
+  {
+    "id": "wmma-debugging",
+    "query": "wmma debugging checklist",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_any": [
+      "cuda/wmma-debugging-checklist",
+      "cuda/wmma-kernel-patterns"
+    ]
+  },
+  {
+    "id": "warp-primitives",
+    "query": "warp primitives shuffle ballot syncwarp",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/warp-primitives"
+  },
+  {
+    "id": "sync-basics",
+    "query": "cuda synchronization syncthreads syncwarp",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/synchronization"
+  },
+  {
+    "id": "coalescing",
+    "query": "cuda memory coalescing global load store",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_any": ["cuda/coalescing", "cuda/memory-bound-kernel-optimization-playbook"]
+  },
+  {
+    "id": "occupancy-and-launch-bounds",
+    "query": "occupancy register pressure launch bounds",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 4,
+    "expect_any": ["cuda/occupancy", "cuda/launch-bounds-and-registers"]
+  },
+  {
+    "id": "unified-memory",
+    "query": "cuda unified memory prefetch advise",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/unified-memory"
+  },
+  {
+    "id": "graphs",
+    "query": "cuda graphs stream capture",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/cuda-graphs"
+  },
+  {
+    "id": "numerics",
+    "query": "cuda numerics precision tf32 fp16 bf16",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 4,
+    "expect_any": ["cuda/numerics-and-precision", "cuda/tensor-core-numerical-validation"]
+  },
+  {
+    "id": "bottleneck-workflow",
+    "query": "kernel bottleneck diagnosis workflow",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/kernel-bottleneck-diagnosis-workflow"
+  },
+  {
+    "id": "production-readiness",
+    "query": "cuda production readiness checklist",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "expect_top1": "cuda/production-readiness-checklist"
+  },
+  {
+    "id": "ptx-wgmma",
+    "query": "ptx wgmma commit wait fence",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_any": ["cuda/ptx-wgmma-instructions", "cuda/tensor-core-pipeline-patterns"]
+  },
+  {
+    "id": "ptx-atomics",
+    "query": "ptx atom cas red redux",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_any": [
+      "cuda/ptx-atomic-and-reduction-patterns",
+      "cuda/ptx-sync-comm-instructions"
+    ]
+  },
+  {
+    "id": "ptx-integer-bitops",
+    "query": "ptx integer bit manipulation lop3 bfe bfi",
+    "tags": "cuda",
+    "lang": "cpp",
+    "limit": 5,
+    "top_k": 3,
+    "expect_any": [
+      "cuda/ptx-integer-bit-manipulation-patterns",
+      "cuda/ptx-integer-instructions"
+    ]
+  }
+]

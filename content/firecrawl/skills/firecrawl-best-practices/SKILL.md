@@ -2,10 +2,10 @@
 name: firecrawl-best-practices
 description: "Build production web-data pipelines with Firecrawl: scrape single pages, crawl whole sites, map URLs, search the web, and extract structured data for LLMs, RAG, and agents"
 metadata:
-  revision: 1
+  revision: 2
   updated-on: "2026-06-21"
   source: maintainer
-  tags: "firecrawl,scrape,crawl,map,search,extract,web-scraping,web-search,ai,agents,rag,best-practices"
+  tags: "firecrawl,scrape,crawl,map,search,extract,mcp,integrations,langchain,llamaindex,web-scraping,web-search,ai,agents,rag,best-practices"
 ---
 
 # Firecrawl
@@ -137,3 +137,5 @@ See **[references/extract.md](references/extract.md)**.
 - **[references/search.md](references/search.md)** — sources, time/domain filters, search-then-scrape in one call
 - **[references/extract.md](references/extract.md)** — prompt vs schema, multi-URL and wildcard extraction, web-search-augmented extraction
 - **[references/sdk.md](references/sdk.md)** — Python & JS clients, async patterns, status polling, error handling
+- **[references/mcp.md](references/mcp.md)** — use Firecrawl via the Model Context Protocol (hosted or local), tool list, client setup, keyless free tier
+- **[references/integrations.md](references/integrations.md)** — native Firecrawl components for LangChain, LlamaIndex, CrewAI, Dify, Flowise, Langflow, and more

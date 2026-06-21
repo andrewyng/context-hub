@@ -51,9 +51,12 @@ Request one or more output formats in a single call:
 | `html` | Processed HTML |
 | `rawHtml` | Unmodified HTML |
 | `links` | All links found on the page |
+| `images` | All image URLs found on the page |
 | `screenshot` | A screenshot of the page (full-page option available) |
 | `summary` | A short LLM-generated summary of the page |
 | `json` | Structured data extracted against a schema or prompt (see below) |
+| `changeTracking` | Diffs the page against prior scrapes (requires `markdown`; supports `git-diff` / `json` modes) |
+| `attributes` | Specific HTML attribute values pulled via CSS selectors |
 
 ```python
 doc = firecrawl.scrape("https://firecrawl.dev", formats=["markdown", "html", "links"])
@@ -133,7 +136,7 @@ doc = firecrawl.scrape(
 )
 ```
 
-Supported action types include `click`, `write`, `press`, `wait`, `scroll`, and `screenshot`.
+Supported action types: `wait`, `click`, `write`, `press`, `scroll`, `screenshot`, `scrape` (capture page HTML mid-sequence), `executeJavascript` (run custom JS; results in `actions.javascriptReturns`), and `pdf` (render the page to PDF).
 
 ---
 

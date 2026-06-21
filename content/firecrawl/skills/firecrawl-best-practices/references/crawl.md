@@ -21,7 +21,7 @@ a RAG pipeline.
 | Method | Returns | Use when |
 |--------|---------|----------|
 | `scrape` | One page's content | You have the exact URL |
-| `map` | A list of URLs (no content) | You want to discover structure fast |
+| `map` | A list of URLs (no content) | You want to quickly understand the site's URL structure |
 | `crawl` | Content for many discovered pages | You want a whole site/section ingested |
 
 A common, efficient pattern is **map first** to inspect the URL list, then

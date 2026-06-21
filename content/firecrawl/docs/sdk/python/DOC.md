@@ -163,6 +163,10 @@ Key parameters: `query`, `limit`, `sources` (`web`/`news`/`images`), `tbs`
 
 Pull structured data from one or many URLs (wildcards allowed) using an LLM.
 
+> **Note:** The standalone `extract` endpoint is in maintenance mode in v4. For a
+> single known page, prefer `scrape` with the `json` format. Reach for `extract`
+> when you need structured data across many URLs or wildcard patterns.
+
 ```python
 schema = {
     "type": "object",

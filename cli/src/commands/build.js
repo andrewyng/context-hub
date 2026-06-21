@@ -138,7 +138,10 @@ function discoverAuthor(authorDir, authorName, contentDir) {
     const description = attributes.description || '';
     const source = meta.source || 'community';
     const tags = meta.tags ? meta.tags.split(',').map((t) => t.trim()) : [];
-    const updatedOn = meta['updated-on'] || new Date().toISOString().split('T')[0];
+    const updatedOn = meta['updated-on'] || null;
+    if (!updatedOn) {
+      warnings.push(`${ef.relPath}: missing 'metadata.updated-on', add updated-on: "${new Date().toISOString().split('T')[0]}" to metadata`);
+    }
     const entryDir = dirname(ef.path);
     const entryPath = toPosix(relative(contentDir, entryDir));
     const files = listDirFiles(entryDir);
@@ -333,6 +336,30 @@ export function registerBuildCommand(program) {
         skillIds.set(skill.id, true);
       }
 
+      // Content freshness check
+      const STALE_THRESHOLD_DAYS = 180;
+      const now = new Date();
+      const staleIds = new Set();
+      const checkFreshness = (id, lastUpdated) => {
+        if (!lastUpdated) return;
+        const updated = new Date(lastUpdated);
+        if (isNaN(updated.getTime())) return;
+        const ageDays = Math.floor((now - updated) / (1000 * 60 * 60 * 24));
+        if (ageDays > STALE_THRESHOLD_DAYS) {
+          staleIds.add(id);
+        }
+      };
+      for (const doc of allDocs) {
+        for (const lang of doc.languages || []) {
+          for (const ver of lang.versions || []) {
+            checkFreshness(doc.id, ver.lastUpdated);
+          }
+        }
+      }
+      for (const skill of allSkills) {
+        checkFreshness(skill.id, skill.lastUpdated);
+      }
+      const staleCount = staleIds.size;
       // Print warnings
       for (const w of allWarnings) {
         process.stderr.write(chalk.yellow(`Warning: ${w}\n`));
@@ -358,11 +385,14 @@ export function registerBuildCommand(program) {
       }
 
       if (opts.validateOnly) {
-        const summary = { docs: allDocs.length, skills: allSkills.length, warnings: allWarnings.length };
+        const summary = { docs: allDocs.length, skills: allSkills.length, warnings: allWarnings.length, stale: staleCount };
         if (globalOpts.json) {
           console.log(JSON.stringify(summary));
         } else {
           console.log(chalk.green(`Valid: ${summary.docs} docs, ${summary.skills} skills, ${summary.warnings} warnings`));
+          if (staleCount > 0) {
+            console.log(chalk.yellow(`Freshness: ${staleCount} entries not updated in ${STALE_THRESHOLD_DAYS}+ days`));
+          }
         }
         return;
       }
@@ -390,12 +420,15 @@ export function registerBuildCommand(program) {
         });
       }
 
-      const summary = { docs: allDocs.length, skills: allSkills.length, warnings: allWarnings.length };
+      const summary = { docs: allDocs.length, skills: allSkills.length, warnings: allWarnings.length, stale: staleCount };
       trackEvent('build', { doc_count: allDocs.length, skill_count: allSkills.length }).catch(() => {});
       if (globalOpts.json) {
         console.log(JSON.stringify({ ...summary, output: outputDir }));
       } else {
         console.log(chalk.green(`Built: ${summary.docs} docs, ${summary.skills} skills → ${outputDir}`));
+        if (staleCount > 0) {
+          console.log(chalk.yellow(`Freshness: ${staleCount} entries not updated in ${STALE_THRESHOLD_DAYS}+ days`));
+        }
       }
     });
 }

@@ -112,8 +112,9 @@ This is the baseline Svelte 5 mental model:
 
 - Put mutable component state in `$state(...)`
 - Derive computed values with `$derived(...)`
-- Put DOM or external side effects in `$effect(...)`
 - Use normal JavaScript functions for event handlers and attach them with `onclick`, `oninput`, and similar attributes
+- Put DOM or external side effects in `$effect(...)`, but use sparingly and watch for infinte loops.
+  - DO NOT mutate state from within an `$effect` 
 
 ## Props And Parent Callbacks
 

@@ -195,6 +195,7 @@ the wrong section.
 | 21 | Table stitching | Parse-only or parse+extract merge of multi-page tables | [table-stitching.md](references/table-stitching.md) |
 | 22 | Page routing (Classify API) | Per-page class labels before parsing (Preview) | [Below](#classify-then-extract) |
 | 23 | TOC generation (Section API) | Hierarchical TOC from parsed markdown (Preview) | [Below](#section-extraction) |
+| 24 | Large extractions (async) | Extract Jobs: create → poll → read (REST API, no SDK method) | [document-extraction SKILL.md](../document-extraction/SKILL.md) |
 | — | Schema catalog | Ready-to-use Pydantic models | [schema-catalog.md](references/schema-catalog.md) |
 
 ---

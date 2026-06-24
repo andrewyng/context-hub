@@ -1,6 +1,6 @@
 ---
 name: Troubleshooting
-description: Error codes, common issues, and fixes for ADE Parse, Extract, Split, Parse Jobs, Classify, and Section
+description: Error codes, common issues, and fixes for ADE Parse, Extract, Split, Parse Jobs, Extract Jobs, Classify, and Section
 type: reference
 ---
 
@@ -116,6 +116,38 @@ Credits are consumed even for 206 responses.
 ## Build Extract Schema
 
 At least one of `markdowns`, `markdown_urls`, or `prompt` is required. If you pass an existing `schema` to refine, it must be valid JSON. All other errors (URL accessibility, model version) follow the same patterns as Extract.
+
+---
+
+## Extract Jobs
+
+Async alternative to Extract (REST API; no SDK method). The create endpoint returns errors in an `error` field; Get and List return errors in a `message` field. Credits are consumed only when a job reaches `completed` status (including completions returned as 206). Failed and cancelled jobs do not consume credits.
+
+### Create a job (`POST /v1/ade/extract/jobs`)
+
+| Code | Meaning | What to Do |
+|------|---------|------------|
+| 202 | Accepted | Job queued. Read `job_id` from the response and poll the Get endpoint. |
+| 400 | Bad request | Invalid JSON schema, unreachable `markdown_url`, or a ZDR config error (see below). |
+| 422 | Validation failed | Missing Markdown input or unsupported format. Same messages as sync Extract. |
+
+ZDR-specific 400 errors:
+
+| Error message | Fix |
+|---------------|-----|
+| `output_save_url must be present if zeroDataRetention is enabled` | Add `output_save_url` so the result is saved to your URL instead of returned inline. |
+| `Only markdown_url is accepted if zeroDataRetention is enabled` | Pass Markdown via `markdown_url`, not a `markdown` file upload. |
+
+### Get a job (`GET /v1/ade/extract/jobs/{job_id}`)
+
+- **200 with `status: completed`**: results are in `data` (inline, same shape as sync Extract) or `output_url` (when result > 1 MB or `output_save_url` was set; `data` is `null`, URL expires 1 hour after the GET).
+- **200 with `status: failed`**: the job did not complete. Read `failure_reason`. Background errors (including timeouts) surface here, not as an HTTP error. For timeouts, reduce Markdown size or simplify the schema, then submit a new job.
+- **206 Partial Content**: completed but the output does not fully conform to the schema. Check `schema_violation_error` and `warnings` in the extraction `metadata`.
+- **404 `Job {job_id} not found`**: the ID is wrong or belongs to a different API key.
+
+### List jobs (`GET /v1/ade/extract/jobs`)
+
+- **422**: invalid query parameters. Check `page`, `pageSize`, and `status`.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: document-extraction
-description: "Parses, extracts, and classifies documents using LandingAI's Agentic Document Extraction (ADE). Supports PDFs, images, spreadsheets, and presentations; outputs structured Markdown with hierarchical JSON. Covers schema-based field extraction (JSON Schema or Pydantic), document classification and splitting by type, page-level classification (Classify API), hierarchical table of contents generation (Section API), async processing for large files, and visual grounding (bounding boxes, page numbers). Use when parsing documents into structured Markdown, extracting specific fields with a schema, classifying mixed document batches, classifying pages before parsing, generating a table of contents from a document, processing large files asynchronously, or when the user mentions bounding boxes, word locations, grounding, or highlighting where data appears in a document."
+description: "Parses, extracts, and classifies documents using LandingAI's Agentic Document Extraction (ADE). Supports PDFs, images, spreadsheets, and presentations; outputs structured Markdown with hierarchical JSON. Covers schema-based field extraction (JSON Schema or Pydantic), document classification and splitting by type, page-level classification (Classify API), hierarchical table of contents generation (Section API), async processing for large files (Parse Jobs) and async extraction for long documents or large schemas (Extract Jobs), and visual grounding (bounding boxes, page numbers). Use when parsing documents into structured Markdown, extracting specific fields with a schema, classifying mixed document batches, classifying pages before parsing, generating a table of contents from a document, processing large files asynchronously, running long-running extractions asynchronously, or when the user mentions bounding boxes, word locations, grounding, or highlighting where data appears in a document."
 ---
 
 # Document Extraction (ADE)
@@ -22,6 +22,9 @@ ADE provides these core API functions:
 | **Parse Jobs (Create)** | `client.parse_jobs.create()` | Creates an async parse job for large files (up to 6,000 pages). |
 | **Parse Jobs (Get)** | `client.parse_jobs.get()` | Retrieves the status and results of an async parse job. |
 | **Parse Jobs (List)** | `client.parse_jobs.list()` | Lists all async parse jobs with optional status filtering. |
+| **Extract Jobs (Create)** | REST API (no SDK method) | Creates an async extract job for long documents or large, complex schemas. |
+| **Extract Jobs (Get)** | REST API (no SDK method) | Retrieves the status and results of an async extract job. |
+| **Extract Jobs (List)** | REST API (no SDK method) | Lists all async extract jobs with optional status filtering. |
 
 **Key Benefits:**
 - No ML training or templates required
@@ -596,6 +599,100 @@ class Patient(BaseModel):
 ```
 
 > **Note:** `extract-20260314` supports these JSON Schema keywords: `type`, `description`, `properties` (for objects only), `items` (for arrays only), `enum`, `format`, and `x-alternativeNames`. Other keywords are silently ignored or cause errors; see [Keyword Support](https://docs.landing.ai/ade/ade-extract-schema-json#keyword-support).
+
+### Extract Large Documents (Async, REST API)
+
+For long-running extractions (long documents or large, complex schemas), use **Extract Jobs**, the asynchronous alternative to `client.extract()`. You create a job, get a `job_id` immediately, then poll until the job completes.
+
+> **No SDK method.** Extract Jobs is not available in the Python or TypeScript libraries. Call the REST API directly with `requests`. Run Parse (or Parse Jobs for large files) first to produce the Markdown, then pass that Markdown to the extract job.
+
+```python
+import os
+import json
+import time
+import requests
+from dotenv import load_dotenv
+load_dotenv()
+
+base_url = "https://api.va.landing.ai/v1/ade/extract/jobs"
+headers = {"Authorization": f"Bearer {os.environ['VISION_AGENT_API_KEY']}"}
+
+schema = json.dumps({
+    "type": "object",
+    "properties": {
+        "exam_date": {"type": "string", "description": "Date the procedure was performed."},
+        "procedure": {"type": "string", "description": "The medical procedure performed."},
+    },
+})
+
+# Step 1: Create the extract job
+create = requests.post(
+    base_url,
+    files={"markdown": open("document.md", "rb")},
+    data={"schema": schema, "model": "extract-latest"},
+    headers=headers,
+)
+create.raise_for_status()  # 202 Accepted
+job_id = create.json()["job_id"]
+print(f"Created job: {job_id}")
+
+# Step 2: Poll until the job reaches a final status
+# For production, add a timeout and exponential backoff instead of polling forever.
+while True:
+    job = requests.get(f"{base_url}/{job_id}", headers=headers)
+    job.raise_for_status()
+    result = job.json()
+    status = result["status"]
+
+    if status == "completed":
+        if result.get("data"):
+            # Inline result (<= 1 MB, no output_save_url). Same shape as the sync Extract response.
+            print(result["data"]["extraction"])
+        elif result.get("output_url"):
+            # Result > 1 MB or output_save_url set; data is null. URL expires 1 hour after the GET.
+            print(f"Download results from: {result['output_url']}")
+        break
+    if status in ("failed", "cancelled"):
+        print(f"Job {status}: {result.get('failure_reason')}")
+        break
+    time.sleep(5)
+```
+
+**Create parameters** (`POST /v1/ade/extract/jobs`, multipart form data):
+
+| Parameter | Required | Notes |
+|-----------|----------|-------|
+| `schema` | Yes | JSON schema string. Same schema rules as sync Extract. |
+| `markdown` or `markdown_url` | Yes (one of) | Local Markdown file or a URL. Use `markdown_url` when ZDR is enabled. |
+| `model` | No | Extract model version, for example `extract-latest`. |
+| `strict` | No | Defaults to `false`. Same 200-vs-206 semantics as sync Extract. |
+| `output_save_url` | No | Required when ZDR is enabled. Saves the result to your URL instead of returning it inline. |
+
+**Job status response fields** (`GET /v1/ade/extract/jobs/{job_id}`):
+- `status`: `pending`, `processing`, `completed`, `failed`, or `cancelled`. There is no API to cancel a job.
+- `progress`: `0.0` until complete, then `1.0`.
+- `data`: the extraction results when complete and the result is 1 MB or smaller and no `output_save_url` was set. Follows the same structure as the sync Extract response (`extraction`, `extraction_metadata`, `metadata`).
+- `output_url`: a download URL when the result is larger than 1 MB or `output_save_url` was set. `data` is then `null`; the URL expires 1 hour after you request the job.
+- `failure_reason`: error message when `status` is `failed`.
+
+**ZDR:** when zero data retention is enabled, pass your Markdown with `markdown_url` (not a file upload) and include `output_save_url`.
+
+**Rate limit:** Extract Jobs has its own per-hour limit, separate from other ADE APIs. Each job counts as one submission (one page equivalent) regardless of Markdown size.
+
+**List extract jobs** (`GET /v1/ade/extract/jobs`):
+
+```python
+listing = requests.get(
+    base_url,
+    params={"page": 0, "pageSize": 10, "status": "completed"},
+    headers=headers,
+)
+listing.raise_for_status()
+body = listing.json()
+for job in body["jobs"]:
+    print(job["job_id"], job["status"])
+print(f"More results: {body['has_more']}")
+```
 
 ## Document Classification & Splitting
 

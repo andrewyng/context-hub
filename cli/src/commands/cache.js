@@ -39,7 +39,7 @@ export function registerCacheCommand(program) {
   cache
     .command('clear')
     .description('Clear cached data')
-    .action((opts) => {
+    .action(() => {
       const globalOpts = program.optsWithGlobals();
       clearCache();
       output(

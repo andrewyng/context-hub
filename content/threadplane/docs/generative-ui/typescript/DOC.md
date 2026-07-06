@@ -3,9 +3,9 @@ name: generative-ui
 description: "Agent-generated UI in Angular — render structured json-render specs with <render-spec> from @threadplane/render, or stream agent-built A2UI surfaces through <chat [views]>. Use when an AI agent should produce real Angular UI (cards, forms, dashboards) instead of plain text."
 metadata:
   languages: "typescript"
-  versions: "0.0.53"
-  revision: 1
-  updated-on: "2026-06-24"
+  versions: "0.0.55"
+  revision: 2
+  updated-on: "2026-07-06"
   source: official
   tags: "angular,typescript,generative-ui,json-render,a2ui,render,agent,threadplane"
 ---

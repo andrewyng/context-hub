@@ -3,9 +3,9 @@ name: ag-ui
 description: "AG-UI backend adapter for Angular AI chat — provideAgent({url}) + injectAgent() bind @threadplane/chat to any AG-UI-compatible agent (CrewAI, Mastra, Pydantic AI, LangGraph, custom). Use when wiring an Angular chat UI to an AG-UI backend."
 metadata:
   languages: "typescript"
-  versions: "0.0.53"
-  revision: 1
-  updated-on: "2026-06-24"
+  versions: "0.0.55"
+  revision: 2
+  updated-on: "2026-07-06"
   source: official
   tags: "angular,typescript,ag-ui,agent,streaming,chat,adapter,threadplane"
 ---

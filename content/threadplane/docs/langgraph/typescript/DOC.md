@@ -3,9 +3,9 @@ name: langgraph
 description: "LangGraph backend adapter for Angular AI chat — provideAgent({apiUrl,assistantId}) + injectAgent() expose signal-based messages/isLoading/error/submit for @threadplane/chat. Use when wiring an Angular chat UI to a LangGraph server."
 metadata:
   languages: "typescript"
-  versions: "0.0.53"
-  revision: 1
-  updated-on: "2026-06-24"
+  versions: "0.0.55"
+  revision: 2
+  updated-on: "2026-07-06"
   source: official
   tags: "angular,typescript,langgraph,agent,streaming,chat,adapter,signals,threadplane"
 ---

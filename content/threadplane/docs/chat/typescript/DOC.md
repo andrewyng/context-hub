@@ -3,9 +3,9 @@ name: chat
 description: "Drop-in streaming chat UI for Angular AI agents — render <chat [agent]> from @threadplane/chat against an AG-UI or LangGraph backend, or any Agent contract. Use when adding an agent chat interface to an Angular app."
 metadata:
   languages: "typescript"
-  versions: "0.0.53"
-  revision: 1
-  updated-on: "2026-06-24"
+  versions: "0.0.55"
+  revision: 2
+  updated-on: "2026-07-06"
   source: official
   tags: "angular,typescript,chat,streaming,agent,ui,generative-ui,langgraph,ag-ui,threadplane"
 ---

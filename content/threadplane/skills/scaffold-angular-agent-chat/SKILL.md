@@ -2,8 +2,8 @@
 name: scaffold-angular-agent-chat
 description: "Scaffolds a streaming AI chat UI in an Angular app using @threadplane/chat, rendering <chat [agent]> bound to a backend adapter — @threadplane/ag-ui (default) or @threadplane/langgraph. Use when a user wants to add an agent chat interface, streaming chat, or generative UI to an Angular project, or mentions Threadplane, @threadplane/*, AG-UI with Angular, or LangGraph with Angular. Confirm which adapter the user is on before scaffolding; default to AG-UI if unspecified."
 metadata:
-  revision: 1
-  updated-on: "2026-06-24"
+  revision: 2
+  updated-on: "2026-07-06"
   source: official
   tags: "angular,typescript,chat,agent,streaming,generative-ui,ag-ui,langgraph,threadplane"
 ---

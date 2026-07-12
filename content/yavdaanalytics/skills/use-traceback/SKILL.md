@@ -1,5 +1,5 @@
 ---
-name: traceback
+name: use-traceback
 description: "Warm-start coding agents via the traceback MCP server — search_with_fallback, scoped grep, and promote_pattern memory loop"
 metadata:
   revision: 1
@@ -57,6 +57,7 @@ Pair with `submit_feedback(verdict="reject")` when a recalled *session* was wron
 
 ## Related
 
-- Doc: `chub get yavdaanalytics/traceback`
+- Doc: `chub get yavdaanalytics/traceback --lang javascript`
+- Skill id: `yavdaanalytics/use-traceback`
 - Upstream skill: https://github.com/yavdaanalytics/traceback/blob/main/SKILL.md
 - Setup: https://github.com/yavdaanalytics/traceback/blob/main/SETUP.md

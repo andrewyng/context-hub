@@ -141,5 +141,6 @@ Local metrics always in `data/traceback.db`. Anonymous upload is **opt-in** (`tr
 - Setup: https://github.com/yavdaanalytics/traceback/blob/main/SETUP.md
 - API: https://github.com/yavdaanalytics/traceback/blob/main/docs/API.md
 - Architecture: https://github.com/yavdaanalytics/traceback/blob/main/docs/ARCHITECTURE.md
-- Host skill: https://github.com/yavdaanalytics/traceback/blob/main/SKILL.md
+- Host skill (repo): https://github.com/yavdaanalytics/traceback/blob/main/SKILL.md
+- Chub skill: `chub get yavdaanalytics/use-traceback`
 - npm: https://www.npmjs.com/package/@yavdaanalytics/traceback

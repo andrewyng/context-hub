@@ -74,7 +74,7 @@ pip install llama-index-tools-serpdive
 ```
 
 ```python
-from llama_index.tools.serpdive import SerpdiveToolSpec
+from llama_index_tools_serpdive import SerpdiveToolSpec
 
 tools = SerpdiveToolSpec().to_tool_list()
 ```

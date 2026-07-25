@@ -53,7 +53,8 @@ and 5. Omit `max_results` when recall matters more than context size.
 ## The written answer
 
 `answer: true` adds a prose answer built from the sources: concise on mako,
-detailed with `[n]` citations on moby. It is included in the price, never
+detailed with `[n]` citations on moby, and unavailable on krill, which returns
+sources only. It is included in the price, never
 extra credits, and adds a few hundred milliseconds.
 
 Use it when the agent will surface an answer to a human. Skip it when the

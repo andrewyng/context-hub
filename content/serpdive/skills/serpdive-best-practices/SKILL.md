@@ -1,6 +1,6 @@
 ---
 name: serpdive-best-practices
-description: "Give an agent live web knowledge with SERPdive: pick between the mako and moby models, keep context small, wire it through REST, the SDKs or the hosted MCP server, and handle errors and credits correctly"
+description: "Give an agent live web knowledge with SERPdive: pick between the krill, mako and moby models, keep context small, wire it through REST, the SDKs or the hosted MCP server, and handle errors and credits correctly"
 metadata:
   revision: 1
   updated-on: "2026-07-21"
@@ -34,6 +34,7 @@ shopping boxes, so SEO tooling needs a different product.
 | Model | What it returns | Credits | Use it when |
 |---|---|---|---|
 | `mako` (default) | The fact-carrying sentences of each source | 1 | Almost always. Fast, and the smallest context footprint. |
+| `krill` | The same, on a tighter budget — fewer sources, no written answer | **free** | Token budget matters more than depth, or you are building and do not want to spend. Unlimited under fair use, one request at a time, low priority. |
 | `moby` | The full readable content of every page | 1.5 | The answer depends on document structure: long analyses, deep research, reading a spec end to end. |
 
 Start with `mako`. Move a query to `moby` only when you can name what mako's
@@ -83,7 +84,7 @@ Every failure returns a stable machine-readable code, and a failed search is
 never billed. Retry on `rate_limit` with backoff; stop and surface the problem
 on `invalid_api_key` and `quota_exceeded`, because retrying those never helps.
 
-One mako search costs 1 credit, one moby search 1.5. Every account gets 1,000
+One mako search costs 1 credit, one moby search 1.5, and a krill search costs nothing — it is free and unlimited under fair use. Every account gets 1,000
 free credits per month with no card, so an agent doing about 30 searches a day
 stays inside the free tier indefinitely.
 

@@ -73,7 +73,7 @@ asyncio.run(main())
 | Parameter | Type | Description |
 |---|---|---|
 | `query` | `str`, required | The question, phrased as you would ask it. Up to 300 characters; longer queries are truncated, not rejected. |
-| `model` | `"mako"` \| `"moby"` | Retrieval depth. `mako` (default) returns the fact-carrying sentences of each source. `moby` returns the full readable content of every page. Unknown values fall back to `mako`. |
+| `model` | `"krill"` \| `"mako"` \| `"moby"` | Retrieval depth. `mako` (default) returns the fact-carrying sentences of each source. `moby` returns the full readable content of every page. `krill` is the free tier: unlimited under fair use, the smallest useful payload, one request at a time, at low priority, with no written answer. Unknown values fall back to `mako`. |
 | `answer` | `bool` | Opt-in written answer built from the sources: concise on Mako, detailed with `[n]` citations on Moby. Included in the price, never extra credits; adds a few hundred milliseconds. |
 | `max_results` | `int`, 1-10 | Hard cap on delivered results, keeping the best-ranked ones. Trims the response and the downstream token bill, but does not speed up the search: the engine always does its full read. Omit it to get everything considered relevant. |
 
@@ -85,7 +85,7 @@ Japanese web, wherever the caller is. There is no country parameter.
 
 ```python
 response.query             # your query, echoed untouched
-response.model             # "mako" or "moby"
+response.model             # "krill", "mako" or "moby"
 response.response_time_ms  # wall-clock time in milliseconds
 response.answer            # only when answer=True, may be None
 response.results           # list[SearchResult], best first
@@ -137,7 +137,7 @@ A failed search is never billed.
 
 ## Credits
 
-One Mako search costs 1 credit, one Moby search 1.5. Pay as you go is $5 per
+One Mako search costs 1 credit, one Moby search 1.5, and a Krill search costs nothing — it is free and unlimited under fair use. Pay as you go is $5 per
 1,000 credits at the launch rate. The 1,000 monthly free credits require no
 card.
 

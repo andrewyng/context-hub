@@ -41,6 +41,7 @@ usually better than hand-rolling it.
 
 | Model | Credits per search |
 |---|---|
+| `krill` | 0 — free, unlimited under fair use |
 | `mako` | 1 |
 | `moby` | 1.5 |
 

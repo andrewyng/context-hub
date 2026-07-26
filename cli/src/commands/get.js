@@ -144,7 +144,11 @@ async function fetchEntries(ids, opts, globalOpts) {
       } else {
         const outPath = isDir ? join(opts.output, `${results[0].id}.md`) : opts.output;
         mkdirSync(dirname(outPath), { recursive: true });
-        const combined = results.map((r) => r.content).join('\n\n---\n\n');
+        // Multi-file results carry `files`, not `content`; expand them the same
+        // way the stdout path does so `-o` doesn't write an empty file.
+        const combined = results
+          .flatMap((r) => (r.files ? r.files.map((f) => `# FILE: ${f.name}\n\n${f.content}`) : [r.content]))
+          .join('\n\n---\n\n');
         writeFileSync(outPath, combined);
         info(`Written to ${outPath}`);
       }

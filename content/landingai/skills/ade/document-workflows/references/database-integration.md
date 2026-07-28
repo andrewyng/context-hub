@@ -2,7 +2,8 @@
 
 Patterns for normalizing ADE extraction results into relational tables
 and loading them into databases. Covers DataFrame normalization, CSV
-export, and Snowflake insertion.
+export, and Snowflake insertion. All patterns use the ADE v2 APIs
+(`client.v2.*`, `landingai-ade` v1.13.0+).
 
 ---
 
@@ -13,28 +14,16 @@ ADE extraction results are nested dicts. This pattern flattens them into
 
 | Table | Contents |
 |-------|----------|
-| `main` | One row per document — top-level extracted fields |
+| `main` | One row per document: top-level extracted fields |
 | `line_items` | One row per line item / repeating element |
-| `chunks` | One row per parsed chunk with bounding boxes |
-| `markdown` | One row per document — full markdown for traceability |
+| `blocks` | One row per parsed block with bounding boxes |
+| `markdown` | One row per document: full markdown for traceability |
 
 ```python
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-
-
-def _dig(obj: Any, *keys: str, default: Any = None) -> Any:
-    """Safely traverse nested dicts/objects by key path."""
-    for k in keys:
-        if obj is None:
-            return default
-        if isinstance(obj, dict):
-            obj = obj.get(k, default)
-        else:
-            obj = getattr(obj, k, default)
-    return obj
 
 
 def _to_float(v: Any) -> Optional[float]:
@@ -57,14 +46,14 @@ def rows_from_doc(
     List[Dict[str, Any]],
     Dict[str, Any],
 ]:
-    """Transform ADE parse + extract results into 4 row types.
+    """Transform ADE v2 parse + extract results into 4 row types.
 
-    Returns: (main_row, line_rows, chunk_rows, markdown_record)
+    Returns: (main_row, line_rows, block_rows, markdown_record)
 
     Args:
         file_path: original document path
-        parse_result: from client.parse()
-        extract_result: from client.extract()
+        parse_result: from client.v2.parse()
+        extract_result: from client.v2.extract()
         run_id: optional batch run identifier
     """
     doc_name = Path(file_path).name
@@ -73,7 +62,6 @@ def rows_from_doc(
     rid = run_id or doc_uuid
 
     f = extract_result.extraction  # dict
-    m = getattr(extract_result, "extraction_metadata", {})
 
     # --- markdown record ---
     markdown_record = {
@@ -84,32 +72,31 @@ def rows_from_doc(
         "markdown": parse_result.markdown,
     }
 
-    # --- chunk rows ---
-    chunk_rows: List[Dict[str, Any]] = []
-    for ch in (parse_result.chunks or []):
-        box = (
-            ch.grounding.box
-            if hasattr(ch, "grounding")
-            and hasattr(ch.grounding, "box")
-            else None
-        )
-        chunk_rows.append({
-            "run_id": rid,
-            "doc_uuid": doc_uuid,
-            "document_name": doc_name,
-            "chunk_id": getattr(ch, "id", None),
-            "chunk_type": getattr(ch, "type", None),
-            "text": getattr(ch, "markdown", None),
-            "page": (
-                ch.grounding.page
-                if hasattr(ch, "grounding")
+    # --- block rows (walk the v2 structure tree) ---
+    block_rows: List[Dict[str, Any]] = []
+    for page in (parse_result.structure.children or []):
+        for block in (page.children or []):
+            g = block.grounding
+            r = g.range if g else None
+            box = g.box if g else None
+            text = (
+                parse_result.markdown[r.start:r.end]
+                if r is not None
                 else None
-            ),
-            "box_l": _to_float(box.left if box else None),
-            "box_t": _to_float(box.top if box else None),
-            "box_r": _to_float(box.right if box else None),
-            "box_b": _to_float(box.bottom if box else None),
-        })
+            )
+            block_rows.append({
+                "run_id": rid,
+                "doc_uuid": doc_uuid,
+                "document_name": doc_name,
+                "block_id": block.id,
+                "block_type": block.type,
+                "text": text,
+                "page": g.page if g else None,  # 1-indexed
+                "box_xmin": _to_float(box.xmin if box else None),
+                "box_ymin": _to_float(box.ymin if box else None),
+                "box_xmax": _to_float(box.xmax if box else None),
+                "box_ymax": _to_float(box.ymax if box else None),
+            })
 
     # --- main row (flatten top-level fields) ---
     main_row: Dict[str, Any] = {
@@ -147,50 +134,55 @@ def rows_from_doc(
                 row["value"] = item
             line_rows.append(row)
 
-    return main_row, line_rows, chunk_rows, markdown_record
+    return main_row, line_rows, block_rows, markdown_record
 ```
 
-### Usage — Build DataFrames from a Batch
+### Usage: Build DataFrames from a Batch
 
 ```python
 import pandas as pd
 from pathlib import Path
 from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
 
 client = LandingAIADE()
-run_id = "batch_2025_01"
+run_id = "batch_2026_07"
 
-all_main, all_lines, all_chunks, all_md = [], [], [], []
+all_main, all_lines, all_blocks, all_md = [], [], [], []
 
 for fp in Path("invoices/").glob("*.pdf"):
-    pr = client.parse(document=fp)
-    er = client.extract(
-        schema=pydantic_to_json_schema(InvoiceSchema),
+    pr = client.v2.parse(document=fp, model="dpt-3-pro-latest")
+    er = client.v2.extract(
+        schema=InvoiceSchema,  # v2 accepts the Pydantic class directly
         markdown=pr.markdown,
     )
-    main, lines, chunks, md = rows_from_doc(
+    main, lines, blocks, md = rows_from_doc(
         str(fp), pr, er, run_id=run_id
     )
     all_main.append(main)
     all_lines.extend(lines)
-    all_chunks.extend(chunks)
+    all_blocks.extend(blocks)
     all_md.append(md)
 
 df_main = pd.DataFrame(all_main)
 df_lines = pd.DataFrame(all_lines)
-df_chunks = pd.DataFrame(all_chunks)
+df_blocks = pd.DataFrame(all_blocks)
 df_md = pd.DataFrame(all_md)
 
 # Save to CSV
 for name, df in [
     ("main", df_main),
     ("line_items", df_lines),
-    ("chunks", df_chunks),
+    ("blocks", df_blocks),
     ("markdown", df_md),
 ]:
     df.to_csv(f"{run_id}_{name}.csv", index=False)
 ```
+
+> **Spreadsheet inputs (v1):** the v2 Parse API accepts PDFs and images
+> only. To load XLSX/CSV documents, parse them with the v1 API
+> (`client.parse()`), which returns `chunks` instead of a structure
+> tree; see the `document-extraction` skill's v1 reference for the
+> response shape.
 
 ---
 
@@ -251,19 +243,19 @@ CREATE TABLE IF NOT EXISTS ade_line_items (
     -- Add line item columns here
 );
 
--- Parsed chunks with bounding boxes
-CREATE TABLE IF NOT EXISTS ade_chunks (
+-- Parsed blocks with bounding boxes (v2: normalized 0-1, page 1-indexed)
+CREATE TABLE IF NOT EXISTS ade_blocks (
     run_id          VARCHAR,
     doc_uuid        VARCHAR REFERENCES ade_extractions(doc_uuid),
     document_name   VARCHAR,
-    chunk_id        VARCHAR,
-    chunk_type      VARCHAR,
+    block_id        VARCHAR,
+    block_type      VARCHAR,
     text            VARCHAR,
     page            INTEGER,
-    box_l           FLOAT,
-    box_t           FLOAT,
-    box_r           FLOAT,
-    box_b           FLOAT
+    box_xmin        FLOAT,
+    box_ymin        FLOAT,
+    box_xmax        FLOAT,
+    box_ymax        FLOAT
 );
 
 -- Full markdown for traceability
@@ -283,7 +275,7 @@ def upload_to_snowflake(
     conn: snowflake.connector.SnowflakeConnection,
     df_main: "pd.DataFrame",
     df_lines: "pd.DataFrame",
-    df_chunks: "pd.DataFrame",
+    df_blocks: "pd.DataFrame",
     df_md: "pd.DataFrame",
 ) -> None:
     """Upload all 4 normalized tables to Snowflake."""
@@ -291,7 +283,7 @@ def upload_to_snowflake(
     for table, df in [
         ("ADE_EXTRACTIONS", df_main),
         ("ADE_LINE_ITEMS", df_lines),
-        ("ADE_CHUNKS", df_chunks),
+        ("ADE_BLOCKS", df_blocks),
         ("ADE_MARKDOWN", df_md),
     ]:
         if df.empty:
@@ -305,14 +297,12 @@ def upload_to_snowflake(
         print(f"Uploaded {len(df)} rows to {table}")
 ```
 
-### Full Pipeline: Parse → Extract → Snowflake
+### Full Pipeline: Parse, Extract, Snowflake
 
 ```python
-import io
 import pandas as pd
 from pathlib import Path
 from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
 
 
 def ade_to_snowflake(
@@ -332,24 +322,25 @@ def ade_to_snowflake(
         if p.suffix.lower() in exts
     ]
 
-    all_main, all_lines, all_chunks, all_md = (
+    all_main, all_lines, all_blocks, all_md = (
         [], [], [], []
     )
     for fp in files:
         try:
-            pr = client.parse(document=fp)
-            er = client.extract(
-                schema=pydantic_to_json_schema(schema_cls),
-                markdown=io.BytesIO(
-                    pr.markdown.encode("utf-8")
-                ),
+            pr = client.v2.parse(
+                document=fp,
+                model="dpt-3-pro-latest",
             )
-            main, lines, chunks, md = rows_from_doc(
+            er = client.v2.extract(
+                schema=schema_cls,
+                markdown=pr.markdown,
+            )
+            main, lines, blocks, md = rows_from_doc(
                 str(fp), pr, er, run_id=run_id
             )
             all_main.append(main)
             all_lines.extend(lines)
-            all_chunks.extend(chunks)
+            all_blocks.extend(blocks)
             all_md.append(md)
         except Exception as exc:
             print(f"FAILED {fp.name}: {exc}")
@@ -358,7 +349,7 @@ def ade_to_snowflake(
         sf_conn,
         pd.DataFrame(all_main),
         pd.DataFrame(all_lines),
-        pd.DataFrame(all_chunks),
+        pd.DataFrame(all_blocks),
         pd.DataFrame(all_md),
     )
     return len(all_main)
@@ -368,9 +359,13 @@ def ade_to_snowflake(
 
 ## 3. CSV Export Patterns
 
-### Summary CSV — One Row per Document
+### Summary CSV: One Row per Document
 
 ```python
+import pandas as pd
+from pathlib import Path
+
+
 def extractions_to_summary_csv(
     results: list[tuple[str, dict]],
     output_path: Path,
@@ -400,16 +395,25 @@ def extractions_to_summary_csv(
 
 ### Per-Document JSON + Combined CSV
 
-Use `save_to` directly on `client.parse()` and `client.extract()` to persist each
-document's JSON response (no separate save helper needed):
+Use `save_to` directly on `client.v2.parse()` and `client.v2.extract()`
+to persist each document's JSON response (no separate save helper
+needed):
 
 ```python
-parse_result = client.parse(
+from pathlib import Path
+from landingai_ade import LandingAIADE
+
+client = LandingAIADE()
+file_path = Path("invoices/inv-001.pdf")
+output_dir = Path("./results")
+
+parse_result = client.v2.parse(
     document=file_path,
+    model="dpt-3-pro-latest",
     save_to=output_dir,  # writes output_dir/{stem}_parse_output.json
 )
-extract_result = client.extract(
-    schema=schema_json,
+extract_result = client.v2.extract(
+    schema=InvoiceSchema,
     markdown=parse_result.markdown,
     save_to=output_dir / f"{file_path.stem}_extract_output.json",
 )
@@ -417,9 +421,6 @@ extract_result = client.extract(
 
 Then call `extractions_to_summary_csv()` (above) on the collected
 `extract_result.extraction` dicts to write the combined CSV.
-
-> Requires `landingai-ade` v1.13.0+ for full-path mode (the second call).
-> Directory mode (the first call) works on earlier versions too.
 
 ---
 

@@ -1,29 +1,35 @@
-# Table Stitching — Multi-Page Table Extraction
+# Table Stitching: Multi-Page Table Extraction
 
-When a table spans multiple pages, ADE emits separate chunks per page and
-may represent some pages as plain text instead of `<table>` HTML. This
-inconsistency can occur on **any** page — not just the last one. This
-reference covers three approaches to stitch those chunks into a single
-output, generalized for any document type.
+When a table spans multiple pages, ADE may emit separate table blocks
+per page and may represent some pages' table content as plain text
+blocks instead of `<table>` HTML. This inconsistency can occur on
+**any** page, not just the last one. This reference covers three
+approaches to stitch that content into a single output, generalized for
+any document type.
+
+All code uses the v2 Parse API: table blocks are `page.children`
+entries with `type == "table"`, a table's HTML is the Markdown slice
+`markdown[range.start:range.end]`, and its cells are `block.children`
+(`table_cell` entries with 0-indexed `row` / `col`).
 
 ---
 
 ## Decision Guide
 
-| Approach | ADE Calls | Handles non-table chunks | Fragility | Best when |
+| Approach | ADE Calls | Handles non-table blocks | Fragility | Best when |
 |----------|-----------|--------------------------|-----------|-----------|
-| **A — Parse + Extract** | 2 | ✓ LLM reads full markdown | Low | Accuracy is paramount; cost is secondary |
-| **B — HTML table parsing** | 1 | ✓ with fallback regex | **High** — requires uniform row structure | Rows are highly uniform; cost savings justify fragility |
-| **C — pandas read_html** | 1 | ✗ misses non-table chunks | Medium | Quick prototyping; missing some rows is acceptable |
+| **A: Parse + Extract** | 2 | Yes: LLM reads full markdown | Low | Accuracy is paramount; cost is secondary |
+| **B: HTML table parsing** | 1 | Yes, with fallback regex | **High**: requires uniform row structure | Rows are highly uniform; cost savings justify fragility |
+| **C: pandas read_html** | 1 | No: misses non-table blocks | Medium | Quick prototyping; missing some rows is acceptable |
 
 ---
 
-## Approach A — Parse + Extract (LLM-based)
+## Approach A: Parse + Extract (LLM-based)
 
 The simplest and most robust approach. Parse the document, then call
-`client.extract()` with a schema that describes the full table as a
-`List[RowModel]`. The LLM reads the entire markdown — including any
-pages where the table was emitted as plain text — and returns structured
+`client.v2.extract()` with a schema that describes the full table as a
+`List[RowModel]`. The LLM reads the entire markdown (including any
+pages where the table was emitted as plain text) and returns structured
 JSON.
 
 ### Schema design for multi-page tables
@@ -78,14 +84,14 @@ class DocumentWithTable(BaseModel):
 
 ### Key schema tips
 
-- **Say "across ALL pages"** in the `List` field description — this
-  tells the LLM to look beyond the first table chunk.
-- **Mention "even if some pages render as plain text"** — the LLM
-  will then scan text chunks for table-like content.
-- **Say "Skip column-header rows"** — continued tables often repeat
+- **Say "across ALL pages"** in the `List` field description: this
+  tells the LLM to look beyond the first table.
+- **Mention "even if some pages render as plain text"**: the LLM
+  will then scan text content for table-like rows.
+- **Say "Skip column-header rows"**: continued tables often repeat
   headers on each page.
-- **Use `Optional[str]` for mutually exclusive columns** — e.g., when
-  only one of "debit" or "credit" applies per row.
+- **Use `Optional[str]` for mutually exclusive columns**, for example
+  when only one of "debit" or "credit" applies per row.
 - **Use `str` (not `float`) for amounts** to preserve original
   formatting (commas, decimals). Convert downstream if needed.
 
@@ -96,41 +102,40 @@ import json
 from pathlib import Path
 
 from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
 
 client = LandingAIADE()
 
-# Step 1: Parse (cache the result to avoid re-parsing).
-# save_to full-path mode requires landingai-ade v1.13.0+.
+# Step 1: Parse (cache the result to avoid re-parsing)
 parse_json = Path("output/parsed.json")
 if parse_json.exists():
     data = json.loads(parse_json.read_text())
     markdown = data["markdown"]
 else:
-    pr = client.parse(
+    pr = client.v2.parse(
         document=Path("document.pdf"),
+        model="dpt-3-pro-latest",
         save_to=parse_json,
     )
     markdown = pr.markdown
 
 # Step 2: Extract with the multi-page table schema
-er = client.extract(
-    schema=pydantic_to_json_schema(DocumentWithTable),
+er = client.v2.extract(
     markdown=markdown,
+    schema=DocumentWithTable,   # v2 accepts the Pydantic class directly
 )
 rows = er.extraction["rows"]
 ```
 
 ### Pros / Cons
 
-- ✅ Handles all pages uniformly, including plain-text edge cases
-- ✅ No custom parsing code
-- ❌ Two ADE API calls → ~2× credit cost
-- ❌ Slower: two network round-trips
+- Handles all pages uniformly, including plain-text edge cases
+- No custom parsing code
+- Two ADE API calls: roughly twice the credit cost
+- Slower: two network round-trips
 
 ---
 
-## Approach B — HTML Table Parsing (parse-only, fragile)
+## Approach B: HTML Table Parsing (parse-only, fragile)
 
 Reuse the cached parse result (zero extra credits). Parse `<table>`
 elements from the ADE markdown, detect which tables belong to the
@@ -142,6 +147,25 @@ plain-text rows.
 > table format varies across documents or even across pages of the same
 > document. Always validate against Approach A on a sample before
 > relying on this in production.
+
+You can collect table HTML two ways in v2: slice each table block's
+range (shown below), or regex the full markdown as in Approach C.
+
+```python
+from typing import Any
+
+
+def table_htmls_from_structure(parse_result: Any) -> list[str]:
+    """Collect each table block's HTML via its markdown range."""
+    md = parse_result.markdown
+    htmls = []
+    for page in parse_result.structure.children:
+        for block in page.children:
+            if block.type == "table":
+                r = block.grounding.range
+                htmls.append(md[r.start:r.end])
+    return htmls
+```
 
 ### Generic HTML table parser
 
@@ -199,9 +223,14 @@ def extract_html_tables(
     return p.tables
 ```
 
+Alternatively, skip HTML parsing entirely: a v2 `table` block's
+`children` already give you cells with `row` / `col` grid positions.
+Build rows by grouping cells on `cell.row` and slicing each cell's
+range from the markdown.
+
 ### Table detection strategies
 
-Column count alone is often insufficient — multiple table types may
+Column count alone is often insufficient: multiple table types may
 share the same number of columns. Use content-based signals:
 
 ```
@@ -212,22 +241,22 @@ Is there a header row with known column names?
        ├─ YES → Match on first-column pattern
        │        e.g., regex for "Mon DD" date format
        └─ NO → Use column count + content heuristics
-                (least reliable — last resort)
+                (least reliable: last resort)
 ```
 
 ### Row filtering
 
 After detecting the target table, filter out non-data rows:
 
-- **Column-header rows** — repeated on each page (e.g., `cells[0] == "Date"`)
-- **Section sub-headers** — account names, category labels
-- **Summary/totals rows** — may need special handling
+- **Column-header rows**: repeated on each page (e.g., `cells[0] == "Date"`)
+- **Section sub-headers**: account names, category labels
+- **Summary/totals rows**: may need special handling
 
 ### Plain-text fallback
 
-When ADE emits table rows as a text chunk, use regex to extract them.
-This is the most fragile part — it requires the text to have a
-predictable structure:
+When ADE emits table rows inside a text block, use regex to extract
+them. This is the most fragile part: it requires the text to have a
+predictable structure.
 
 ```python
 import re
@@ -281,22 +310,23 @@ produces amounts that could belong to multiple columns.
 
 ### Pros / Cons
 
-- ✅ Single ADE API call → half the credit cost
-- ✅ Fast (parse result is cached; parsing runs locally)
-- ❌ Requires strong row similarity for reliable regex
-- ❌ Brittle — format changes across documents break detection
-- ❌ Plain-text fallback needs domain-specific validation
+- Single ADE API call: half the credit cost
+- Fast (parse result is cached; parsing runs locally)
+- Requires strong row similarity for reliable regex
+- Brittle: format changes across documents break detection
+- Plain-text fallback needs domain-specific validation
 
 ---
 
-## Approach C — pandas `read_html` (parse-only, quick)
+## Approach C: pandas `read_html` (parse-only, quick)
 
 Let pandas do the heavy lifting. Extract `<table>` HTML strings with
 a regex, feed each to `pd.read_html()`, use pandas signals to detect
 target tables, then `pd.concat` to merge.
 
 > **Limitation:** This approach cannot recover rows from non-table
-> chunks. If ADE emits some pages as plain text, those rows are lost.
+> blocks. If ADE emits some pages' table content as plain text, those
+> rows are lost.
 
 ### Implementation pattern
 
@@ -320,7 +350,7 @@ def stitch_tables_pandas(
     """Extract and merge multi-page tables from ADE markdown.
 
     Args:
-        markdown: Full ADE markdown output.
+        markdown: Full ADE markdown output (v2 tables are HTML by default).
         expected_cols: Expected number of columns in the target table.
         date_pattern: Regex to match date-like values in column 0.
     """
@@ -346,6 +376,11 @@ def stitch_tables_pandas(
     return pd.concat(target_dfs, ignore_index=True)
 ```
 
+> Keep the default HTML table format when using this approach. Setting
+> `options={"blocks": {"table": {"format": "markdown"}}}` on the parse
+> call switches tables to pipe syntax, which `TABLE_RE` and
+> `pd.read_html` will not find.
+
 ### Detection signals from pandas
 
 | Signal | How | Use |
@@ -366,7 +401,7 @@ after `.astype(str)`, StringDtype keeps them as the `float('nan')`
 col_str = df.iloc[:, 0].astype(str)
 mask = col_str == "nan"  # Always False!
 
-# CORRECT — check on the raw column before string conversion:
+# CORRECT: check on the raw column before string conversion
 mask = pd.isna(df.iloc[:, 0])
 ```
 
@@ -376,6 +411,9 @@ mask = pd.isna(df.iloc[:, 0])
 inference. If you need comma-formatted output in CSV:
 
 ```python
+import pandas as pd
+
+
 def fmt_amount(val: object) -> str:
     if pd.isna(val):
         return ""
@@ -390,35 +428,36 @@ def fmt_amount(val: object) -> str:
 
 ### Pros / Cons
 
-- ✅ Least code — `pd.read_html` + `pd.concat` do most of the work
-- ✅ No custom HTML parser or regex
-- ✅ pandas dtype signals give a clear detection path
-- ❌ Cannot recover rows from non-table chunks
-- ❌ `pd.NA` / `float('nan')` trap in pandas 3.x
-- ❌ `thousands=","` strips commas — must re-format for output
+- Least code: `pd.read_html` + `pd.concat` do most of the work
+- No custom HTML parser or regex
+- pandas dtype signals give a clear detection path
+- Cannot recover rows from non-table blocks
+- `pd.NA` / `float('nan')` trap in pandas 3.x
+- `thousands=","` strips commas: must re-format for output
 
 ---
 
 ## Common Pitfalls
 
-1. **ADE may emit any page as plain text** — not just the last page.
-   Always check chunk types across all pages during pre-flight.
+1. **ADE may emit any page's table content as plain text**, not just
+   the last page. Always check block types across all pages during
+   pre-flight.
 
-2. **Column count alone is insufficient** — when multiple table types
+2. **Column count alone is insufficient**: when multiple table types
    share the same column count, use content-based detection (header
    matching, first-column patterns, dtype signals).
 
-3. **Approach B regex is brittle** — test on multiple documents before
+3. **Approach B regex is brittle**: test on multiple documents before
    relying on it. Format variations across documents (or even across
    pages of the same document) will break detection.
 
-4. **Always validate with domain-specific semantic checks** — these
+4. **Always validate with domain-specific semantic checks**: these
    catch errors that structural parsing misses and resolve ambiguities
    in column assignment.
 
 5. **Cache parse results** by passing `save_to="output/parsed.json"`
-   to `client.parse()`. Load that JSON in later runs instead of calling
-   `client.parse()` again. Only re-parse when the document changes.
+   to `client.v2.parse()`. Load that JSON in later runs instead of
+   calling parse again. Only re-parse when the document changes.
 
 ---
 
@@ -428,9 +467,9 @@ Before choosing an approach, run the diagnostic parse and check:
 
 | What to check | How | Why |
 |---------------|-----|-----|
-| Chunk types per page | Count `type == "table"` vs `"text"` per page | Any page may have inconsistent types |
-| Column count consistency | Compare column counts across table chunks | Inconsistent counts may indicate different tables |
-| Header row presence | Check first row of each table chunk | Needed for detection and row filtering |
+| Block types per page | Count `type == "table"` vs `"text"` in each page's `children` | Any page may have inconsistent types |
+| Column count consistency | Compare column counts across table blocks (max `cell.col` + 1) | Inconsistent counts may indicate different tables |
+| Header row presence | Check `row == 0` cells of each table block | Needed for detection and row filtering |
 | Non-target tables | Look for summary/metadata tables with same column count | Must distinguish target from others |
 | Row uniformity | Compare row structure across pages | Low uniformity makes Approach B fragile |
-| Plain-text table content | Inspect text chunks for table-like patterns | Determines if fallback is needed |
+| Plain-text table content | Inspect text blocks for table-like patterns | Determines if fallback is needed |

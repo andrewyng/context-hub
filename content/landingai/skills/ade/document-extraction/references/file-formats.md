@@ -2,17 +2,19 @@
 
 ## Overview
 
-LandingAI ADE supports 20+ file formats across PDFs, images, documents, presentations, and spreadsheets. This reference details supported formats, limitations, and considerations for each category.
+LandingAI ADE supports 20+ file formats across PDFs, images, documents, presentations, and spreadsheets. **Format support differs by Parse version**: the v2 Parse API accepts PDFs and images only; every other format requires the v1 Parse API.
 
 ## Quick Reference
 
-| Category | Formats | Notes |
-|----------|---------|-------|
-| **PDF** | PDF | Up to 100 pages in Playground; see rate limits for API |
-| **Images** | JPEG, JPG, PNG, and many more | Common formats fully supported |
-| **Documents** | DOC, DOCX, ODT | Converted to PDF before parsing |
-| **Presentations** | PPT, PPTX | Converted to PDF before parsing |
-| **Spreadsheets** | CSV, XLSX | Up to 10 MB in Playground; up to 50 MB in API |
+| Category | Formats | Parse Version | Notes |
+|----------|---------|---------------|-------|
+| **PDF** | PDF | v2 or v1 | v2 sync: 50 MiB / 100 pages; v2 Parse Jobs: 1 GiB / 6,000 pages |
+| **Images** | JPEG, JPG, PNG, and many more | v2 or v1 | Common formats fully supported |
+| **Documents** | DOC, DOCX, ODT | **v1 only** | Converted to PDF before parsing |
+| **Presentations** | PPT, PPTX | **v1 only** | Converted to PDF before parsing |
+| **Spreadsheets** | CSV, XLSX | **v1 only** | Up to 10 MB in Playground; up to 50 MB in API |
+
+Password-protected files are v1-only as well (with ZDR); the v2 Parse API rejects them with HTTP 422. Examples below use the Parse version appropriate to each format.
 
 ## PDFs
 
@@ -34,9 +36,9 @@ from landingai_ade import LandingAIADE
 from pathlib import Path
 
 client = LandingAIADE()
-response = client.parse(
+response = client.v2.parse(
     document=Path("document.pdf"),
-    model="dpt-2-latest"
+    model="dpt-3-pro-latest",
 )
 ```
 
@@ -72,20 +74,25 @@ response = client.parse(
 
 ### Usage Example
 ```python
+from landingai_ade import LandingAIADE
+from pathlib import Path
+
+client = LandingAIADE()
+
 # Parse an image file
-response = client.parse(
+response = client.v2.parse(
     document=Path("receipt.jpg"),
-    model="dpt-2-latest"
+    model="dpt-3-pro-latest",
 )
 
 # Parse from URL
-response = client.parse(
+response = client.v2.parse(
     document_url="https://example.com/invoice.png",
-    model="dpt-2-latest"
+    model="dpt-3-pro-latest",
 )
 ```
 
-## Text Documents
+## Text Documents (v1 Parse Only)
 
 ### Supported Formats
 - **DOC** - Microsoft Word (legacy)
@@ -119,7 +126,7 @@ response = client.parse(
 )
 ```
 
-## Presentations
+## Presentations (v1 Parse Only)
 
 ### Supported Formats
 - **PPT** - Microsoft PowerPoint (legacy)
@@ -152,7 +159,7 @@ response = client.parse(
 )
 ```
 
-## Spreadsheets
+## Spreadsheets (v1 Parse Only)
 
 ### Supported Formats
 - **CSV** - Comma-Separated Values
@@ -247,7 +254,7 @@ response = client.parse(
 
 ### Error: "document closed or encrypted"
 **Cause:** Password-protected document
-**Solution:** Pass `password="..."` parameter (requires ZDR enabled). Without ZDR, remove password protection before parsing.
+**Solution:** With v1 Parse, pass `password="..."` (requires ZDR enabled). The v2 Parse API does not support password-protected files at all (HTTP 422). Without ZDR, remove password protection before parsing.
 
 ### Poor OCR Results from Images
 **Possible Causes:**

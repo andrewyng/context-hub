@@ -1,8 +1,9 @@
-# Schema Catalog — Ready-to-Use Pydantic Models
+# Schema Catalog: Ready-to-Use Pydantic Models
 
 Ready-to-use extraction schemas for common document types.
-Each schema is a Pydantic `BaseModel` that can be converted to JSON Schema
-via `pydantic_to_json_schema` and passed to `client.extract()`.
+Each schema is a Pydantic `BaseModel`. With the v2 Extract API, pass the
+class directly to `client.v2.extract(schema=...)`; the SDK converts it.
+(With the v1 Extract API, convert first with `pydantic_to_json_schema`.)
 
 > **Tip:** ADE supports **one level of nesting**. Use nested `BaseModel`
 > sub-classes for logical grouping, and `List[SubModel]` for repeating items
@@ -13,13 +14,16 @@ via `pydantic_to_json_schema` and passed to `client.extract()`.
 ## Usage Pattern (all schemas)
 
 ```python
+from pathlib import Path
 from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
 
 client = LandingAIADE()
-parse_result = client.parse(document=path)
-extract_result = client.extract(
-    schema=pydantic_to_json_schema(MySchema),
+parse_result = client.v2.parse(
+    document=Path("document.pdf"),
+    model="dpt-3-pro-latest",
+)
+extract_result = client.v2.extract(
+    schema=MySchema,  # pass the Pydantic class directly
     markdown=parse_result.markdown,
 )
 data: dict = extract_result.extraction
@@ -372,7 +376,7 @@ class BankStatementSchema(BaseModel):
 ## 3b. Multi-Page Table Schema (for Table Stitching)
 
 Use this pattern when a table spans multiple pages and you want the LLM
-to stitch all rows into a single list via `client.extract()`.
+to stitch all rows into a single list via the Extract API.
 
 ```python
 from typing import List, Optional
@@ -380,7 +384,7 @@ from pydantic import BaseModel, Field
 
 
 class TableRow(BaseModel):
-    """Generic row — customize fields for your table."""
+    """Generic row: customize fields for your table."""
     key_column: str = Field(
         description=(
             "Primary identifier (e.g., date, ID). "
@@ -639,8 +643,8 @@ class DocTypeClassification(BaseModel):
 ### Classify-then-Extract Pattern
 
 ```python
+from pathlib import Path
 from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
 
 schema_map = {
     "invoice": InvoiceSchema,
@@ -650,19 +654,22 @@ schema_map = {
 }
 
 client = LandingAIADE()
-parse_result = client.parse(document=path)
+parse_result = client.v2.parse(
+    document=Path("document.pdf"),
+    model="dpt-3-pro-latest",
+)
 
 # Step 1: Classify
-cls_result = client.extract(
-    schema=pydantic_to_json_schema(DocTypeClassification),
+cls_result = client.v2.extract(
+    schema=DocTypeClassification,
     markdown=parse_result.markdown,
 )
 doc_type: str = cls_result.extraction["type"]
 
 # Step 2: Extract with type-specific schema
 schema_cls = schema_map[doc_type]
-extract_result = client.extract(
-    schema=pydantic_to_json_schema(schema_cls),
+extract_result = client.v2.extract(
+    schema=schema_cls,
     markdown=parse_result.markdown,
 )
 ```
@@ -671,14 +678,14 @@ extract_result = client.extract(
 
 ## Tips for Custom Schemas
 
-1. **Use descriptive `description` fields** — ADE uses them as extraction
+1. **Use descriptive `description` fields**: ADE uses them as extraction
    instructions. Be specific about format expectations.
 2. **Mark optional fields** with `Optional[T]` and `default=None` to avoid
    extraction failures when a field is absent.
 3. **Use `default_factory=list`** for array fields (line items,
    transactions) to avoid null results.
-4. **Keep nesting to one level** — ADE supports `TopLevel.nested_object`
+4. **Keep nesting to one level**: ADE supports `TopLevel.nested_object`
    but not `TopLevel.nested.deeper`.
-5. **Use `Literal` for enums** — constrains extraction to known values.
-6. **Prefer `float` over `str` for monetary amounts** — easier downstream
+5. **Use `Literal` for enums**: constrains extraction to known values.
+6. **Prefer `float` over `str` for monetary amounts**: easier downstream
    processing. Keep a `_raw` string variant if you need the original format.

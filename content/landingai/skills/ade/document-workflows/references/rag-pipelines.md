@@ -4,116 +4,110 @@ End-to-end patterns for preparing ADE-parsed documents for Retrieval
 Augmented Generation (RAG) systems. Covers embedding computation,
 chunking strategies, vector DB ingestion, and query pipelines.
 
+All patterns use the v2 Parse API (`client.v2.parse()`). A v2 parse
+response has one top-level `markdown` string plus a `structure` tree
+(document > pages > blocks). Each block carries inline `grounding` with
+a 1-indexed `page`, a `range` (`{start, end}` offsets into `markdown`),
+and a normalized `box` (`xmin`, `ymin`, `xmax`, `ymax`). A block's text
+is the Markdown slice `markdown[range.start:range.end]`; there are no
+anchor tags to strip. To skip slicing, pass
+`options={"inline_markdown": True}` and read `block.markdown` instead.
+
 ---
 
-## 1. Chunks to CSV — RAG-Ready Dataset
+## 1. Blocks to CSV: RAG-Ready Dataset
 
-Extract all chunks from parsed documents into a structured CSV with 19
+Extract all blocks from parsed documents into a structured CSV with 18
 columns including bounding boxes, sequence info, and metadata. This CSV
 can feed any vector DB or search index.
 
-> **Grounding-aware records:** Every record includes `page`, `box_l`,
-> `box_t`, `box_r`, `box_b` from ADE's grounding data. Preserve these
-> columns when ingesting into a vector DB — they let you trace retrieval
-> results back to exact document locations for highlighting or citation.
+> **Grounding-aware records:** Every record includes `page`, `box_xmin`,
+> `box_ymin`, `box_xmax`, `box_ymax` from the block's grounding.
+> Preserve these columns when ingesting into a vector DB: they let you
+> trace retrieval results back to exact document locations for
+> highlighting or citation.
 
 ```python
-import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
 import pandas as pd
 
-
-def clean_chunk_text(text: str) -> str:
-    """Remove anchor tags and strip whitespace."""
-    cleaned = re.sub(r"<a id='[^']*'>\s*</a>", "", text)
-    return cleaned.strip()
+import landingai_ade
 
 
-def chunks_to_records(
+def iter_blocks(parse_result: Any):
+    """Yield (block, text) pairs from a v2 parse response in reading order."""
+    md = parse_result.markdown
+    for page in parse_result.structure.children:
+        for block in page.children:
+            r = block.grounding.range
+            yield block, md[r.start:r.end]
+
+
+def blocks_to_records(
     parse_result: Any,
     document_name: str,
-    model_version: str = "unknown",
 ) -> List[Dict[str, Any]]:
-    """Convert parse result chunks to flat dicts.
+    """Convert v2 parse response blocks to flat dicts.
 
-    Each dict has 19 columns suitable for CSV / DataFrame:
-    DOCUMENT_NAME, chunk_id, chunk_sequence_number,
-    chunk_type, chunk_content_raw, chunk_content,
-    chunk_text_length, chunk_word_count, page,
-    box_l, box_t, box_r, box_b,
-    prev_chunk_id, next_chunk_id, chunk_image_path,
+    Each dict has 18 columns suitable for CSV / DataFrame:
+    DOCUMENT_NAME, block_id, block_sequence_number,
+    block_type, block_content, block_text_length,
+    block_word_count, page,
+    box_xmin, box_ymin, box_xmax, box_ymax,
+    prev_block_id, next_block_id, block_image_path,
     processed_at, ade_version, model_version
     """
-    from datetime import datetime, timezone
-
-    import landingai_ade
-
-    chunks = parse_result.chunks or []
     now = datetime.now(timezone.utc).isoformat()
+    pairs = list(iter_blocks(parse_result))
     records: List[Dict[str, Any]] = []
 
-    for idx, ch in enumerate(chunks):
-        raw = ch.markdown if hasattr(ch, "markdown") else ""
-        clean = clean_chunk_text(raw)
-        box = (
-            ch.grounding.box
-            if hasattr(ch, "grounding")
-            and hasattr(ch.grounding, "box")
-            else None
-        )
-        page = (
-            ch.grounding.page
-            if hasattr(ch, "grounding")
-            else None
-        )
+    for idx, (block, text) in enumerate(pairs):
+        text = text.strip()
+        box = block.grounding.box
         records.append({
             "DOCUMENT_NAME": document_name,
-            "chunk_id": getattr(ch, "id", None),
-            "chunk_sequence_number": idx,
-            "chunk_type": getattr(ch, "type", None),
-            "chunk_content_raw": raw,
-            "chunk_content": clean,
-            "chunk_text_length": len(clean),
-            "chunk_word_count": len(clean.split()) if clean else 0,
-            "page": page,
-            "box_l": box.left if box else None,
-            "box_t": box.top if box else None,
-            "box_r": box.right if box else None,
-            "box_b": box.bottom if box else None,
-            "prev_chunk_id": (
-                chunks[idx - 1].id if idx > 0 else None
-            ),
-            "next_chunk_id": (
-                chunks[idx + 1].id
-                if idx < len(chunks) - 1
+            "block_id": block.id,
+            "block_sequence_number": idx,
+            "block_type": block.type,
+            "block_content": text,
+            "block_text_length": len(text),
+            "block_word_count": len(text.split()) if text else 0,
+            "page": block.grounding.page,   # 1-indexed
+            "box_xmin": box.xmin,
+            "box_ymin": box.ymin,
+            "box_xmax": box.xmax,
+            "box_ymax": box.ymax,
+            "prev_block_id": pairs[idx - 1][0].id if idx > 0 else None,
+            "next_block_id": (
+                pairs[idx + 1][0].id
+                if idx < len(pairs) - 1
                 else None
             ),
-            "chunk_image_path": None,
+            "block_image_path": None,
             "processed_at": now,
             "ade_version": landingai_ade.__version__,
-            "model_version": model_version,
+            "model_version": parse_result.metadata.model_version,
         })
     return records
 
 
-def batch_chunks_to_csv(
+def batch_blocks_to_csv(
     results: List[Dict[str, Any]],
     output_path: Path,
 ) -> pd.DataFrame:
-    """Combine chunk records from multiple documents into
-    one CSV.
+    """Combine block records from multiple documents into one CSV.
 
     Args:
-        results: list of dicts with keys 'name' and
-                 'parse_result'
+        results: list of dicts with keys 'name' and 'parse_result'
         output_path: CSV file path
     """
     all_records: List[Dict[str, Any]] = []
     for r in results:
         all_records.extend(
-            chunks_to_records(r["parse_result"], r["name"])
+            blocks_to_records(r["parse_result"], r["name"])
         )
     df = pd.DataFrame(all_records)
     df.to_csv(output_path, index=False)
@@ -129,51 +123,47 @@ from pathlib import Path
 client = LandingAIADE()
 results = []
 for fp in Path("docs/").glob("*.pdf"):
-    pr = client.parse(document=fp)
+    pr = client.v2.parse(document=fp, model="dpt-3-pro-latest")
     results.append({"name": fp.name, "parse_result": pr})
 
-df = batch_chunks_to_csv(results, Path("all_chunks.csv"))
-print(f"{len(df)} chunks from {df['DOCUMENT_NAME'].nunique()} docs")
+df = batch_blocks_to_csv(results, Path("all_blocks.csv"))
+print(f"{len(df)} blocks from {df['DOCUMENT_NAME'].nunique()} docs")
 ```
 
 ---
 
-## 2. Vector DB Ingestion — ChromaDB
+## 2. Vector DB Ingestion: ChromaDB
 
 Local persistent vector store using OpenAI embeddings. Good for
 prototyping and small-to-medium corpora.
 
 ```python
-from pathlib import Path
 from typing import Any, List
 
 import chromadb
-from chromadb.config import Settings
 from openai import OpenAI
 
 
-def ade_chunks_to_chromadb(
+def ade_blocks_to_chromadb(
     parse_results: List[dict],
     collection_name: str = "ade_documents",
     persist_dir: str = "./chroma_db",
     embedding_model: str = "text-embedding-3-small",
 ) -> chromadb.Collection:
-    """Ingest ADE chunks into a persistent ChromaDB collection.
+    """Ingest v2 parse blocks into a persistent ChromaDB collection.
 
     Args:
         parse_results: list of dicts with 'name' (str) and
-                       'parse_result' (ParseResponse)
+                       'parse_result' (V2ParseResponse)
         collection_name: ChromaDB collection name
         persist_dir: directory for persistent storage
         embedding_model: OpenAI embedding model name
 
     Returns:
-        The ChromaDB collection with all chunks ingested.
+        The ChromaDB collection with all blocks ingested.
     """
     openai_client = OpenAI()
-    chroma_client = chromadb.PersistentClient(
-        path=persist_dir
-    )
+    chroma_client = chromadb.PersistentClient(path=persist_dir)
     collection = chroma_client.get_or_create_collection(
         name=collection_name,
         metadata={"hnsw:space": "cosine"},
@@ -181,25 +171,24 @@ def ade_chunks_to_chromadb(
 
     for doc in parse_results:
         name = doc["name"]
-        chunks = doc["parse_result"].chunks or []
+        pr = doc["parse_result"]
+        md = pr.markdown
 
         texts, ids, metadatas = [], [], []
-        for ch in chunks:
-            text = ch.markdown if hasattr(ch, "markdown") else ""
-            if not text.strip():
-                continue
-            chunk_id = f"{name}:{ch.id}"
-            texts.append(text)
-            ids.append(chunk_id)
-            metadatas.append({
-                "document": name,
-                "chunk_type": getattr(ch, "type", "unknown"),
-                "page": (
-                    ch.grounding.page
-                    if hasattr(ch, "grounding")
-                    else -1
-                ),
-            })
+        for page in pr.structure.children:
+            for block in page.children:
+                r = block.grounding.range
+                text = md[r.start:r.end].strip()
+                if not text:
+                    continue
+                texts.append(text)
+                # Block ids are unique within one response only
+                ids.append(f"{name}:{block.id}")
+                metadatas.append({
+                    "document": name,
+                    "block_type": block.type,
+                    "page": block.grounding.page,   # 1-indexed
+                })
 
         if not texts:
             continue
@@ -228,13 +217,17 @@ def ade_chunks_to_chromadb(
 ### Query ChromaDB
 
 ```python
+import chromadb
+from openai import OpenAI
+
+
 def query_chromadb(
     collection: chromadb.Collection,
     question: str,
     n_results: int = 5,
     embedding_model: str = "text-embedding-3-small",
 ) -> dict:
-    """Query the collection and return matching chunks."""
+    """Query the collection and return matching blocks."""
     openai_client = OpenAI()
     resp = openai_client.embeddings.create(
         input=[question], model=embedding_model
@@ -248,13 +241,13 @@ def query_chromadb(
 
 ---
 
-## 3. Vector DB Ingestion — FAISS + LangChain
+## 3. Vector DB Ingestion: FAISS + LangChain
 
 For LangChain-based RAG pipelines. Uses FAISS for in-memory vector
 search.
 
 ```python
-from typing import Any, List
+from typing import List
 
 from langchain.docstore.document import Document
 from langchain_community.vectorstores import FAISS
@@ -264,32 +257,31 @@ from langchain_openai import OpenAIEmbeddings
 def ade_to_langchain_docs(
     parse_results: List[dict],
 ) -> List[Document]:
-    """Convert ADE parse results to LangChain Documents.
+    """Convert v2 parse results to LangChain Documents.
 
-    Each chunk becomes one Document with metadata including
-    source document name, chunk type, and page number.
+    Each block becomes one Document with metadata including
+    source document name, block type, and page number.
     """
     docs: List[Document] = []
     for item in parse_results:
         name = item["name"]
-        chunks = item["parse_result"].chunks or []
-        for ch in chunks:
-            text = ch.markdown if hasattr(ch, "markdown") else ""
-            if not text.strip():
-                continue
-            docs.append(Document(
-                page_content=text,
-                metadata={
-                    "source": name,
-                    "chunk_type": getattr(ch, "type", "unknown"),
-                    "chunk_id": getattr(ch, "id", ""),
-                    "page": (
-                        ch.grounding.page
-                        if hasattr(ch, "grounding")
-                        else -1
-                    ),
-                },
-            ))
+        pr = item["parse_result"]
+        md = pr.markdown
+        for page in pr.structure.children:
+            for block in page.children:
+                r = block.grounding.range
+                text = md[r.start:r.end].strip()
+                if not text:
+                    continue
+                docs.append(Document(
+                    page_content=text,
+                    metadata={
+                        "source": name,
+                        "block_type": block.type,
+                        "block_id": block.id,
+                        "page": block.grounding.page,
+                    },
+                ))
     return docs
 
 
@@ -310,7 +302,7 @@ from langchain_openai import ChatOpenAI
 
 
 def build_rag_chain(
-    vectorstore: FAISS,
+    vectorstore,
     model: str = "gpt-4o-mini",
     k: int = 5,
 ) -> RetrievalQA:
@@ -336,15 +328,15 @@ for doc in answer["source_documents"]:
 
 ---
 
-## 4. Full RAG Pipeline — End to End
+## 4. Full RAG Pipeline: End to End
 
-Combines parsing, chunking, vector DB, and querying into one flow.
+Combines parsing, block extraction, vector DB, and querying in one flow.
 
 ```python
-import asyncio
 from pathlib import Path
 
 from langchain.chains import RetrievalQA
+from langchain.docstore.document import Document
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from landingai_ade import LandingAIADE
@@ -367,14 +359,25 @@ def build_rag_from_folder(
         if p.suffix.lower() in exts
     ]
 
-    # Parse all documents
-    parse_results = []
+    # Parse all documents (v2)
+    docs: list[Document] = []
     for fp in files:
-        pr = client.parse(document=fp)
-        parse_results.append({"name": fp.name, "parse_result": pr})
-
-    # Convert to LangChain docs
-    docs = ade_to_langchain_docs(parse_results)
+        pr = client.v2.parse(document=fp, model="dpt-3-pro-latest")
+        md = pr.markdown
+        for page in pr.structure.children:
+            for block in page.children:
+                r = block.grounding.range
+                text = md[r.start:r.end].strip()
+                if not text:
+                    continue
+                docs.append(Document(
+                    page_content=text,
+                    metadata={
+                        "source": fp.name,
+                        "block_type": block.type,
+                        "page": block.grounding.page,
+                    },
+                ))
 
     # Build vector store
     embeddings = OpenAIEmbeddings(model=embedding_model)
@@ -405,7 +408,7 @@ print(result["result"])
 
 ## 5. Embedding Computation
 
-Two approaches for computing embeddings from ADE chunks: **local**
+Two approaches for computing embeddings from ADE blocks: **local**
 (free, offline, fast) and **API-based** (higher quality, paid). Choose
 based on your cost/quality tradeoff.
 
@@ -415,8 +418,6 @@ Uses [FastEmbed](https://github.com/qdrant/fastembed) to run embedding
 models locally. No API key needed, no per-token cost, works offline.
 
 ```python
-from typing import Any
-
 from fastembed import TextEmbedding
 
 
@@ -464,11 +465,11 @@ def compute_embeddings_openai(
 
 | Practice | Why | Example |
 |----------|-----|---------|
-| **Prepend title/heading** | Gives the embedding semantic context about what the chunk is about | `f"{title}\n\n{body}"` |
+| **Prepend title/heading** | Gives the embedding semantic context about what the block is about | `f"{title}\n\n{body}"` |
 | **Batch all texts in one call** | Faster than embedding one-by-one; both FastEmbed and OpenAI support batching | `embedder.embed(all_texts)` |
 | **Store model metadata** | Consumers need to know which model produced the vectors to query correctly | `{"model": "bge-small-en-v1.5", "dims": 384}` |
-| **Carry grounding refs** | Enables source attribution — trace retrieval hits back to page + bounding box | `{"page": 2, "box": {...}}` |
-| **Clean anchor tags first** | ADE chunks contain `<a id='...'>` tags that add noise to embeddings | `re.sub(r"<a id='[^']*'>\s*</a>", "", text)` |
+| **Carry grounding refs** | Enables source attribution: trace retrieval hits back to page + bounding box | `{"page": 2, "box": {"xmin": 0.1, ...}}` |
+| **Strip whitespace, skip empty blocks** | Suppressed or empty blocks have zero-length ranges and add noise | `if not text.strip(): continue` |
 
 ### Self-Describing Embedding Output
 
@@ -507,7 +508,7 @@ def make_embedding_record(
 
 ## 6. Multi-Granularity Embedding Strategy
 
-ADE chunks are the finest-grained unit, but they're not always the
+ADE blocks are the finest-grained unit, but they are not always the
 right unit for embedding. Choose the granularity that matches your
 retrieval needs.
 
@@ -515,35 +516,57 @@ retrieval needs.
 
 | Level | Unit | How to build | Best for |
 |-------|------|-------------|----------|
-| **Chunk** | Raw ADE chunk | Direct from `parse_result.chunks` | Tables, figures, forms with independent fields |
-| **Hierarchical** | Group of consecutive chunks | Group by boundary detection (see below) | Narrative docs where answers span paragraphs |
-| **Document** | Full markdown or summary | `parse_result.markdown` or ADE extract summary | Classification, routing, coarse-grained search |
+| **Block** | Raw ADE block | Walk `structure.children` pages and their `children` | Tables, figures, forms with independent fields |
+| **Page** | All blocks on one page | Each `page` node's `grounding.range` covers the whole page | Slide decks, page-oriented documents |
+| **Hierarchical** | Group of consecutive blocks | Group by boundary detection (see below) | Narrative docs where answers span paragraphs |
+| **Document** | Full markdown or summary | `parse_result.markdown` or a v2 extract summary | Classification, routing, coarse-grained search |
 
-### Chunk-Level (default)
+### Block-Level (default)
 
-Each ADE chunk gets its own embedding. This is what Sections 2–4 above
-use. Fine-grained but may split semantic units across multiple vectors.
+Each ADE block gets its own embedding. This is what Sections 2 to 4
+above use. Fine-grained but may split semantic units across multiple
+vectors.
 
 ```python
-# Already shown in Sections 2-4 — each chunk → one embedding
-texts = [
-    clean_chunk_text(ch.markdown)
-    for ch in parse_result.chunks
-    if ch.markdown.strip()
-    and getattr(ch, "type", "") in {"text", "table", "card"}
-]
+RAG_BLOCK_TYPES = {"text", "table", "card"}
+
+md = parse_result.markdown
+texts = []
+for page in parse_result.structure.children:
+    for block in page.children:
+        if block.type not in RAG_BLOCK_TYPES:
+            continue
+        r = block.grounding.range
+        text = md[r.start:r.end].strip()
+        if text:
+            texts.append(text)
+```
+
+### Page-Level
+
+In v2 the structure tree makes page grouping trivial: each `page` node's
+own `grounding.range` covers everything on that page.
+
+```python
+md = parse_result.markdown
+page_texts = []
+for page in parse_result.structure.children:
+    r = page.grounding.range
+    text = md[r.start:r.end].strip()
+    if text:
+        page_texts.append((page.grounding.page, text))
 ```
 
 ### Hierarchical Chunking
 
-Group consecutive ADE chunks into higher-level semantic units before
-embedding. The grouping boundary is **document-specific** — the pattern
-is always the same but the boundary detection varies:
+Group consecutive ADE blocks into higher-level semantic units before
+embedding. The grouping boundary is **document-specific**: the pattern
+is always the same but the boundary detection varies.
 
-- **Heading detection** (regex or ADE extract) — for papers, reports
-- **Clause boundaries** (ADE split API or extract) — for contracts
-- **Page boundaries** — simple, works for any document
-- **Fixed-size sliding windows** — N consecutive chunks with overlap
+- **Heading detection** (regex on block text, or the Section API on a v1 pipeline) for papers and reports
+- **Clause boundaries** (regex or a v2 extract call) for contracts
+- **Page boundaries**: use the page-level pattern above
+- **Fixed-size sliding windows**: N consecutive blocks with overlap
 
 The abstract pattern:
 
@@ -553,18 +576,15 @@ from typing import Any, Callable
 
 
 @dataclass
-class ChunkGroup:
-    """A group of consecutive ADE chunks forming a semantic unit."""
+class BlockGroup:
+    """A group of consecutive ADE blocks forming a semantic unit."""
     label: str
-    chunks: list[Any] = field(default_factory=list)
+    texts: list[str] = field(default_factory=list)
     grounding_refs: list[dict] = field(default_factory=list)
 
     @property
     def text(self) -> str:
-        return "\n".join(
-            clean_chunk_text(ch.markdown)
-            for ch in self.chunks if ch.markdown.strip()
-        )
+        return "\n".join(t for t in self.texts if t.strip())
 
     @property
     def embedding_input(self) -> str:
@@ -572,59 +592,55 @@ class ChunkGroup:
         return f"{self.label}\n\n{self.text}"
 
 
-def group_chunks(
-    chunks: list[Any],
-    is_boundary: Callable[[Any], str | None],
-) -> list[ChunkGroup]:
-    """Group ADE chunks by a boundary detection function.
+def group_blocks(
+    parse_result: Any,
+    is_boundary: Callable[[str, Any], str | None],
+) -> list[BlockGroup]:
+    """Group v2 parse blocks by a boundary detection function.
 
     Args:
-        chunks: ADE parse_result.chunks
-        is_boundary: function that returns a group label
-            (str) if the chunk starts a new group, or
-            None if it continues the current group.
+        parse_result: a V2ParseResponse
+        is_boundary: function of (block_text, block) that returns
+            a group label (str) if the block starts a new group,
+            or None if it continues the current group.
 
     Returns:
-        List of ChunkGroup with grounding refs preserved.
+        List of BlockGroup with grounding refs preserved.
     """
-    groups: list[ChunkGroup] = []
-    current: ChunkGroup | None = None
-    for ch in chunks:
-        label = is_boundary(ch)
-        if label is not None:
-            current = ChunkGroup(label=label)
-            groups.append(current)
-        if current is None:
-            current = ChunkGroup(label="(preamble)")
-            groups.append(current)
-        current.chunks.append(ch)
-        if hasattr(ch, "grounding"):
-            b = ch.grounding.box
+    md = parse_result.markdown
+    groups: list[BlockGroup] = []
+    current: BlockGroup | None = None
+    for page in parse_result.structure.children:
+        for block in page.children:
+            r = block.grounding.range
+            text = md[r.start:r.end]
+            label = is_boundary(text, block)
+            if label is not None:
+                current = BlockGroup(label=label)
+                groups.append(current)
+            if current is None:
+                current = BlockGroup(label="(preamble)")
+                groups.append(current)
+            current.texts.append(text)
+            b = block.grounding.box
             current.grounding_refs.append({
-                "page": ch.grounding.page,
+                "page": block.grounding.page,
                 "box": {
-                    "left": b.left, "top": b.top,
-                    "right": b.right, "bottom": b.bottom,
+                    "xmin": b.xmin, "ymin": b.ymin,
+                    "xmax": b.xmax, "ymax": b.ymax,
                 },
             })
     return groups
 ```
 
-**Example boundary detectors:**
+**Example boundary detector** (new group on ATX or numbered headings):
 
 ```python
 import re
 
-# Page-based: new group every page
-def by_page(ch: Any) -> str | None:
-    page = ch.grounding.page if hasattr(ch, "grounding") else -1
-    return f"Page {page + 1}" if not hasattr(by_page, "_last") or by_page._last != page else None
-    # (simplified — use a closure or class for production)
 
-# Heading-based: new group on ATX or numbered headings
-def by_heading(ch: Any) -> str | None:
-    text = re.sub(r"<a id='[^']*'></a>\s*", "", ch.markdown or "").strip()
-    first_line = text.split("\n")[0].strip()
+def by_heading(text: str, block) -> str | None:
+    first_line = text.strip().split("\n")[0].strip()
     if re.match(r"^#{1,6}\s+", first_line):
         return re.sub(r"^#{1,6}\s+", "", first_line)
     if re.match(r"^\d+(?:\.\d+)*\.?\s+[A-Z]", first_line):
@@ -635,13 +651,13 @@ def by_heading(ch: Any) -> str | None:
 **Using groups for embedding:**
 
 ```python
-groups = group_chunks(parse_result.chunks, by_heading)
+groups = group_blocks(parse_result, by_heading)
 texts = [g.embedding_input for g in groups if g.text.strip()]
 vectors = compute_embeddings_local(texts)
 
 # Each group carries grounding_refs for source attribution
 for g, vec in zip(groups, vectors):
-    print(f"{g.label}: {len(g.grounding_refs)} chunk refs, "
+    print(f"{g.label}: {len(g.grounding_refs)} block refs, "
           f"{len(vec)} dims")
 ```
 
@@ -651,22 +667,25 @@ Embed the full document markdown or a summary. Useful for routing
 queries to the right document before doing fine-grained search.
 
 ```python
-# Full markdown (may be long — consider truncation)
+from pydantic import BaseModel, Field
+from landingai_ade import LandingAIADE
+
+client = LandingAIADE()
+
+# Full markdown (may be long: consider truncation)
 doc_text = parse_result.markdown[:8000]
 doc_vec = compute_embeddings_local([doc_text])[0]
 
-# Or use ADE extract to get a summary first
-from landingai_ade.lib import pydantic_to_json_schema
-from pydantic import BaseModel, Field
 
+# Or use v2 extract to get a summary first
 class DocSummary(BaseModel):
     summary: str = Field(
         description="A 2-3 sentence summary of the document."
     )
 
-er = client.extract(
-    schema=pydantic_to_json_schema(DocSummary),
+er = client.v2.extract(
     markdown=parse_result.markdown,
+    schema=DocSummary,   # v2 accepts the Pydantic class directly
 )
 summary_vec = compute_embeddings_local(
     [er.extraction["summary"]]
@@ -678,28 +697,32 @@ summary_vec = compute_embeddings_local(
 | Document Type | Recommended | Rationale |
 |--------------|-------------|-----------|
 | Academic papers, reports | Hierarchical (by heading) | Answers span paragraphs within sections |
-| Invoices, forms | Chunk-level | Each field is independent |
-| Mixed document batches | Document-level + chunk-level | Route first, then search within |
+| Invoices, forms | Block-level | Each field is independent |
+| Mixed document batches | Document-level + block-level | Route first, then search within |
 | Contracts, legal docs | Hierarchical (by clause) | Clauses are the natural retrieval unit |
-| Slide decks | Chunk-level (by page) | Each slide is self-contained |
+| Slide decks | Page-level | Each slide is self-contained |
 | Long narratives (books) | Hierarchical (sliding window) | Fixed-size windows with overlap |
 
 ---
 
-## Chunk Filtering Tips
+## Block Filtering Tips
 
-Not all chunks are useful for RAG. Filter by type to improve relevance:
+Not all blocks are useful for RAG. Filter by type to improve relevance:
 
 ```python
-# Keep only text and table chunks (skip logos, scan codes)
-RAG_CHUNK_TYPES = {"text", "table", "card"}
+# Keep only text, table, and card blocks (skip logos, scan codes)
+RAG_BLOCK_TYPES = {"text", "table", "card"}
 
-docs = [
-    Document(page_content=ch.markdown, metadata={...})
-    for ch in parse_result.chunks
-    if getattr(ch, "type", "") in RAG_CHUNK_TYPES
-    and ch.markdown.strip()
-]
+md = parse_result.markdown
+kept = []
+for page in parse_result.structure.children:
+    for block in page.children:
+        if block.type not in RAG_BLOCK_TYPES:
+            continue
+        r = block.grounding.range
+        text = md[r.start:r.end].strip()
+        if text:
+            kept.append((block, text))
 ```
 
 ---
@@ -707,7 +730,7 @@ docs = [
 ## Dependencies
 
 ```
-# Chunks to CSV only
+# Blocks to CSV only
 pip install landingai-ade pandas
 
 # Local embeddings (free, offline)

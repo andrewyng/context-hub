@@ -3,7 +3,7 @@ name: document-workflows
 description: "Builds end-to-end document processing pipelines using LandingAI ADE. Covers batch and async processing, classify-then-extract workflows for mixed document types, RAG pipelines with vector DB ingestion, database integration (Snowflake, CSV, DataFrames), visualization (bounding box overlays, cropped chunk images, word-level annotation), and Streamlit UIs. Use when composing ADE parse/extract/split operations into multi-step pipelines, processing document batches in parallel, loading extraction results into databases, or visualizing/annotating extracted content. Complements the document-extraction skill (which covers single ADE SDK operations); use when those operations need to be chained into workflows or when word-level grounding, bounding box visualization, or annotation is required."
 ---
 
-# Document Workflows — ADE Pipeline Patterns
+# Document Workflows: ADE Pipeline Patterns
 
 ## Overview
 
@@ -22,9 +22,15 @@ pipelines. It complements the `document-extraction` skill:
 not by document type. The same pattern applies whether documents are invoices,
 utility bills, or medical forms.
 
+**API version:** pipelines here use the **v2 APIs** (`client.v2.parse`,
+`client.v2.extract`) by default. Steps that only exist in v1 (Split, Section,
+spreadsheet parsing, confidence scores) are labeled "(v1)" and run as v1
+pipelines end to end. Do not mix versions within one pipeline; see the
+version gate and compatibility matrix in the `document-extraction` skill.
+
 ---
 
-## Step 0 (mandatory) — Pre-Flight Document Exploration {#pre-flight}
+## Step 0 (mandatory): Pre-Flight Document Exploration {#pre-flight}
 
 **Run this before writing any pipeline code** whenever working with documents
 whose internal structure has not already been inspected in this session.
@@ -32,20 +38,20 @@ whose internal structure has not already been inspected in this session.
 > **Rule: never write section-detection, heading-matching, or text-search code
 > without first running Tool 2 (diagnostic parse) on the sample document.
 > Heading format is document-specific and cannot be inferred from the task
-> description or document type alone — the only reliable way to know it is to
+> description or document type alone: the only reliable way to know it is to
 > look at the actual ADE output.**
 >
 > Common surprises: a paper's "Introduction" heading may appear as
 > `1. Introduction` (plain text, no `#`), `## Introduction`, `INTRODUCTION`
-> (all-caps), or embedded inside a text chunk with body copy. Getting this
-> wrong means a silent failure (zero chunks matched) that requires a full
+> (all-caps), or embedded inside a text block with body copy. Getting this
+> wrong means a silent failure (zero blocks matched) that requires a full
 > re-parse to debug.
 
 Run Tool 1 (visual render) and Tool 2 (diagnostic parse) on 1–3 representative
 sample documents before writing any code. This takes under a minute and
 prevents debugging iterations that a pre-flight would have avoided.
 
-### Tool 1 — Visual page render
+### Tool 1: Visual page render
 
 Render 1–2 pages as PNG and read them as visual context. No ADE credits used,
 but each PNG consumes context tokens. Use when layout is ambiguous or document
@@ -76,10 +82,10 @@ Then read the saved PNGs. Immediately answers:
 - Single-column or two-column layout?
 - Any noise: running headers, page numbers, watermarks, stamps?
 
-### Tool 2 — ADE diagnostic parse
+### Tool 2: ADE diagnostic parse
 
-Parses 1 sample and prints markdown structure + chunk inventory. Uses ADE
-credits — keep to **1–3 samples only**, never the full corpus.
+Parses 1 sample and prints the markdown head plus a block inventory. Uses ADE
+credits: keep to **1 to 3 samples only**, never the full corpus.
 
 ```bash
 .venv/bin/python - << 'EOF'
@@ -93,27 +99,29 @@ load_dotenv()  # Load API key from .env. Add a path to the .env if needed.
 
 from landingai_ade import LandingAIADE
 client = LandingAIADE()
-pr = client.parse(document=Path('path/to/sample.pdf'))
+pr = client.v2.parse(document=Path('path/to/sample.pdf'))
 
 print("=== MARKDOWN (first 80 lines) ===")
 for i, ln in enumerate(pr.markdown.splitlines()[:80], 1):
     print(f"{i:3}: {ln}")
 
-print("\n=== CHUNKS ===")
-for ch in pr.chunks:
-    txt = (ch.markdown or '').replace('\n', ' ')[:70]
-    b = ch.grounding.box
-    print(f"p{ch.grounding.page} {ch.type:12} "
-          f"l={b.left:.2f} t={b.top:.2f} r={b.right:.2f} b={b.bottom:.2f} | {txt}")
+print("\n=== BLOCKS ===")
+blocks = [b for page in pr.structure.children for b in page.children]
+for b in blocks:
+    r = b.grounding.range
+    txt = pr.markdown[r.start:r.end].replace('\n', ' ')[:70]
+    box = b.grounding.box
+    print(f"p{b.grounding.page} {b.type:12} {b.id:16} "
+          f"x={box.xmin:.2f} y={box.ymin:.2f} X={box.xmax:.2f} Y={box.ymax:.2f} | {txt}")
 
 print(f"\nPages: {pr.metadata.page_count}  "
-      f"Chunks: {len(pr.chunks)}  "
-      f"Types: {dict(Counter(ch.type for ch in pr.chunks))}")
+      f"Blocks: {len(blocks)}  "
+      f"Types: {dict(Counter(b.type for b in blocks))}")
 EOF
 ```
 
 > **Cost note:** Cache the parse result on the first run by passing
-> `save_to="output/parsed.json"` to `client.parse()`. Load that JSON in
+> `save_to="output/parsed.json"` to `client.v2.parse()`. Load that JSON in
 > later development runs instead of re-parsing. Only re-parse when the
 > document set changes.
 
@@ -123,22 +131,23 @@ EOF
 |-------------|-------------|
 | Heading is `1. Introduction` (plain text, no `#`) | ADE markdown won't use ATX header → use ADE extract, not regex |
 | Heading format varies across docs (`# INTRO` in one, `1. Intro` in another) | Regex will break on some docs → use ADE extract for robustness |
-| Every `ch.markdown` starts with `<a id='...'></a>` | Strip anchor before string matching or display |
-| Two-column: chunks on same page with `l=0.07` vs `l=0.50` | Text order is left column then right; sections may span both |
-| Chunk text cut mid-word at page break | Section spans pages; collect chunks from multiple pages |
-| `marginalia` chunks at `t<0.08` or `t>0.90` | Running headers / page numbers → exclude from content extraction |
+| Markdown ends with `<!-- doc_id=... -->`, pages separated by `<!-- PAGE BREAK -->` | Keep the doc_id line when saving Markdown for extraction; split on the page marker for per-page text |
+| Two-column: blocks on same page with `xmin=0.07` vs `xmin=0.50` | Text order is left column then right; sections may span both |
+| Block text cut mid-word at page break | Section spans pages; collect blocks from multiple pages |
+| `marginalia` blocks at `ymin<0.08` or `ymax>0.90` | Running headers / page numbers → exclude from content extraction |
 | Scanned / handwritten content visible in page image | PyMuPDF text extraction won't work → use Tesseract OCR |
 
-### Tool 3 — Post-Crop Visual Verification (mandatory for bounding-box workflows) {#post-crop-verification}
+### Tool 3: Post-Crop Visual Verification (mandatory for bounding-box workflows) {#post-crop-verification}
 
 After producing any bounding-box crop or overlay (figure extraction, chunk
 cropping, table cell extraction, word-level grounding), **read back at least
 one output PNG as an image** and describe what you see. Compare your
 description against the user's request. This catches:
 
-- **Wrong-page bugs** — ADE page numbers are 0-indexed; an off-by-one error
-  lands the crop on an adjacent page with completely different content
-- **Wrong-region bugs** — coordinate system mismatches that crop blank space
+- **Wrong-page bugs**: v2 page numbers are 1-indexed (v1 used 0-indexed), so
+  renderer indexing needs `page - 1`; an off-by-one error lands the crop on
+  an adjacent page with completely different content
+- **Wrong-region bugs**: coordinate system mismatches that crop blank space
   or an unrelated section
 
 > **Rule: never declare a crop workflow complete without visually reading at
@@ -167,7 +176,7 @@ the wrong section.
 
 ---
 
-## Quick Reference — Building Blocks
+## Quick Reference: Building Blocks
 
 | # | Block | Pattern | Reference |
 |---|-------|---------|-----------|
@@ -176,7 +185,7 @@ the wrong section.
 | 2 | Parse + Extract + Save | Single doc → structured data | [Below](#core-workflow) |
 | 3 | Batch (sync) | ThreadPoolExecutor + tqdm | [batch-processing.md](references/batch-processing.md) |
 | 4 | Batch (async) | AsyncLandingAIADE + aiolimiter | [batch-processing.md](references/batch-processing.md) |
-| 5 | Large files | Parse Jobs API (async polling) | [batch-processing.md](references/batch-processing.md) |
+| 5 | Large files | Parse Jobs v2 (wait helper, service tiers) | [batch-processing.md](references/batch-processing.md) |
 | 6 | Classify → Extract | Enum classification + schema routing | [Below](#classify-then-extract) |
 | 7 | Results → DataFrame | Flatten nested extraction to tables | [database-integration.md](references/database-integration.md) |
 | 8 | Results → CSV | Summary + per-document export | [database-integration.md](references/database-integration.md) |
@@ -194,9 +203,9 @@ the wrong section.
 | 20 | Multi-granularity RAG | Chunk vs hierarchical vs document-level strategy | [rag-pipelines.md](references/rag-pipelines.md) |
 | 21 | Table stitching | Parse-only or parse+extract merge of multi-page tables | [table-stitching.md](references/table-stitching.md) |
 | 22 | Page routing (Classify API) | Per-page class labels before parsing (Preview) | [Below](#classify-then-extract) |
-| 23 | TOC generation (Section API) | Hierarchical TOC from parsed markdown (Preview) | [Below](#section-extraction) |
-| 24 | Large extractions (async) | Extract Jobs: create → poll → read (REST API, no SDK method) | [document-extraction SKILL.md](../document-extraction/SKILL.md) |
-| — | Schema catalog | Ready-to-use Pydantic models | [schema-catalog.md](references/schema-catalog.md) |
+| 23 | TOC generation (Section API) | Hierarchical TOC from v1 parsed markdown (Preview, v1 pipeline) | [Below](#section-extraction) |
+| 24 | Large extractions (async) | Extract Jobs v2: create → wait (client.v2.extract_jobs) | [document-extraction SKILL.md](../document-extraction/SKILL.md) |
+|: | Schema catalog | Ready-to-use Pydantic models | [schema-catalog.md](references/schema-catalog.md) |
 
 ---
 
@@ -209,7 +218,6 @@ from pathlib import Path
 from typing import Any, Tuple, Type
 
 from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
 
 
 def parse_extract_save(
@@ -221,24 +229,24 @@ def parse_extract_save(
     """Parse a document, extract structured data, save both
     as JSON via save_to. Returns (parse_result, extract_result)."""
     stem = doc_path.stem
-    parse_result = client.parse(
+    parse_result = client.v2.parse(
         document=doc_path,
         save_to=output_dir,
     )
-    extract_result = client.extract(
-        schema=pydantic_to_json_schema(schema_cls),
+    extract_result = client.v2.extract(
         markdown=parse_result.markdown,
+        schema=schema_cls,  # v2 accepts the Pydantic class directly
         save_to=output_dir / f"{stem}_extract_output.json",
     )
     return parse_result, extract_result
 ```
 
-> **`save_to` parameter:** Available on `parse()`, `extract()`, and `split()`
-> (both sync and async clients). Pass a directory to auto-name the file
-> `{input_filename}_{method}_output.json`, or pass a path ending in `.json`
-> to save to that exact location. Parent directories are created
-> automatically. Full-path mode and async `save_to` require
-> `landingai-ade` v1.13.0+.
+> **`save_to` parameter:** Available on `client.v2.parse()` and
+> `client.v2.extract()` (both sync and async clients); the async job
+> `create` methods do not accept it. Pass a directory to auto-name the
+> file `{input_filename}_{method}_output.json`, or a path ending in
+> `.json` to save to that exact location. Parent directories are created
+> automatically. Requires `landingai-ade` v1.13.0+.
 
 ### Parse-Only (no extraction)
 
@@ -248,7 +256,7 @@ def parse_and_save(
     client: LandingAIADE,
     output_dir: str = "./ade_results",
 ) -> Any:
-    return client.parse(
+    return client.v2.parse(
         document=doc_path, save_to=output_dir,
     )
 ```
@@ -294,20 +302,19 @@ def classify_and_extract(
 ) -> dict:
     """Classify a document then extract with the matching
     schema."""
-    pr = client.parse(document=doc_path)
+    pr = client.v2.parse(document=doc_path)
 
-    # Classify using first page
-    cls = client.extract(
-        schema=pydantic_to_json_schema(DocType),
+    # Classify with a one-field extraction
+    cls = client.v2.extract(
         markdown=pr.markdown,
+        schema=DocType,
     )
     doc_type: str = cls.extraction["type"]
 
     # Extract with type-specific schema
-    schema_cls = SCHEMA_MAP[doc_type]
-    er = client.extract(
-        schema=pydantic_to_json_schema(schema_cls),
+    er = client.v2.extract(
         markdown=pr.markdown,
+        schema=SCHEMA_MAP[doc_type],
     )
     return {
         "type": doc_type,
@@ -317,18 +324,22 @@ def classify_and_extract(
     }
 ```
 
-### Approach 2: Split API (multi-document PDFs)
+### Approach 2: Split API (multi-document PDFs, v1 pipeline)
 
 When a single PDF contains multiple document types (e.g., a packet with
-invoices + receipts), use the Split API first:
+invoices + receipts), use the Split API first. **Split requires v1 Parse
+output, so this pipeline stays on the v1 APIs end to end** (v1 Extract
+needs the schema as a JSON string via `pydantic_to_json_schema`):
 
 ```python
+from landingai_ade.lib import pydantic_to_json_schema
+
 def split_classify_extract(
     pdf_path: Path,
     client: LandingAIADE,
     split_classes: list[dict],
 ) -> list[dict]:
-    """Split a multi-doc PDF, classify each split, extract."""
+    """Split a multi-doc PDF, classify each split, extract. v1 pipeline."""
     pr = client.parse(document=pdf_path, split="page")
 
     # Split into sub-documents
@@ -393,19 +404,26 @@ pages_by_class: dict[str, list[int]] = defaultdict(list)
 for result in classify_response.classification:
     pages_by_class[result.class_].append(result.page)
 
-# Route accordingly (e.g., parse only invoice pages, skip others)
-print(f"Invoice pages: {pages_by_class['invoice']}")
-print(f"Bank statement pages: {pages_by_class['bank_statement']}")
+# Route accordingly: parse only the invoice pages with v2 Parse.
+# Classify pages are 0-indexed; v2 options.pages is 1-indexed, so add 1.
+invoice_pages = [p + 1 for p in pages_by_class["invoice"]]
+pr = client.v2.parse(
+    document=Path("batch.pdf"),
+    options={"pages": invoice_pages},
+)
 ```
 
 > Note: `result.class_` uses a trailing underscore because `class` is a Python reserved word.
-> See the `document-extraction` skill for full Classify API reference.
+> Classify is a v1 API but takes the raw document (not Parse output), so it composes
+> with v2 pipelines. See the `document-extraction` skill for full Classify API reference.
 
 ---
 
-## Section Extraction
+## Section Extraction (v1 pipeline)
 
 Use `client.section()` to generate a full hierarchical table of contents from parsed Markdown. The Section API maps the entire document structure and returns chunk references for each entry. Use for navigable TOC generation, section-aware RAG chunking, or scoping extraction queries to specific sections.
+
+**Section requires v1 Parse output** (it depends on the anchor tags only v1 Parse emits), so this pipeline stays on the v1 APIs. Do not pass v2 Parse Markdown to Section.
 
 ```python
 from landingai_ade import LandingAIADE
@@ -436,8 +454,8 @@ chunk_index = {c.id: c for c in parse_response.chunks}
 
 ## Multi-Page Table Stitching {#table-stitching}
 
-When a table spans multiple pages, ADE may emit it as separate table chunks
-per page — and may emit some pages as plain text instead of table chunks.
+When a table spans multiple pages, ADE may emit it as separate table blocks
+per page, and may emit some pages as plain text instead of table blocks.
 This inconsistency can occur on **any** page, not just the last one.
 
 Three approaches handle this, with different cost/accuracy/fragility
@@ -445,9 +463,9 @@ trade-offs:
 
 | Approach | ADE Calls | Handles non-table chunks | Fragility |
 |----------|-----------|--------------------------|-----------|
-| **A — Parse + Extract** | 2 | ✓ LLM reads full markdown | Low — no custom parsing |
-| **B — HTML table parsing** | 1 | ✓ with fallback regex | **High** — requires uniform row structure |
-| **C — pandas read_html** | 1 | ✗ misses non-table chunks | Medium |
+| **A: Parse + Extract** | 2 | ✓ LLM reads full markdown | Low: no custom parsing |
+| **B: HTML table parsing** | 1 | ✓ with fallback regex | **High**: requires uniform row structure |
+| **C: pandas read_html** | 1 | ✗ misses non-table chunks | Medium |
 
 **Decision guide:**
 - Use **Approach A** when accuracy is paramount and cost is secondary
@@ -462,9 +480,9 @@ Before choosing an approach, run the diagnostic parse (Tool 2) and check:
 
 | What to check | How | Why |
 |---------------|-----|-----|
-| Chunk types per page | Count `type == "table"` vs `"text"` per page | Any page may have inconsistent types |
-| Column count consistency | Compare column counts across table chunks | Inconsistent counts may indicate different tables |
-| Header row presence | Check first row of each table chunk | Needed for detection and row filtering |
+| Block types per page | Count `type == "table"` vs `"text"` blocks per page | Any page may have inconsistent types |
+| Column count consistency | Compare column counts across table blocks | Inconsistent counts may indicate different tables |
+| Header row presence | Check first row of each table block | Needed for detection and row filtering |
 | Non-target tables | Look for summary/metadata tables with same column count | Must distinguish target from others |
 | Row uniformity | Compare row structure across pages | Low uniformity makes Approach B fragile |
 
@@ -540,7 +558,7 @@ async def batch_parse_async(
             async with limiter:
                 return {
                     "path": fp,
-                    "result": await client.parse(document=fp),
+                    "result": await client.v2.parse(document=fp),
                 }
         except Exception as e:
             print(f"FAILED {fp.name}: {e}")
@@ -570,11 +588,11 @@ def rows_from_doc(
     extract_result: Any,
     run_id: str = "",
 ) -> tuple[dict, list[dict], list[dict], dict]:
-    """Returns (main_row, line_rows, chunk_rows, md_record).
+    """Returns (main_row, line_rows, block_rows, md_record).
 
     - main_row: flattened top-level fields (nested__field)
     - line_rows: one per list item (line items, transactions)
-    - chunk_rows: one per parsed chunk with bounding boxes
+    - block_rows: one per parsed block with page numbers
     - md_record: full markdown for traceability
     """
     doc_uuid = str(uuid.uuid4())
@@ -596,22 +614,23 @@ def rows_from_doc(
         for i, item in enumerate(v) if isinstance(item, dict)
     ]
 
-    # Chunk rows from parse result
-    chunk_rows = [
+    # Block rows from the v2 parse structure tree
+    block_rows = [
         {
             "doc_uuid": doc_uuid,
-            "chunk_id": getattr(ch, "id", None),
-            "chunk_type": getattr(ch, "type", None),
-            "page": ch.grounding.page if hasattr(ch, "grounding") else None,
+            "block_id": block.id,
+            "block_type": block.type,
+            "page": block.grounding.page,   # 1-indexed in v2
         }
-        for ch in (parse_result.chunks or [])
+        for page in (parse_result.structure.children if parse_result.structure else [])
+        for block in page.children
     ]
 
     md_record = {
         "doc_uuid": doc_uuid,
         "markdown": parse_result.markdown,
     }
-    return main_row, line_rows, chunk_rows, md_record
+    return main_row, line_rows, block_rows, md_record
 ```
 
 > **Full code** with Snowflake upload, UUID traceability, and bounding box
@@ -624,10 +643,9 @@ def rows_from_doc(
 Quick path from parsed documents to a queryable RAG system. Two
 embedding options: **local** (free, offline) or **API** (higher quality).
 
-### Option A — Local embeddings with FastEmbed (free)
+### Option A: Local embeddings with FastEmbed (free)
 
 ```python
-import re
 from fastembed import TextEmbedding
 
 
@@ -635,35 +653,37 @@ def ade_to_embeddings_local(
     parse_results: list[dict],
     model: str = "BAAI/bge-small-en-v1.5",
 ) -> list[dict]:
-    """Embed ADE chunks locally. Returns list of dicts with
+    """Embed ADE v2 blocks locally. Returns list of dicts with
     text, vector, and grounding metadata."""
     embedder = TextEmbedding(model_name=model)
     items: list[dict] = []
     for pr in parse_results:
-        for ch in (pr["parse_result"].chunks or []):
-            text = re.sub(
-                r"<a id='[^']*'>\s*</a>", "", ch.markdown,
-            ).strip()
-            if not text:
-                continue
-            items.append({
-                "text": text,
-                "source": pr["name"],
-                "page": ch.grounding.page,
-                "box": {
-                    "l": ch.grounding.box.left,
-                    "t": ch.grounding.box.top,
-                    "r": ch.grounding.box.right,
-                    "b": ch.grounding.box.bottom,
-                },
-            })
+        resp = pr["parse_result"]
+        for page in resp.structure.children:
+            for block in page.children:
+                r = block.grounding.range
+                text = resp.markdown[r.start:r.end].strip()
+                if not text:
+                    continue
+                items.append({
+                    "text": text,
+                    "source": pr["name"],
+                    "block_id": block.id,
+                    "page": block.grounding.page,   # 1-indexed
+                    "box": {
+                        "xmin": block.grounding.box.xmin,
+                        "ymin": block.grounding.box.ymin,
+                        "xmax": block.grounding.box.xmax,
+                        "ymax": block.grounding.box.ymax,
+                    },
+                })
     vecs = list(embedder.embed([i["text"] for i in items]))
     for item, vec in zip(items, vecs):
         item["vector"] = vec.tolist()
     return items
 ```
 
-### Option B — API embeddings with OpenAI
+### Option B: API embeddings with OpenAI
 
 ```python
 from langchain.docstore.document import Document
@@ -675,24 +695,29 @@ def ade_to_rag(
     parse_results: list[dict],
     embedding_model: str = "text-embedding-3-small",
 ) -> FAISS:
-    """Convert ADE parse results to a FAISS vector store.
+    """Convert ADE v2 parse results to a FAISS vector store.
 
     Args:
-        parse_results: list of {"name": str, "parse_result": ParseResponse}
+        parse_results: list of {"name": str, "parse_result": V2ParseResponse}
     """
-    docs = [
-        Document(
-            page_content=ch.markdown,
-            metadata={
-                "source": item["name"],
-                "chunk_type": getattr(ch, "type", ""),
-                "page": ch.grounding.page if hasattr(ch, "grounding") else -1,
-            },
-        )
-        for item in parse_results
-        for ch in (item["parse_result"].chunks or [])
-        if ch.markdown.strip()
-    ]
+    docs = []
+    for item in parse_results:
+        resp = item["parse_result"]
+        for page in resp.structure.children:
+            for block in page.children:
+                r = block.grounding.range
+                text = resp.markdown[r.start:r.end].strip()
+                if not text:
+                    continue
+                docs.append(Document(
+                    page_content=text,
+                    metadata={
+                        "source": item["name"],
+                        "block_type": block.type,
+                        "block_id": block.id,
+                        "page": block.grounding.page,
+                    },
+                ))
     return FAISS.from_documents(
         docs, OpenAIEmbeddings(model=embedding_model)
     )
@@ -704,9 +729,9 @@ def ade_to_rag(
 
 **Advanced RAG patterns in [rag-pipelines.md](references/rag-pipelines.md):**
 
-- **Embedding computation** (blocks 18–19) — choosing between local (FastEmbed, free) and API (OpenAI, higher quality) embeddings, including batch sizing and rate limiting
-- **Hierarchical chunking** (block 20) — embed at multiple granularities (chunk, section, document) for hybrid retrieval
-- **Multi-granularity RAG** (block 21) — combine chunk-level precision with document-level context, routing queries to the right embedding level based on scope
+- **Embedding computation** (blocks 18–19): choosing between local (FastEmbed, free) and API (OpenAI, higher quality) embeddings, including batch sizing and rate limiting
+- **Hierarchical chunking** (block 20): embed at multiple granularities (chunk, section, document) for hybrid retrieval
+- **Multi-granularity RAG** (block 21): combine chunk-level precision with document-level context, routing queries to the right embedding level based on scope
 
 ---
 
@@ -716,9 +741,8 @@ Quick snippet for bounding box overlays on parsed pages:
 
 ```python
 from PIL import Image, ImageDraw
-import pymupdf
 
-CHUNK_COLORS = {
+BLOCK_COLORS = {
     "text": (40, 167, 69),
     "table": (0, 123, 255),
     "figure": (255, 0, 255),
@@ -726,22 +750,25 @@ CHUNK_COLORS = {
 }
 
 def annotate_page(
-    img: Image.Image, chunks: list, page: int,
+    img: Image.Image, blocks: list, page_number: int,
 ) -> Image.Image:
+    """Draw block boxes for one page. page_number is 1-indexed (v2)."""
     annotated = img.copy()
     draw = ImageDraw.Draw(annotated)
     w, h = img.size
-    for ch in chunks:
-        if not hasattr(ch, "grounding") or ch.grounding.page != page:
+    for block in blocks:
+        if block.grounding.page != page_number:
             continue
-        box = ch.grounding.box
-        color = CHUNK_COLORS.get(getattr(ch, "type", ""), (200, 200, 200))
+        box = block.grounding.box
+        color = BLOCK_COLORS.get(block.type, (200, 200, 200))
         draw.rectangle(
-            [int(box.left * w), int(box.top * h),
-             int(box.right * w), int(box.bottom * h)],
+            [int(box.xmin * w), int(box.ymin * h),
+             int(box.xmax * w), int(box.ymax * h)],
             outline=color, width=3,
         )
     return annotated
+
+# blocks = [b for page in response.structure.children for b in page.children]
 ```
 
 > **Full code** with chunk image cropping, extraction-only overlays, and
@@ -757,7 +784,6 @@ Quick Streamlit app for interactive document processing:
 import streamlit as st
 from pathlib import Path
 from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
 
 st.title("Document Processor")
 
@@ -772,17 +798,19 @@ if uploaded:
     client = LandingAIADE()
 
     with st.spinner("Parsing..."):
-        pr = client.parse(document=tmp)
+        pr = client.v2.parse(document=tmp)
 
     st.subheader("Markdown Preview")
     st.markdown(pr.markdown[:2000])
 
-    st.subheader("Chunks")
-    for ch in pr.chunks:
-        with st.expander(
-            f"{ch.type} (page {ch.grounding.page})"
-        ):
-            st.text(ch.markdown[:500])
+    st.subheader("Blocks")
+    for page in pr.structure.children:
+        for block in page.children:
+            r = block.grounding.range
+            with st.expander(
+                f"{block.type} (page {block.grounding.page})"
+            ):
+                st.text(pr.markdown[r.start:r.end][:500])
 ```
 <!-- Requires: pip install landingai-ade streamlit -->
 
@@ -808,7 +836,7 @@ if uploaded:
 | Visualization | `pip install landingai-ade Pillow pymupdf` |
 | Word-level grounding | `pip install landingai-ade Pillow pymupdf pytesseract fuzzywuzzy` + `tesseract` binary |
 | Streamlit UI | `pip install landingai-ade streamlit` |
-| Schema conversion | `from landingai_ade.lib import pydantic_to_json_schema` (included in landingai-ade) |
+| Schema conversion | v2: pass the Pydantic class directly to `schema=`. v1 only: `from landingai_ade.lib import pydantic_to_json_schema` (included in landingai-ade) |
 
 ---
 
@@ -816,9 +844,9 @@ if uploaded:
 
 Read these for full implementations when building a specific workflow:
 
-- **[schema-catalog.md](references/schema-catalog.md)** — Ready-to-use Pydantic schemas for invoice, utility bill, bank statement, pay stub, food label, CME certificate, and document classification
-- **[batch-processing.md](references/batch-processing.md)** — ThreadPoolExecutor, AsyncLandingAIADE, and Parse Jobs API patterns with full error handling
-- **[rag-pipelines.md](references/rag-pipelines.md)** — Chunks to CSV, ChromaDB ingestion, FAISS + LangChain, and RAG query chains
-- **[database-integration.md](references/database-integration.md)** — DataFrame normalization, Snowflake upload, and CSV export patterns
-- **[visualization.md](references/visualization.md)** — Chunk image cropping, bounding box overlays, and word-level OCR grounding
-- **[table-stitching.md](references/table-stitching.md)** — Parse+Extract (robust), HTML parsing (fragile), and pandas approaches for merging multi-page tables into a single output
+- **[schema-catalog.md](references/schema-catalog.md)**: Ready-to-use Pydantic schemas for invoice, utility bill, bank statement, pay stub, food label, CME certificate, and document classification
+- **[batch-processing.md](references/batch-processing.md)**: ThreadPoolExecutor, AsyncLandingAIADE, and Parse Jobs API patterns with full error handling
+- **[rag-pipelines.md](references/rag-pipelines.md)**: Chunks to CSV, ChromaDB ingestion, FAISS + LangChain, and RAG query chains
+- **[database-integration.md](references/database-integration.md)**: DataFrame normalization, Snowflake upload, and CSV export patterns
+- **[visualization.md](references/visualization.md)**: Chunk image cropping, bounding box overlays, and word-level OCR grounding
+- **[table-stitching.md](references/table-stitching.md)**: Parse+Extract (robust), HTML parsing (fragile), and pandas approaches for merging multi-page tables into a single output

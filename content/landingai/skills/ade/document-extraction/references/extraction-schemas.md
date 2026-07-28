@@ -1,10 +1,13 @@
 # Extraction Schema Patterns
 
-This reference provides patterns and examples for creating extraction schemas for the LandingAI ADE Extract API.
+This reference provides patterns and examples for creating extraction schemas for the LandingAI ADE Extract APIs. The schema language (types, `description`, `enum`, `format`, `x-alternativeNames`) is the same for the v2 and v1 Extract APIs; the JSON patterns below work with both.
 
 ## Overview
 
-Extraction schemas are JSON Schema objects that define what structured data should be extracted from parsed documents. You can use either JSON Schema format (for API calls) or Pydantic models (when using the Python library).
+Extraction schemas are JSON Schema objects that define what structured data should be extracted from parsed documents. How you pass the schema differs by API version:
+
+- **v2** (`client.v2.extract()`): pass a Pydantic `BaseModel` class, a plain dict, or a JSON string directly to `schema=`.
+- **v1** (`client.extract()`): `schema=` must be a JSON **string**. Convert Pydantic models with `pydantic_to_json_schema()` and dicts with `json.dumps()`.
 
 ## Basic Structure
 
@@ -197,20 +200,35 @@ The `nullable` keyword is silently ignored by the API.
 
 ## Pydantic Example (Python Library)
 
-When using the landingai-ade Python library, use Pydantic models:
+When using the landingai-ade Python library, define schemas as Pydantic models:
 
 ```python
 from pydantic import BaseModel, Field
-from landingai_ade.lib import pydantic_to_json_schema
 
 class Invoice(BaseModel):
     invoice_number: str = Field(description="Invoice number")
     invoice_date: str = Field(description="Invoice date")
     total_amount: float = Field(description="Total amount in USD")
     vendor_name: str = Field(description="Vendor name")
+```
 
-# Convert to JSON schema
-schema = pydantic_to_json_schema(Invoice)
+**v2 Extract:** pass the class directly; the SDK converts it for you.
+
+```python
+from landingai_ade import LandingAIADE
+
+client = LandingAIADE()
+response = client.v2.extract(markdown=markdown_text, schema=Invoice)
+```
+
+**v1 Extract:** convert to a JSON string first.
+
+```python
+from landingai_ade import LandingAIADE
+from landingai_ade.lib import pydantic_to_json_schema
+
+client = LandingAIADE()
+response = client.extract(markdown=markdown_text, schema=pydantic_to_json_schema(Invoice))
 ```
 
 ## Best Practices
@@ -250,9 +268,19 @@ Example:
 
 ## Model-Specific Considerations
 
-### extract-20260314 (Current Default)
+### v2 Extract (extract-20260710, default for client.v2.extract)
 
-This is the default extraction model (also selected by `extract-latest`).
+The v2 Extract API's `extract-latest` currently resolves to `extract-20260710`. Its model namespace is separate from v1's.
+
+**Supported keywords:** `type`, `description`, `properties` (objects), `items` (arrays), `enum` (string values only), `format`, `x-alternativeNames`, and `additionalProperties` (boolean values only).
+
+**Keyword handling difference from v1:** unsupported keywords (`allOf`, `oneOf`, `const`, `pattern`, `maximum`, and others) are **removed silently** before extraction; they do not cause errors. Reference keywords (`$ref`, `$defs`, and similar) are resolved then removed; `anyOf` resolves as in v1 (null removed, else falls back to string); `required`, `nullable`, `title`, and `default` are removed. With `strict=True`, schemas containing unsupported content return HTTP 422 instead.
+
+All fields are treated as required and nullable: a field the model cannot find comes back as `null` (arrays as `[]`), and its `extraction_metadata` entry has `value` and `ranges` of `null` when synthesized or missing.
+
+### extract-20260314 (v1 Extract default)
+
+This is the default model for the v1 Extract API (also selected by v1's `extract-latest`).
 
 **Supported Keywords:**
 - `type`, `description`, `properties` (for objects), `items` (for arrays)

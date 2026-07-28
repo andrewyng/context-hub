@@ -4,17 +4,16 @@ Three approaches for processing multiple documents, from simplest to most
 scalable. All patterns include per-document error handling so one failure
 doesn't stop the batch.
 
-> **SDK version:** These patterns use `save_to` in directory mode and
-> full-path mode (for per-document filenames when the input is a raw
-> Markdown string). Full-path mode and async `save_to` require
-> `landingai-ade` v1.13.0+. On older versions, fall back to a manual
-> `model_dump()`+`json.dumps` write.
+> **API version:** These patterns use the ADE v2 APIs (`client.v2.*`),
+> which require `landingai-ade` v1.13.0+. `save_to` works on
+> `client.v2.parse()` and `client.v2.extract()` in directory mode and
+> full-path mode, but not on the async job `create` methods.
 
 ---
 
-## 1. Sync Parallel — ThreadPoolExecutor
+## 1. Sync Parallel: ThreadPoolExecutor
 
-Best for: moderate batches (10–200 docs), simple scripts, notebooks.
+Best for: moderate batches (10 to 200 docs), simple scripts, notebooks.
 
 ```python
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -22,7 +21,6 @@ from pathlib import Path
 from typing import Any, List, Tuple, Type
 
 from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
 from tqdm import tqdm
 
 
@@ -36,12 +34,13 @@ def parse_extract_save(
     results as JSON via save_to.
     Returns (parse_result, extract_result)."""
     stem = doc_path.stem
-    parse_result = client.parse(
+    parse_result = client.v2.parse(
         document=doc_path,
+        model="dpt-3-pro-latest",
         save_to=output_dir,
     )
-    extract_result = client.extract(
-        schema=pydantic_to_json_schema(schema_cls),
+    extract_result = client.v2.extract(
+        schema=schema_cls,  # v2 accepts the Pydantic class directly
         markdown=parse_result.markdown,
         save_to=output_dir / f"{stem}_extract_output.json",
     )
@@ -107,7 +106,7 @@ print(f"Processed {len(results)}/{len(files)} documents")
 
 ---
 
-## 2. Async Parallel — AsyncLandingAIADE
+## 2. Async Parallel: AsyncLandingAIADE
 
 Best for: large batches (100+ docs), CLI tools, production pipelines.
 Uses `asyncio` + `aiolimiter` for rate-limited concurrency.
@@ -117,7 +116,6 @@ import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import pandas as pd
 from aiolimiter import AsyncLimiter
 from landingai_ade import AsyncLandingAIADE
 
@@ -141,8 +139,9 @@ async def process_document(
     """Parse one document async, save JSON + markdown."""
     try:
         async with rate_limiter:
-            result = await client.parse(
+            result = await client.v2.parse(
                 document=file_path,
+                model="dpt-3-pro-latest",
                 save_to=output_dirs["json"],
             )
 
@@ -216,28 +215,30 @@ print(f"Parsed {len(results)} documents")
 ### Adding Extraction to Async Pipeline
 
 ```python
-import io
-from landingai_ade.lib import pydantic_to_json_schema
+import asyncio
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+from aiolimiter import AsyncLimiter
+from landingai_ade import AsyncLandingAIADE
 
 
 async def process_with_extraction(
     file_path: Path,
     client: AsyncLandingAIADE,
     schema_cls: type,
-    output_dirs: Dict[str, Path],
     rate_limiter: AsyncLimiter,
 ) -> Optional[Dict[str, Any]]:
     try:
         async with rate_limiter:
-            parse_result = await client.parse(
-                document=file_path
+            parse_result = await client.v2.parse(
+                document=file_path,
+                model="dpt-3-pro-latest",
             )
         async with rate_limiter:
-            extract_result = await client.extract(
-                schema=pydantic_to_json_schema(schema_cls),
-                markdown=io.BytesIO(
-                    parse_result.markdown.encode("utf-8")
-                ),
+            extract_result = await client.v2.extract(
+                schema=schema_cls,
+                markdown=parse_result.markdown,
             )
         return {
             "path": file_path,
@@ -251,60 +252,60 @@ async def process_with_extraction(
 
 ---
 
-## 3. Large File Processing — Parse Jobs API
+## 3. Large File Processing: Parse Jobs v2
 
-Best for: files > 50 MB (up to ~1 GB). Uses async job submission +
-polling instead of synchronous upload.
+Best for: files over the sync limits (50 MiB / 100 pages per PDF).
+Parse Jobs accepts up to 1 GiB per PDF (50 MiB per image) and 6,000
+pages. Jobs default to the `standard` service tier (half the credits of
+`priority`, slower turnaround); pass `service_tier="priority"` for
+time-sensitive jobs.
 
 ```python
-import time
 from pathlib import Path
 from typing import Any
 
 from landingai_ade import LandingAIADE
+from landingai_ade.lib.v2_errors import JobFailedError, JobWaitTimeoutError
 
 
 def parse_large_file(
     file_path: Path,
     client: LandingAIADE,
-    poll_interval: int = 10,
-    max_wait: int = 600,
+    timeout: float = 900.0,
+    service_tier: str = "standard",
 ) -> Any:
-    """Submit a large file as a parse job and poll until
-    complete.
+    """Submit a large file as a parse job and wait until it
+    finishes.
 
-    Returns the parse result (same shape as client.parse()).
+    Returns the parse result (a full V2ParseResponse, same
+    shape as client.v2.parse()).
     """
-    # Step 1 — Submit job
-    job = client.parse(
-        document=file_path, is_async=True
+    job = client.v2.parse_jobs.create(
+        document=file_path,
+        model="dpt-3-pro-latest",
+        service_tier=service_tier,
     )
-    job_id = job.request_id
-    print(f"Job submitted: {job_id}")
+    print(f"Job submitted: {job.job_id}")
 
-    # Step 2 — Poll for completion
-    elapsed = 0
-    while elapsed < max_wait:
-        status = client.get_parse_job(job_id)
-        if status.status == "complete":
-            print(f"Job complete after {elapsed}s")
-            return status.data
-        if status.status == "failed":
-            raise RuntimeError(
-                f"Parse job {job_id} failed: {status}"
-            )
-        time.sleep(poll_interval)
-        elapsed += poll_interval
-
-    raise TimeoutError(
-        f"Job {job_id} not complete after {max_wait}s"
+    # wait() polls get() with backoff until the job is terminal
+    done = client.v2.parse_jobs.wait(
+        job.job_id,
+        timeout=timeout,
+        raise_on_failure=True,  # raises JobFailedError on failure
     )
+    return done.result
 ```
 
 ### Batch Large Files
 
 ```python
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Any
+
+from landingai_ade import LandingAIADE
+from landingai_ade.lib.v2_errors import JobFailedError, JobWaitTimeoutError
+
 
 def batch_parse_large(
     file_paths: list[Path],
@@ -320,13 +321,21 @@ def batch_parse_large(
             for fp in file_paths
         }
         for fut in futures:
+            fp = futures[fut]
             try:
                 results.append(fut.result())
+            except JobFailedError as exc:
+                print(f"JOB FAILED {fp.name}: {exc}")
+            except JobWaitTimeoutError:
+                print(f"TIMEOUT {fp.name}: still running; poll later with parse_jobs.get()")
             except Exception as exc:
-                fp = futures[fut]
                 print(f"FAILED {fp.name}: {exc}")
     return results
 ```
+
+A cheaper fire-and-poll alternative for very large batches: create all
+jobs first (collecting `job_id`s), then `wait()` on each in turn. Jobs
+run server-side regardless of whether a client is waiting.
 
 ---
 
@@ -336,9 +345,10 @@ def batch_parse_large(
 |---------|---------------|
 | API rate limits | Use `aiolimiter.AsyncLimiter(30, 60)` for async; limit `max_workers` for sync |
 | Transient failures | Wrap individual doc processing in try/except; log and continue |
-| Large batches (1000+) | Use async pattern with `rate_limit=20`; monitor API response times |
+| Large batches (1000+) | Use async pattern with `rate_limit=20`, or submit Parse Jobs at `service_tier="standard"` |
 | Memory | Process results incrementally (save to disk per doc) rather than accumulating in memory |
 | Retries | Add exponential backoff for 429/5xx errors: `tenacity.retry(wait=wait_exponential())` |
+| Sync timeouts | `client.v2.parse()` raises `V2SyncTimeoutError` on HTTP 504; switch that document to Parse Jobs |
 
 ### Dependencies
 
@@ -347,7 +357,7 @@ def batch_parse_large(
 pip install landingai-ade tqdm
 
 # Async parallel
-pip install landingai-ade aiolimiter pandas
+pip install landingai-ade aiolimiter
 
-# Large files — no extra deps beyond landingai-ade
+# Large files (Parse Jobs): no extra deps beyond landingai-ade
 ```

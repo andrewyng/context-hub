@@ -1,8 +1,10 @@
-# Chunk Types Reference
+# Chunk Types Reference (v1 Parse)
+
+> **Scope: v1 Parse API only.** Chunks exist only in the v1 Parse response. The v2 Parse API returns **blocks** in a `structure` tree instead (types: `text`, `table`, `table_cell`, `figure`, `marginalia`, `attestation`, `logo`, `card`, `scan_code`); see the "Understanding the Parse Response" section in [SKILL.md](../SKILL.md). Use this file when working with v1 Parse output (see [v1-parse-extract.md](v1-parse-extract.md)).
 
 ## Overview
 
-A **chunk** is a discrete element extracted from a document during parsing. When you send a document to ADE, it analyzes the content, breaks it down into meaningful elements, and returns each as a chunk with structured metadata describing its content and location.
+A **chunk** is a discrete element extracted from a document during parsing. When you send a document to the v1 Parse API, it analyzes the content, breaks it down into meaningful elements, and returns each as a chunk with structured metadata describing its content and location.
 
 ## What Is Semantic Chunking?
 
@@ -283,8 +285,7 @@ for chunk in response.chunks:
 ## Best Practices
 
 ### 1. Choose the Right Model
-- Use **DPT-2** for documents with logos, signatures, ID cards, or barcodes
-- Use **DPT-2 mini** for simple, digitally-native documents
+- Use **DPT-2** (`dpt-2-latest` or a dated snapshot) for v1 parsing, including documents with logos, signatures, ID cards, or barcodes
 
 ### 2. Filter Chunks by Type
 Filter chunks to focus on relevant content for your use case:

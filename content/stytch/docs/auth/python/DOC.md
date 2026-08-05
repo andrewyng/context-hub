@@ -3,8 +3,9 @@ name: auth
 description: "Stytch Python SDK authentication guide for passwordless and OTP-based authentication"
 metadata:
   languages: "python"
-  versions: "13.28.0"
-  updated-on: "2026-03-02"
+  versions: "15.2.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "stytch,auth,authentication,passwordless,otp"
 ---
@@ -19,7 +20,7 @@ metadata:
 pip install stytch
 ```
 
-**Current version: 13.28.0**
+**Current version: 15.2.0**
 
 **DO NOT use:**
 - Any unofficial or outdated Stytch packages

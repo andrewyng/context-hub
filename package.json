@@ -2,6 +2,9 @@
   "name": "context-hub",
   "private": true,
   "type": "module",
+  "scripts": {
+    "prepare:cdn": "node scripts/prepare-cdn-build.mjs"
+  },
   "workspaces": [
     "cli"
   ]

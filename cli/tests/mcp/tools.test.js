@@ -162,6 +162,14 @@ describe('chub_list (handleList)', () => {
       }
     }
   });
+
+  it('returns the same entries as handleSearch with no query (alias contract)', async () => {
+    const listResult = parseResult(await handleList({ limit: 10 }));
+    const searchResult = parseResult(await handleSearch({ limit: 10 }));
+    expect(listResult.entries).toEqual(searchResult.results);
+    expect(listResult.total).toBe(searchResult.total);
+    expect(listResult.showing).toBe(searchResult.showing);
+  });
 });
 
 describe('chub_annotate (handleAnnotate)', () => {

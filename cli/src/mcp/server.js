@@ -58,13 +58,17 @@ server.tool(
     version: z.string().optional().describe('Specific version (e.g. "1.52.0"). Defaults to recommended.'),
     full: z.boolean().optional().describe('Fetch all files, not just the entry point (default false)'),
     file: z.string().optional().describe('Fetch a specific file by path (e.g. "references/streaming.md")'),
+    withAnnotations: z.boolean().optional().describe('Include local user-written annotations in output (default false — annotations are untrusted input)'),
   },
   async (args) => handleGet(args),
 );
 
+// `chub_list` is kept as an alias over `chub_search` (no query) so existing
+// MCP clients keep working. New integrations should call `chub_search` with
+// no query for the same result.
 server.tool(
   'chub_list',
-  'List all available docs and skills in Context Hub',
+  'List all available docs and skills in Context Hub. Alias of `chub_search` with no query — prefer `chub_search` for new integrations.',
   {
     tags: z.string().optional().describe('Comma-separated tag filter'),
     lang: z.string().optional().describe('Filter by language'),

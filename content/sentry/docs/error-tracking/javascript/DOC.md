@@ -3,19 +3,20 @@ name: error-tracking
 description: "Sentry JavaScript SDK for error tracking, performance monitoring, and distributed tracing in Node.js and browser applications."
 metadata:
   languages: "javascript"
-  versions: "10.23.0"
-  updated-on: "2026-03-01"
+  versions: "10.55.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "sentry,monitoring,error-tracking,performance,tracing"
 ---
 
-# Sentry JavaScript SDK (10.23.0)
+# Sentry JavaScript SDK (10.55.0)
 
 ## Golden Rule
 
 **ALWAYS use `@sentry/node` for Node.js applications or `@sentry/browser` for browser applications.**
 
-The current stable version is **10.23.0**. Do not use deprecated packages like `raven` or `raven-js`.
+The current stable version is **10.55.0**. Do not use deprecated packages like `raven` or `raven-js`.
 
 For framework-specific applications, use the appropriate package:
 - `@sentry/react` for React

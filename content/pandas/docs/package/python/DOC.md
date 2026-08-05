@@ -1,58 +1,46 @@
 ---
 name: package
-description: "pandas package guide for Python 3.0.1: installation, DataFrame workflows, IO, options, and 3.0 migration notes"
+description: "pandas package guide for Python 3.0.3: DataFrame/Series, IO, selection, groupby, joins, reshape, datetime, and missing data"
 metadata:
   languages: "python"
-  versions: "3.0.1"
-  revision: 1
-  updated-on: "2026-03-11"
+  versions: "3.0.3"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
-  tags: "pandas,dataframe,data-analysis,io,timeseries,pyarrow"
+  tags: "pandas,dataframe,series,io,groupby,join,reshape,datetime"
 ---
 
 # pandas Python Package Guide
 
 ## Golden Rule
 
-Use `pandas` when you need labeled tabular data in Python: `Series` for 1D data and `DataFrame` for 2D data. Treat the official getting started, user guide, and API reference as the source of truth for method behavior and optional IO dependencies.
+Use `pandas` when you need labeled tabular data in Python. `Series` is 1D, `DataFrame` is 2D. Prefer vectorized operations over `apply`/`map` over Python loops.
 
 ## Installation
 
-### pip
-
 ```bash
-pip install pandas==3.0.1
+pip install pandas==3.0.3
 ```
-
-### conda-forge
 
 ```bash
 conda install -c conda-forge pandas
 ```
 
-### Common optional extras
+Common extras:
 
 ```bash
+pip install "pandas[parquet]"
 pip install "pandas[excel]"
 pip install "pandas[performance]"
-pip install "pandas[aws]"
-pip install "pandas[parquet]"
 pip install "pandas[all]"
 ```
 
-Use extras only when the workflow needs them. pandas raises `ImportError` when you call a method that depends on an optional package you did not install.
-
-Examples from the official docs:
-
-- Excel IO needs engines such as `openpyxl`, `python-calamine`, or `xlsxwriter`
-- SQL workflows commonly use `sqlalchemy`
-- Remote filesystem URLs rely on `fsspec`-style backends
-- Performance-sensitive work can benefit from `numexpr`, `bottleneck`, and `numba`
-
-## Initialize And Inspect Data
+## DataFrame And Series
 
 ```python
 import pandas as pd
+
+s = pd.Series([1, 2, 3], name="x", index=["a", "b", "c"])
 
 df = pd.DataFrame(
     {
@@ -62,222 +50,219 @@ df = pd.DataFrame(
     }
 )
 
-print(df.dtypes)
-print(df.head())
-print(df.describe(include="all"))
+df.dtypes
+df.shape
+df.head()
+df.describe(include="all")
 ```
 
-Use `DataFrame` for table-shaped data and `Series` for a single labeled column. The package overview and API reference organize pandas around `Series`, `DataFrame`, `GroupBy`, `Resampling`, `Window`, IO, and options/settings.
+## IO
 
-## Core Workflows
-
-### Read and write tabular data
+### CSV
 
 ```python
-import pandas as pd
-
-df = pd.read_csv("input.csv")
-df.to_parquet("output.parquet", index=False)
+df = pd.read_csv("input.csv", parse_dates=["date"], dtype={"id": "int64"})
+df.to_csv("out.csv", index=False)
 ```
 
-`read_*` and `to_*` cover CSV, Excel, JSON, HTML, XML, Parquet, Feather, SQL, and more.
-
-If you need Excel:
+### Parquet
 
 ```python
-df = pd.read_excel("input.xlsx")
-df.to_excel("output.xlsx", index=False)
+df = pd.read_parquet("input.parquet")
+df.to_parquet("out.parquet", index=False, compression="zstd")
 ```
 
-Make sure the matching engine is installed first.
-
-### Select, filter, and assign
+### SQL
 
 ```python
-active = df.loc[df["sales"] > 8, ["city", "sales"]]
-first_two_rows = df.iloc[:2, :]
+from sqlalchemy import create_engine
 
-df.loc[:, "sales_with_tax"] = df["sales"] * 1.1
+engine = create_engine("postgresql+psycopg://user:pass@host/db")
+df = pd.read_sql("select * from orders where created_at > %(d)s", engine, params={"d": "2026-01-01"})
+df.to_sql("orders_copy", engine, if_exists="replace", index=False)
 ```
 
-Use:
+For closer database type round-trips, pass `dtype_backend="pyarrow"`.
+
+## Selection
+
+```python
+df["sales"]                  # single column -> Series
+df[["city", "sales"]]        # multiple columns -> DataFrame
+
+df.loc[0, "sales"]           # label-based
+df.loc[df.index[:2], ["city", "sales"]]
+
+df.iloc[0, 1]                # position-based
+df.iloc[:2, :]
+df.iloc[-1]
+```
+
+Rule of thumb:
 
 - `[]` for simple column access
 - `loc` for label-based row/column selection
 - `iloc` for position-based selection
 
-### Aggregate with groupby
+## Filtering
 
 ```python
-summary = (
-    df.groupby("city", dropna=False)["sales"]
-    .agg(["count", "sum", "mean"])
-    .sort_values("sum", ascending=False)
-)
+df[df["sales"] > 8]
+df[(df["sales"] > 8) & (df["city"] != "NYC")]
+df.query("sales > 8 and city != 'NYC'")
+df[df["city"].isin(["SF", "SEA"])]
+df[df["city"].str.startswith("S")]
 ```
 
-`groupby` is the main split-apply-combine tool. Use `value_counts()` for quick category counts.
+Use `&`, `|`, `~` with parentheses, not Python `and`/`or`/`not`.
 
-### Join and reshape
+## GroupBy / Agg
+
+```python
+df.groupby("city")["sales"].sum()
+
+df.groupby("city").agg(
+    total=("sales", "sum"),
+    n=("sales", "count"),
+    avg=("sales", "mean"),
+)
+
+df.groupby(["city", df["date"].dt.month]).agg({"sales": ["sum", "mean"]})
+```
+
+`groupby` is the split-apply-combine tool. Use `dropna=False` to keep NaN groups. Use `value_counts()` for category counts.
+
+## Merge / Join / Concat
 
 ```python
 customers = pd.DataFrame({"customer_id": [1, 2], "name": ["A", "B"]})
 orders = pd.DataFrame({"customer_id": [1, 1, 2], "total": [25, 30, 20]})
 
-joined = customers.merge(orders, on="customer_id", how="left")
+# merge on key column
+customers.merge(orders, on="customer_id", how="left")
+
+# join on index
+customers.set_index("customer_id").join(orders.set_index("customer_id"), how="inner")
+
+# stack DataFrames
+pd.concat([df1, df2], axis=0, ignore_index=True)  # rows
+pd.concat([df1, df2], axis=1)                     # columns
 ```
 
-Use `merge`, `join`, `concat`, `pivot`, `pivot_table`, `stack`, and `unstack` for relational and reporting-style transforms.
+`how=` accepts `"inner"`, `"left"`, `"right"`, `"outer"`, `"cross"`.
 
-### Time series
+## Reshape
 
 ```python
-ts = (
-    df.set_index("date")
-    .sort_index()
-    .resample("MS")["sales"]
-    .sum()
-)
+# wide -> long
+long_df = df.melt(id_vars=["city"], value_vars=["sales"], var_name="metric", value_name="val")
+
+# long -> wide
+wide_df = long_df.pivot(index="city", columns="metric", values="val")
+
+# aggregated pivot
+pd.pivot_table(df, index="city", columns="date", values="sales", aggfunc="sum")
+
+# multi-index reshape
+df.set_index(["city", "date"]).unstack("date")
 ```
 
-Use `to_datetime`, `date_range`, timezone-aware dtypes, rolling windows, and `resample()` for date-based pipelines.
+## Datetime
 
-### Expression-based column creation
+```python
+df["date"] = pd.to_datetime(df["date"], utc=True)
+df["month"] = df["date"].dt.month
+df["dow"] = df["date"].dt.day_name()
 
-`pandas 3.0` added `pd.col()` for expression-style column references:
+# date range
+pd.date_range("2026-01-01", "2026-12-31", freq="MS")
+
+# resample needs a datetime index
+ts = df.set_index("date").sort_index()
+ts["sales"].resample("MS").sum()
+ts["sales"].rolling("7D").mean()
+```
+
+## Missing Data
+
+```python
+df.isna()
+df.isna().sum()
+df.dropna(subset=["sales"])
+df.fillna({"sales": 0, "city": "unknown"})
+df["sales"].ffill()
+df["sales"].bfill()
+```
+
+In pandas 3.0 the default string dtype changed; do not assume `object` dtype or a specific missing sentinel. Use `pd.NA`-aware checks.
+
+## Apply / Map vs Vectorized
+
+Vectorized first. Reach for `apply`/`map` only when no vectorized form exists.
+
+```python
+# Vectorized (fast)
+df["sales_with_tax"] = df["sales"] * 1.1
+df["city_lower"] = df["city"].str.lower()
+
+# Series.map: per-element scalar -> scalar
+df["region"] = df["city"].map({"SF": "west", "NYC": "east", "SEA": "west"})
+
+# Series.apply: when no vectorized form exists
+df["sales_str"] = df["sales"].apply(lambda v: f"${v:,.2f}")
+
+# DataFrame.apply along axis: slow; avoid when possible
+df["row_total"] = df[["sales"]].apply(sum, axis=1)
+```
+
+For column expressions, pandas 3.0 supports `pd.col()`:
 
 ```python
 df = df.assign(double_sales=pd.col("sales") * 2)
 ```
 
-This is useful in `assign`, `loc`, and similar places that accept callables returning a `Series`.
-
-## Config And Backend Integration
-
-### Display and runtime options
-
-Use the options API for temporary or global formatting changes:
-
-```python
-import pandas as pd
-
-pd.set_option("display.max_rows", 200)
-
-with pd.option_context("display.max_columns", 20, "display.width", 120):
-    print(df)
-```
-
-Important options APIs:
-
-- `pd.get_option()`
-- `pd.set_option()`
-- `pd.reset_option()`
-- `pd.describe_option()`
-- `pd.option_context()`
-
-Use full option names in code. Short patterns can become ambiguous across releases.
-
-### Remote files and cloud storage
-
-pandas itself does not have package-level authentication. Credentials come from the underlying storage or database backend.
-
-For remote files, use URL-aware readers and pass backend configuration through `storage_options` when needed:
-
-```python
-import pandas as pd
-
-df = pd.read_csv(
-    "s3://my-bucket/path/data.csv",
-    storage_options={"anon": False},
-)
-```
-
-The IO guide also shows passing backend-specific client settings via `storage_options`, for example `client_kwargs` for S3-compatible endpoints.
-
-### SQL connections
-
-```python
-import pandas as pd
-from sqlalchemy import create_engine
-
-engine = create_engine("postgresql+psycopg://user:pass@host/db")
-df = pd.read_sql("select * from orders", engine)
-```
-
-Put connection credentials in your database URL, driver config, environment, or secret manager. pandas reads through the DBAPI/SQLAlchemy connection you provide.
-
-If you care about preserving database types more closely, the IO guide recommends `dtype_backend="pyarrow"` for `read_sql()` round-trips.
-
 ## Common Pitfalls
 
-### Missing optional dependencies
+### Chained assignment
 
-Many pandas methods work only when their backend package is installed. Typical failures:
-
-- `read_excel()` without an Excel engine
-- `read_parquet()` without Parquet support
-- `read_csv("s3://...")` without the appropriate filesystem backend
-- `to_markdown()` without `tabulate`
-
-Install the matching extra or dependency before changing code.
-
-### Chained assignment changed in pandas 3.0
-
-In pandas 3.0, chained assignment no longer works as a mutation pattern. Old code like this is wrong:
+In pandas 3.0, chained assignment will not mutate.
 
 ```python
+# Wrong
 df[df["sales"] > 0]["sales"] = 0
-```
 
-Write the mutation in one step instead:
-
-```python
+# Right
 df.loc[df["sales"] > 0, "sales"] = 0
 ```
 
-### String dtype assumptions changed
+### SettingWithCopyWarning replaced by Copy-on-Write
 
-The pandas 3.0 release notes call out a new default string dtype. Code that assumes string columns stay `object` dtype, or code that depends on a specific missing-value sentinel, can break after upgrading.
+Operations that used to silently mutate views now produce independent objects. Reassign rather than mutate.
 
-### Be explicit with indexes before joins and resampling
+### Boolean operators on Series
 
-`merge`, `groupby`, and `resample` are easier to reason about when you normalize dtypes first and make the relevant key or timestamp column explicit.
+Use `&`/`|`/`~` with parentheses around comparisons.
 
-```python
-df["date"] = pd.to_datetime(df["date"], utc=True)
-df["customer_id"] = df["customer_id"].astype("int64")
-```
+### Optional IO dependencies
 
-### Large-data performance is opt-in
+`read_excel`, `read_parquet`, `to_markdown`, S3/GCS URLs, and SQLAlchemy backends each need their own packages.
 
-pandas is flexible, not magically distributed. For large datasets:
+## Version-Sensitive Notes For 3.0.3
 
-- install performance extras
-- prefer vectorized operations over Python loops
-- choose columnar formats like Parquet when possible
-- use `dtype_backend="pyarrow"` selectively when it improves downstream interoperability
-
-## Version-Sensitive Notes For 3.0.1
-
-- `pandas 3.0.0` was released on January 21, 2026 and introduced breaking behavior around Copy-on-Write semantics and chained assignment.
-- `pandas 3.0.0` also introduced `pd.col()` expression support.
-- `pandas 3.0.1` was released on February 17, 2026 and fixes early 3.0 regressions, including:
-  - unary operators on `pd.col()`
-  - some pyarrow-backed string operations
-  - a `merge()` bug involving `NaN` values in pyarrow-backed string join keys on Windows with pyarrow 21
-  - Copy-on-Write handling in some constructor paths
-
-If you are on `3.0.0` and using `pd.col()`, pyarrow-backed strings, or Windows joins, prefer `3.0.1`.
+- `3.0.0` (Jan 2026) introduced Copy-on-Write defaults, removed chained-assignment as a mutation pattern, added `pd.col()`, and changed the default string dtype.
+- `3.0.1` and later patch releases fix `pd.col()` unary operator edge cases, pyarrow string operation regressions, and `merge()` issues with NaN keys on pyarrow-backed strings.
+- If a project mixes pyarrow-backed strings with joins or unary `pd.col()`, prefer the latest 3.0.x.
 
 ## Official Sources
 
 - Docs root: https://pandas.pydata.org/docs/
 - API reference: https://pandas.pydata.org/docs/reference/index.html
 - Installation: https://pandas.pydata.org/docs/getting_started/install.html
-- Package overview: https://pandas.pydata.org/docs/getting_started/overview.html
-- Tutorials index: https://pandas.pydata.org/docs/getting_started/intro_tutorials/index.html
 - IO guide: https://pandas.pydata.org/docs/user_guide/io.html
-- Options guide: https://pandas.pydata.org/docs/user_guide/options.html
+- GroupBy guide: https://pandas.pydata.org/docs/user_guide/groupby.html
+- Merge/join: https://pandas.pydata.org/docs/user_guide/merging.html
+- Reshape: https://pandas.pydata.org/docs/user_guide/reshaping.html
+- Time series: https://pandas.pydata.org/docs/user_guide/timeseries.html
+- Missing data: https://pandas.pydata.org/docs/user_guide/missing_data.html
 - Release notes 3.0.0: https://pandas.pydata.org/docs/whatsnew/v3.0.0.html
-- Release notes 3.0.1: https://pandas.pydata.org/docs/whatsnew/v3.0.1.html
-- PyPI package: https://pypi.org/project/pandas/3.0.1/
+- PyPI package: https://pypi.org/project/pandas/

@@ -3,16 +3,16 @@ name: toolkit
 description: "Redux Toolkit for configuring Redux stores, creating slice reducers, handling async logic, and using RTK Query in JavaScript apps"
 metadata:
   languages: "javascript"
-  versions: "2.11.2"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "2.12.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "redux,redux-toolkit,state-management,rtk-query,javascript"
 ---
 
 # Redux Toolkit for JavaScript
 
-Use `@reduxjs/toolkit` to build Redux stores with `configureStore`, feature state with `createSlice`, async flows with `createAsyncThunk`, and data fetching with RTK Query. For React apps, pair it with `react-redux`.
+Use `@reduxjs/toolkit` (version `2.12.0`) to build Redux stores with `configureStore`, feature state with `createSlice`, async flows with `createAsyncThunk`, and data fetching with RTK Query. For React apps, pair it with `react-redux`.
 
 ## Golden Rules
 
@@ -42,9 +42,26 @@ If you use RTK Query against an HTTP API, set your app's API base URL however yo
 export VITE_API_URL="https://api.example.com"
 ```
 
-## Create a Store and Slice
+## configureStore
 
 `configureStore` is the standard entry point. When `reducer` is an object, it combines those slice reducers under the same keys. It also adds Redux Thunk and the default development middleware checks for immutable and serializable state, and enables Redux DevTools.
+
+`src/app/store.js`
+
+```javascript
+import { configureStore } from "@reduxjs/toolkit";
+import counterReducer from "../features/counter/counterSlice";
+
+export const store = configureStore({
+  reducer: {
+    counter: counterReducer,
+  },
+});
+```
+
+## createSlice
+
+`createSlice` generates action creators and a reducer from one definition. Reducer logic uses Immer, so you can write mutating-looking code and Toolkit produces an immutable update.
 
 `src/features/counter/counterSlice.js`
 
@@ -76,19 +93,6 @@ export const { increment, decrement, incrementByAmount, reset } =
   counterSlice.actions;
 
 export default counterSlice.reducer;
-```
-
-`src/app/store.js`
-
-```javascript
-import { configureStore } from "@reduxjs/toolkit";
-import counterReducer from "../features/counter/counterSlice";
-
-export const store = configureStore({
-  reducer: {
-    counter: counterReducer,
-  },
-});
 ```
 
 ## Connect Redux to React
@@ -138,7 +142,7 @@ export function Counter() {
 }
 ```
 
-## Handle Async Logic with `createAsyncThunk`
+## createAsyncThunk
 
 Use `createAsyncThunk` when you want explicit `pending` / `fulfilled` / `rejected` action types and reducer cases.
 
@@ -151,11 +155,13 @@ const apiBaseUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 export const fetchUserById = createAsyncThunk(
   "users/fetchById",
-  async (userId) => {
-    const response = await fetch(`${apiBaseUrl}/users/${userId}`);
+  async (userId, thunkApi) => {
+    const response = await fetch(`${apiBaseUrl}/users/${userId}`, {
+      signal: thunkApi.signal,
+    });
 
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
+      return thunkApi.rejectWithValue({ status: response.status });
     }
 
     return response.json();
@@ -248,9 +254,11 @@ export const store = configureStore({
 
 Only disable a check when your app really needs it. The defaults are helpful for catching accidental state mutations and non-serializable values during development.
 
-## Use RTK Query for API Data
+## RTK Query
 
-RTK Query is included in Redux Toolkit. In React apps, create an API slice with `createApi`, add its reducer and middleware to the store, call `setupListeners`, and use the generated hooks.
+RTK Query is included in Redux Toolkit. In React apps, create an API slice with `createApi`, declare endpoints, add its reducer and middleware to the store, call `setupListeners`, and use the generated hooks.
+
+### createApi and endpoints
 
 `src/services/postsApi.js`
 
@@ -264,9 +272,18 @@ export const postsApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: apiBaseUrl,
   }),
+  tagTypes: ["Post"],
   endpoints: (builder) => ({
     getPosts: builder.query({
       query: () => "/posts",
+      providesTags: (result = []) => [
+        "Post",
+        ...result.map(({ id }) => ({ type: "Post", id })),
+      ],
+    }),
+    getPostById: builder.query({
+      query: (id) => `/posts/${id}`,
+      providesTags: (_result, _error, id) => [{ type: "Post", id }],
     }),
     addPost: builder.mutation({
       query: (body) => ({
@@ -274,12 +291,19 @@ export const postsApi = createApi({
         method: "POST",
         body,
       }),
+      invalidatesTags: ["Post"],
     }),
   }),
 });
 
-export const { useGetPostsQuery, useAddPostMutation } = postsApi;
+export const {
+  useGetPostsQuery,
+  useGetPostByIdQuery,
+  useAddPostMutation,
+} = postsApi;
 ```
+
+### Wire RTK Query into the store
 
 `src/app/store.js`
 
@@ -300,6 +324,8 @@ export const store = configureStore({
 
 setupListeners(store.dispatch);
 ```
+
+### Use generated hooks in components
 
 `src/features/posts/PostsList.jsx`
 
@@ -354,6 +380,42 @@ export function PostsList() {
 
 Call `setupListeners(store.dispatch)` once after store creation if you want RTK Query features such as `refetchOnFocus` and `refetchOnReconnect`.
 
+## TypeScript: RootState and AppDispatch
+
+In TypeScript projects, derive `RootState` and `AppDispatch` from the configured store, then expose typed hooks. This keeps `useSelector` and `useDispatch` correctly typed against your actual store shape, including RTK Query state and thunk dispatch.
+
+`src/app/store.ts`
+
+```typescript
+import { configureStore } from "@reduxjs/toolkit";
+import counterReducer from "../features/counter/counterSlice";
+import { postsApi } from "../services/postsApi";
+
+export const store = configureStore({
+  reducer: {
+    counter: counterReducer,
+    [postsApi.reducerPath]: postsApi.reducer,
+  },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware().concat(postsApi.middleware),
+});
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+```
+
+`src/app/hooks.ts`
+
+```typescript
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "./store";
+
+export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
+export const useAppSelector = useSelector.withTypes<RootState>();
+```
+
+Use `useAppSelector` and `useAppDispatch` in components instead of the untyped hooks.
+
 ## Pitfalls
 
 - Reducers created with `createSlice` may appear to mutate state because Redux Toolkit uses Immer internally. That only applies inside reducer logic. Outside reducers, treat state as immutable.
@@ -361,3 +423,4 @@ Call `setupListeners(store.dispatch)` once after store creation if you want RTK 
 - Non-serializable values such as functions, class instances, DOM nodes, `Map`, `Set`, or promises can trigger the default middleware warnings.
 - RTK Query needs both `postsApi.reducer` and `postsApi.middleware` added to the store. Missing either one causes broken cache behavior.
 - Generated RTK Query hooks come from `@reduxjs/toolkit/query/react`. If you import from `@reduxjs/toolkit/query`, you do not get React hooks.
+- Define `RootState` and `AppDispatch` once from the configured store; do not hand-roll the types, or RTK Query and thunks will be missing from the union.

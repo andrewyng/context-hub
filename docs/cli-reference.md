@@ -6,9 +6,32 @@ Full command reference for Context Hub (`chub`).
 
 | Flag | Purpose |
 |------|---------|
-| `--json` | Structured JSON output (for agents and piping) |
+| `--json` | Structured JSON output for command results |
 | `--version` | Print CLI version |
-| `--help` | Show help |
+| `--help` | Show versioned bootstrap guidance |
+
+## Install as an Agent Skill
+
+Install `@aisuite/chub`, then copy the packaged `get-api-docs` skill into your
+agent's skill or rule directory:
+
+```bash
+cp $(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md <agent-skill-dir>/get-api-docs.md
+```
+
+The source skill lives in this repo at `cli/skills/get-api-docs/SKILL.md`.
+
+## chub / chub --help / chub -h / chub help
+
+Show bootstrap guidance for coding agents.
+
+- Bare `chub`, root `chub --help`, `chub -h`, and `chub help` print the same bootstrap guidance.
+- Root help stays human-readable even when `--json` is present.
+- All root help forms first try to fetch the same remote help document for the exact installed CLI version.
+- The remote document for a given CLI version can be revised over time to tune prompting for that same binary.
+- If the exact remote help document is unavailable or mismatched, it prints the bundled local help text shipped with the installed CLI.
+- Subcommand flags print command syntax help, e.g. `chub search --help`.
+- `chub help <command>` is not supported; use `chub <command> --help` instead.
 
 ## chub search [query]
 
@@ -128,7 +151,7 @@ Download or refresh the cached registry from remote sources.
 Manage the local cache.
 
 - `cache status` — shows cache info (sources, registries, sizes, last updated)
-- `cache clear` — removes cached content (`--force` to skip confirmation)
+- `cache clear` — removes cached content
 
 ## chub build \<content-dir\>
 
@@ -181,6 +204,8 @@ source: "official,maintainer,community"   # trust policy
 refresh_interval: 86400                   # cache TTL in seconds (24h)
 telemetry: true                           # anonymous usage analytics (passive)
 feedback: true                            # allow chub feedback to send ratings (explicit)
+help_url: https://cdn.aichub.org/v1/help/{version}.json   # optional versioned help override
+help_timeout_ms: 2000                     # exact-version remote help fetch timeout in milliseconds
 ```
 
 ### Telemetry

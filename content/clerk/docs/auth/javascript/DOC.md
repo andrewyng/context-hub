@@ -3,8 +3,9 @@ name: auth
 description: "Clerk JavaScript SDK for user authentication, session management, and identity workflows"
 metadata:
   languages: "javascript"
-  versions: "5.1.6"
-  updated-on: "2026-03-01"
+  versions: "7.4.2"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "clerk,auth,authentication,user-management,session"
 ---
@@ -32,10 +33,11 @@ This context guide covers both approaches comprehensively.
 
 Always use the appropriate Clerk SDK for your specific framework or environment. Clerk provides specialized packages for different platforms that include framework-specific optimizations and integrations.
 
-**Available Packages:**
-- **Next.js:** `@clerk/nextjs` 
-- **React:** `@clerk/react` 
-- **Vanilla JavaScript:** `@clerk/clerk-js` 
+**Available Packages (current pinned versions):**
+- **Next.js:** `@clerk/nextjs` `7.4.2`
+- **React:** `@clerk/react`
+- **Vanilla JavaScript:** `@clerk/clerk-js`
+- **Backend (Node) SDK:** `@clerk/clerk-sdk-node` `5.1.6` (use `@clerk/backend` for new projects)
 - **Vue:** `@clerk/vue`
 - **Astro:** `@clerk/astro`
 - **Remix:** `@clerk/remix`

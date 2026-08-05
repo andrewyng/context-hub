@@ -1,220 +1,242 @@
 ---
 name: package
-description: "DuckDB Python package guide for embedded SQL analytics, DataFrames, and file-backed workflows"
+description: "DuckDB Python package guide for 1.5.3: in-process API, connect, execute/sql/df, read_parquet/csv, pandas/polars/arrow integration"
 metadata:
   languages: "python"
-  versions: "1.5.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "1.5.3"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
-  tags: "duckdb,python,sql,analytics,dataframe,parquet"
+  tags: "duckdb,python,sql,analytics,parquet,pandas,polars,arrow"
 ---
 
 # duckdb Python Package Guide
 
 ## Golden Rule
 
-Use an explicit `duckdb.connect(...)` connection for application code, persistent databases, and threaded work. Reserve top-level `duckdb.sql(...)` for short interactive queries.
+Use `duckdb.connect(...)` for application code, persistent databases, and threaded work. Reserve top-level `duckdb.sql(...)` for short interactive queries.
 
-## What It Is
+## In-Process API
 
-`duckdb` embeds DuckDB inside your Python process. Common uses:
+`duckdb` runs DuckDB inside your Python process — no server, no socket. It can:
 
-- run SQL directly over local Parquet, CSV, and JSON files
-- query Pandas, Arrow, Polars, and NumPy data without moving data into a separate server
-- keep an in-memory database for analysis or a `.duckdb` file for local persistence
-- read from object storage such as S3 once extensions and credentials are configured
+- run SQL over local Parquet/CSV/JSON via `read_*`
+- query pandas/polars/arrow objects by variable name
+- persist to a `.duckdb` file or stay in memory
+- read from S3-compatible storage with extensions and secrets
 
 ## Install
 
 ```bash
-pip install duckdb==1.5.0
+pip install duckdb==1.5.3
 ```
-
-Check the installed version:
 
 ```bash
 python -c "import duckdb; print(duckdb.__version__)"
 ```
 
-Notes:
+Requires Python 3.9+.
 
-- The DuckDB Python client requires Python 3.9 or newer.
-
-## Quick Start
-
-### Ad hoc query
+## duckdb.connect
 
 ```python
 import duckdb
 
-result = duckdb.sql("SELECT 42 AS answer").fetchone()
-print(result[0])
-```
+# in-memory (private to this connection)
+con = duckdb.connect()
 
-### Persistent database file
-
-```python
-import duckdb
-
+# persistent file
 con = duckdb.connect("app.duckdb")
 
-con.execute("""
-    CREATE TABLE IF NOT EXISTS events (
-        id INTEGER,
-        kind VARCHAR,
-        created_at TIMESTAMP
-    )
-""")
+# read-only (safe when another process has the file)
+con = duckdb.connect("app.duckdb", read_only=True)
 
-con.execute(
-    "INSERT INTO events VALUES (?, ?, current_timestamp)",
-    [1, "signup"],
+# with engine config
+con = duckdb.connect(
+    "app.duckdb",
+    config={"threads": 4, "memory_limit": "4GB"},
 )
 
-rows = con.execute(
-    "SELECT id, kind FROM events WHERE kind = ?",
-    ["signup"],
-).fetchall()
+# shared named in-memory database (cross-connection state)
+con_a = duckdb.connect("file::memory:?cache=shared&name=analytics")
 
-print(rows)
 con.close()
 ```
 
-### Connection configuration
+Use a dedicated connection per unit of work or per thread.
 
-Pass engine settings at connect time:
+## execute / sql / df
 
-```python
-import duckdb
-
-con = duckdb.connect(
-    "app.duckdb",
-    config={
-        "threads": 4,
-        "memory_limit": "4GB",
-    },
-)
-```
-
-Use `read_only=True` when another process may already have the same database file open:
+### `execute()` — parameterized, returns the cursor
 
 ```python
-import duckdb
-
-con = duckdb.connect("app.duckdb", read_only=True)
-```
-
-## Core Usage Patterns
-
-### Query files directly
-
-DuckDB can query files without a load step:
-
-```python
-import duckdb
-
 con = duckdb.connect()
 
-count = con.execute("""
-    SELECT count(*)
-    FROM read_parquet('data/orders/*.parquet')
-    WHERE order_date >= DATE '2026-01-01'
-""").fetchone()[0]
-
-print(count)
-```
-
-The SQL shell syntax also works for some formats:
-
-```python
-import duckdb
-
-rows = duckdb.sql("SELECT * FROM 'data/example.parquet' LIMIT 5").fetchall()
-```
-
-### Query a Pandas DataFrame without registering it
-
-DuckDB's Python integration can discover DataFrames by variable name:
-
-```python
-import duckdb
-import pandas as pd
-
-orders = pd.DataFrame(
-    [
-        {"customer_id": 1, "total": 25},
-        {"customer_id": 2, "total": 50},
-        {"customer_id": 1, "total": 30},
-    ]
-)
-
-summary = duckdb.sql("""
-    SELECT customer_id, sum(total) AS total_spend
-    FROM orders
-    GROUP BY customer_id
-    ORDER BY total_spend DESC
-""").df()
-
-print(summary)
-```
-
-If you need persistence or indexes, materialize the DataFrame into a table:
-
-```python
-import duckdb
-import pandas as pd
-
-orders_df = pd.DataFrame([{"customer_id": 1, "total": 25}])
-
-con = duckdb.connect("analytics.duckdb")
-con.execute("CREATE OR REPLACE TABLE orders AS SELECT * FROM orders_df")
-```
-
-### Fetch results in the format you need
-
-```python
-import duckdb
-
-rel = duckdb.sql("SELECT * FROM range(5)")
-
-rows = rel.fetchall()
-df = rel.df()
-arrow_table = rel.fetch_arrow_table()
-numpy_cols = rel.fetchnumpy()
-```
-
-Use:
-
-- `fetchall()` or `fetchone()` for DB-API style results
-- `.df()` when the next step is Pandas
-- `.fetch_arrow_table()` for Arrow pipelines
-- `.fetchnumpy()` for NumPy-oriented code
-
-### Parameter binding
-
-Prefer parameters over string interpolation:
-
-```python
-import duckdb
-
-con = duckdb.connect()
-
-rows = con.execute(
+con.execute(
     "SELECT * FROM range(?) WHERE range < ?",
     [100, 10],
 ).fetchall()
+
+con.execute(
+    "SELECT * FROM range($n) WHERE range < $m",
+    {"n": 100, "m": 10},
+).fetchall()
 ```
 
-## Extensions, Remote Storage, and Credentials
+Use parameters; do not interpolate user input into SQL.
 
-Local files need no authentication. Remote object storage does.
+### `sql()` — returns a relation
 
-For S3 and S3-compatible storage, DuckDB recommends secrets-based configuration:
+```python
+rel = duckdb.sql("SELECT * FROM range(5)")
+
+rel.fetchall()
+rel.fetchone()
+rel.df()                  # pandas DataFrame
+rel.pl()                  # polars DataFrame
+rel.fetch_arrow_table()   # pyarrow Table
+rel.fetchnumpy()          # dict of numpy arrays
+```
+
+Relations are composable:
+
+```python
+rel = duckdb.sql("SELECT * FROM 'data/orders.parquet'")
+rel.filter("amount > 100").project("user_id, amount").order("amount DESC").df()
+```
+
+### Cursor on a specific connection
+
+```python
+con = duckdb.connect("app.duckdb")
+con.execute("SELECT count(*) FROM events").fetchone()
+con.sql("SELECT * FROM events LIMIT 10").df()
+```
+
+## Reading Parquet and CSV
 
 ```python
 import duckdb
 
+con = duckdb.connect()
+
+# Parquet
+con.sql("SELECT * FROM read_parquet('data/orders/*.parquet')").df()
+con.sql("SELECT * FROM 'data/orders/*.parquet'").df()  # shorthand for some formats
+
+# CSV
+con.sql("""
+    SELECT *
+    FROM read_csv('data/events.csv',
+                  header=true,
+                  delim=',',
+                  sample_size=100000)
+""").df()
+
+# JSON / NDJSON
+con.sql("SELECT * FROM read_json_auto('data/payload.json')").df()
+
+# Filter pushdown into Parquet
+con.sql("""
+    SELECT user_id, sum(amount) AS total
+    FROM read_parquet('data/orders/*.parquet')
+    WHERE order_date >= DATE '2026-01-01'
+    GROUP BY user_id
+""").df()
+```
+
+Glob patterns, partition discovery, and Hive partitioning are all SQL-side options on `read_parquet`.
+
+## Writing
+
+```python
+con.execute("""
+    COPY (SELECT * FROM events WHERE kind = 'signup')
+    TO 'out/signups.parquet'
+    (FORMAT PARQUET, COMPRESSION ZSTD)
+""")
+
+con.execute("COPY events TO 'out/events.csv' (HEADER, DELIMITER ',')")
+```
+
+## Integration With pandas / polars / arrow
+
+DuckDB queries Python variables by name in the current scope:
+
+```python
+import duckdb
+import pandas as pd
+import polars as pl
+import pyarrow as pa
+
+orders_pd = pd.DataFrame([{"user_id": 1, "total": 25}, {"user_id": 2, "total": 50}])
+orders_pl = pl.DataFrame({"user_id": [1, 2], "total": [25, 50]})
+orders_arrow = pa.table({"user_id": [1, 2], "total": [25, 50]})
+
+# Each works the same way — variable name becomes the table name
+duckdb.sql("SELECT user_id, sum(total) AS s FROM orders_pd GROUP BY user_id").df()
+duckdb.sql("SELECT * FROM orders_pl WHERE total > 30").pl()
+duckdb.sql("SELECT * FROM orders_arrow").fetch_arrow_table()
+```
+
+For long-lived registration on a specific connection:
+
+```python
+con = duckdb.connect()
+con.register("orders", orders_pd)
+con.sql("SELECT count(*) FROM orders").fetchone()
+con.unregister("orders")
+```
+
+Materialize into a real table when later queries should not depend on Python scope:
+
+```python
+con.execute("CREATE OR REPLACE TABLE orders AS SELECT * FROM orders_pd")
+```
+
+## Persistent vs In-Memory
+
+- `duckdb.connect()` — private in-memory database per connection
+- `duckdb.connect(":memory:")` — same as above
+- `duckdb.connect("file::memory:?cache=shared&name=analytics")` — named in-memory DB, sharable across connections that use the same name
+- `duckdb.connect("app.duckdb")` — persistent file
+- `duckdb.connect("app.duckdb", read_only=True)` — concurrent-safe reads
+
+Choose persistence early. Switching from `:memory:` to a file mid-project requires either re-running the bootstrap or exporting/loading tables.
+
+## Basic SQL
+
+DuckDB supports standard PostgreSQL-flavored SQL with strong analytics features:
+
+```sql
+-- CTEs
+WITH recent AS (
+    SELECT * FROM events WHERE created_at >= now() - INTERVAL 7 DAY
+)
+SELECT kind, count(*) FROM recent GROUP BY kind;
+
+-- Window functions
+SELECT
+    user_id,
+    amount,
+    sum(amount) OVER (PARTITION BY user_id ORDER BY ts) AS running_total
+FROM orders;
+
+-- Struct / list / map types
+SELECT {'name': 'a', 'qty': 3} AS rec;
+SELECT [1, 2, 3] AS nums;
+SELECT unnest([10, 20, 30]) AS n;
+
+-- DESCRIBE / SUMMARIZE
+DESCRIBE orders;
+SUMMARIZE orders;
+```
+
+DuckDB also supports `EXPORT DATABASE` / `IMPORT DATABASE` and `ATTACH 'other.duckdb'` for cross-database queries.
+
+## S3 / HTTP With Secrets
+
+```python
 con = duckdb.connect()
 con.execute("INSTALL httpfs")
 con.execute("LOAD httpfs")
@@ -227,77 +249,62 @@ con.execute("""
     )
 """)
 
-df = con.execute("""
+con.sql("""
     SELECT *
-    FROM read_parquet('s3://my-bucket/path/data.parquet')
+    FROM read_parquet('s3://bucket/path/data.parquet')
     LIMIT 10
 """).df()
 ```
 
-Practical notes:
-
-- `credential_chain` uses the standard AWS credential resolution flow. Prefer it over hard-coding keys.
-- Keep remote access setup inside the connection bootstrap path so queries fail early if extensions or credentials are missing.
-- If a project depends on extensions, pin DuckDB and test extension loading in CI.
+`credential_chain` uses the standard AWS credential resolution flow.
 
 ## Common Pitfalls
 
 ### `duckdb.sql(...)` uses a shared default connection
 
-The module-level helpers operate on a global in-memory connection. That is convenient in notebooks, but it is the wrong default for request handlers, background jobs, and threaded code. Use a dedicated `duckdb.connect(...)` per unit of work or per thread.
+Top-level helpers operate on a global in-memory connection. Wrong default for request handlers, background jobs, and threaded code.
 
-### `cursor()` helps with concurrent work, but it is not a substitute for connection design
+### Threads
 
-DuckDB's DB-API docs describe `cursor()` as a way to create a second connection to an existing database, which can help with parallel threads. The same section also notes that a single connection is thread-safe but locked while queries run, so you should still design concurrency explicitly and not rely on one shared connection for throughput.
+A single connection is thread-safe but locked while a query runs. Use `con.cursor()` or per-thread connections for parallelism.
 
-### `:memory:` and named in-memory databases behave differently
+### `:memory:` vs named in-memory
 
-- `:memory:` creates a private in-memory database per connection.
-- A named in-memory database such as `:memory:analytics` shares state across connections that use the same name.
+`:memory:` is private per connection. A named in-memory database can share state — use only when intentional.
 
-Use a file-backed database or explicitly named in-memory connection only when shared state is intentional.
+### `executemany()` is not the bulk-load path
 
-### Direct DataFrame scans are convenient, but they are not persisted
+For bulk ingest, prefer:
 
-Querying a Python variable by name is great for analysis, but the underlying DataFrame is still a Python object. Create a table with `CREATE TABLE ... AS SELECT * FROM df_name` when later queries must not depend on Python variable scope.
+- `CREATE TABLE t AS SELECT * FROM df_name`
+- `INSERT INTO t SELECT * FROM df_name`
+- `read_parquet(...)`, `read_csv(...)`, `COPY`
 
-### `executemany()` is not the fast path for large bulk inserts
+### DataFrame scan is not a persisted table
 
-DuckDB's DB-API docs explicitly warn against using `executemany()` for large data loads. For bulk ingestion, prefer:
+Querying a Python variable by name is great for analysis but the underlying object is still in Python scope. Use `CREATE TABLE ... AS SELECT ...` for durability.
 
-- `CREATE TABLE ... AS SELECT * FROM df_name`
-- `INSERT INTO target SELECT * FROM df_name`
-- `read_parquet(...)`, `read_csv(...)`, or `COPY`
+### NumPy worker-thread import
 
-### Python worker-thread imports can matter
+If threaded code fetches pandas/numpy results, import `numpy.core.multiarray` before spawning threads.
 
-The DuckDB known-issues page documents a NumPy import issue in worker threads. If threaded code fetches Pandas or NumPy results, import `numpy.core.multiarray` before starting threads.
+### Notebook DESCRIBE/SUMMARIZE
 
-### Notebook display oddities are documented upstream
+Wrap in a subquery if results render empty: `FROM (DESCRIBE tbl)`.
 
-The known-issues page notes that `DESCRIBE` and `SUMMARIZE` can appear empty in some Jupyter paths. The documented workaround is to wrap them in a subquery, for example `FROM (DESCRIBE tbl)`.
+## Version-Sensitive Notes For 1.5.3
 
-## Version-Sensitive Notes For 1.5.0
+- `1.5.x` switched the `httpfs` extension backend from `httplib` to `curl`. Re-test proxy, TLS, and remote filesystem behavior when upgrading from 1.4.x.
+- The single-arrow lambda syntax is deprecated; DuckDB 2.0 will disable it by default. Use `lambda x: ...` syntax in new SQL.
+- Pin DuckDB and test extension loading in CI when your project relies on extensions.
 
-- This entry targets package version `1.5.0`. If a project is pinned to `1.4.x`, check the LTS docs before copying examples.
-- DuckDB's 1.5 release notes call out a change in the `httpfs` extension backend from `httplib` to `curl`. Re-test proxy, TLS, and remote filesystem behavior when upgrading from earlier releases.
-- The 1.5 release notes also warn that the single-arrow lambda syntax is deprecated and DuckDB 2.0 will disable it by default. Prefer `lambda x: ...` syntax in new SQL.
+## Official Sources
 
-## Recommended Agent Workflow
-
-1. Install the exact package version used by the project.
-2. Decide early whether you need an ephemeral in-memory connection or a persistent `.duckdb` file.
-3. Use parameterized SQL and explicit connections in non-interactive code.
-4. For DataFrames and files, push work into DuckDB SQL instead of row-by-row Python loops.
-5. For S3 or HTTP-backed reads, validate extension loading and credentials before writing query logic.
-
-## Official Sources Used
-
-- DuckDB Python client overview: `https://duckdb.org/docs/stable/clients/python/overview`
-- DuckDB Python DB-API reference: `https://duckdb.org/docs/stable/clients/python/dbapi`
-- DuckDB Python conversion and result methods: `https://duckdb.org/docs/stable/clients/python/conversion`
-- DuckDB guide for SQL on Pandas: `https://duckdb.org/docs/stable/guides/python/import_pandas`
-- DuckDB known Python issues: `https://duckdb.org/docs/stable/clients/python/known_issues`
-- DuckDB S3 API / secrets guidance: `https://duckdb.org/docs/stable/core_extensions/httpfs/s3api`
-- DuckDB 1.5.0 release notes: `https://duckdb.org/2026/03/09/announcing-duckdb-150`
-- PyPI package page: `https://pypi.org/project/duckdb/`
+- Python client overview: https://duckdb.org/docs/stable/clients/python/overview
+- DB-API reference: https://duckdb.org/docs/stable/clients/python/dbapi
+- Conversion / result methods: https://duckdb.org/docs/stable/clients/python/conversion
+- pandas integration: https://duckdb.org/docs/stable/guides/python/import_pandas
+- polars integration: https://duckdb.org/docs/stable/guides/python/polars
+- Known Python issues: https://duckdb.org/docs/stable/clients/python/known_issues
+- S3 / secrets: https://duckdb.org/docs/stable/core_extensions/httpfs/s3api
+- PyPI: https://pypi.org/project/duckdb/

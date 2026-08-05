@@ -3,9 +3,9 @@ name: package
 description: "Together Python SDK for chat, completions, embeddings, images, rerank, and fine-tuning"
 metadata:
   languages: "python"
-  versions: "2.3.2"
-  revision: 1
-  updated-on: "2026-03-11"
+  versions: "2.16.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "together,python,llm,chat,embeddings,images,rerank,fine-tuning"
 ---
@@ -19,14 +19,14 @@ metadata:
 ## Install
 
 ```bash
-pip install together==2.3.2
+pip install together==2.16.0
 ```
 
 Common project-tool variants:
 
 ```bash
-poetry add together==2.3.2
-uv add together==2.3.2
+poetry add together==2.16.0
+uv add together==2.16.0
 ```
 
 ## Authentication
@@ -255,10 +255,10 @@ Use the current Together fine-tuning docs before copying this flow into producti
 
 ## Version-Sensitive Notes
 
-- This doc is pinned to the version used here `2.3.2`.
-- The PyPI page showed `2.4.0` as the current latest release on 2026-03-11, so some upstream examples may reflect behavior newer than `2.3.2`.
+- This doc is pinned to the version used here `2.16.0`, which PyPI lists as the current latest release for this session.
 - The Together docs are not version-pinned per SDK release. Treat the docs site as current-product guidance and verify any newly documented arguments against the installed package if code fails.
 - The docs site is organized around Together's current v2 platform docs. For package work, prefer the Python SDK page and quickstart over the broader REST reference landing page.
+- Together's catalog changes frequently. Recent quickstart examples have used `openai/gpt-oss-20b` and `meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo`; pull current model IDs from the Together docs or your account's supported-model list rather than hardcoding stale IDs from blog posts.
 
 ## Official Source URLs
 

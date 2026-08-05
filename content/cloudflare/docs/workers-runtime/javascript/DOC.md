@@ -3,9 +3,9 @@ name: workers-runtime
 description: "Cloudflare Workers runtime for building edge functions with D1 databases, R2 storage, KV key-value, Durable Objects, Queues, Workers AI, and Vectorize bindings"
 metadata:
   languages: "javascript"
-  versions: "4.0.0"
-  revision: 1
-  updated-on: "2026-03-11"
+  versions: "4.95.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: community
   tags: "cloudflare,workers,edge,d1,r2,kv,durable-objects,queues,ai,vectorize,wrangler"
 ---

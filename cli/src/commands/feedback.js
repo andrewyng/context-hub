@@ -108,11 +108,20 @@ export function registerFeedbackCommand(program) {
       }
       if (!entryType) entryType = 'doc'; // Final fallback
 
-      // Parse labels (--label is repeatable, collected into an array)
+      // Parse labels (--label is repeatable, collected into an array).
+      // Reject typos with an actionable error instead of silently dropping
+      // them — otherwise `--label outadted` ships with no labels and no signal.
       let labels;
       if (opts.label && opts.label.length > 0) {
-        labels = opts.label.map((l) => l.trim().toLowerCase()).filter((l) => VALID_LABELS.includes(l));
-        if (labels.length === 0) labels = undefined;
+        const normalized = opts.label.map((l) => l.trim().toLowerCase());
+        const invalid = normalized.filter((l) => !VALID_LABELS.includes(l));
+        if (invalid.length > 0) {
+          error(
+            `Invalid label${invalid.length > 1 ? 's' : ''}: ${invalid.join(', ')}. Valid labels: ${VALID_LABELS.join(', ')}.`,
+            globalOpts
+          );
+        }
+        labels = normalized;
       }
 
       // Read CLI version

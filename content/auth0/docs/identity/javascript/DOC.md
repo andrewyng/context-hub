@@ -3,8 +3,9 @@ name: identity
 description: "Auth0 JavaScript/Node.js SDK for OAuth, OIDC, and identity management in server-side applications"
 metadata:
   languages: "javascript"
-  versions: "5.0.0"
-  updated-on: "2026-03-01"
+  versions: "5.11.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "auth0,identity,oauth,oidc,authentication"
 ---
@@ -22,7 +23,7 @@ Always use the official Auth0 Node.js SDK for server-side authentication and use
 
 - **Library Name:** Auth0 Node.js SDK
 - **NPM Package:** `auth0`
-- **Current Version:** 5.0.0
+- **Current Version:** 5.11.0
 - **Minimum Node.js Version:** 20.19.0+ or 22.12.0+ or 24.0.0+
 
 **Installation:**
@@ -956,6 +957,59 @@ q: 'email:"*@example.com" AND user_metadata.plan:"premium"'
 
 // Search by created date
 q: 'created_at:[2024-01-01 TO 2024-12-31]'
+```
+
+## JWT and Token Verification
+
+The Node.js SDK focuses on Management/Authentication API access. For verifying inbound access tokens (RS256 from Auth0), pair it with `jose` or `jsonwebtoken` plus `jwks-rsa`.
+
+### Verify Access Token with `jose` (Recommended)
+
+```javascript
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+const JWKS = createRemoteJWKSet(
+  new URL(`https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`)
+);
+
+export async function verifyAccessToken(token) {
+  const { payload } = await jwtVerify(token, JWKS, {
+    issuer: `https://${process.env.AUTH0_DOMAIN}/`,
+    audience: process.env.AUTH0_AUDIENCE,
+  });
+  return payload;
+}
+```
+
+### Express Bearer-Token Middleware
+
+```javascript
+import { verifyAccessToken } from './auth.js';
+
+export async function requireAuth(req, res, next) {
+  const header = req.headers.authorization ?? '';
+  if (!header.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'missing_token' });
+  }
+  try {
+    req.auth = await verifyAccessToken(header.slice(7));
+    next();
+  } catch (err) {
+    res.status(401).json({ error: 'invalid_token', detail: err.message });
+  }
+}
+```
+
+### Fetch UserInfo from Access Token
+
+```javascript
+import { UserInfoClient } from 'auth0';
+
+const userInfoClient = new UserInfoClient({
+  domain: process.env.AUTH0_DOMAIN,
+});
+
+const profile = await userInfoClient.getUserInfo(accessToken);
 ```
 
 ## Useful Links

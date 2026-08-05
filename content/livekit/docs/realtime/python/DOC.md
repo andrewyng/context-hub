@@ -3,8 +3,9 @@ name: realtime
 description: "LiveKit Python SDK for real-time video, audio, and data communication including room management and recording."
 metadata:
   languages: "python"
-  versions: "1.0.17"
-  updated-on: "2026-03-01"
+  versions: "1.1.9,1.1.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "livekit,realtime,webrtc,video,audio"
 ---

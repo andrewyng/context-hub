@@ -3,16 +3,16 @@ name: vitest
 description: "Vitest 4 for JavaScript projects: install it, configure test environments, write tests, mock modules, and run coverage from the CLI"
 metadata:
   languages: "javascript"
-  versions: "4.0.18"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "4.1.7"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "vitest,testing,unit-test,mocking,vite"
 ---
 
 # Vitest for JavaScript
 
-Vitest is a test runner for JavaScript and TypeScript projects. In `4.0.18`, the package requires Node.js `^20.0.0 || ^22.0.0 || >=24.0.0`.
+Vitest is a test runner for JavaScript and TypeScript projects. In `4.1.7`, the package requires Node.js `^20.0.0 || ^22.0.0 || >=24.0.0`.
 
 ## Install
 
@@ -132,9 +132,37 @@ npx vitest list
 - `related` runs tests related to changed source files.
 - `list` is useful when Vitest is not picking up the files you expected.
 
-## Setup files
+## Setup and teardown
 
-Use `setupFiles` for test-wide initialization.
+Vitest exposes `beforeAll`, `beforeEach`, `afterEach`, and `afterAll` for shared setup. They scope to the surrounding `describe` block or to the whole file.
+
+```js
+import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest'
+
+describe('checkout', () => {
+  let server
+
+  beforeAll(async () => {
+    server = await startTestServer()
+  })
+
+  afterAll(async () => {
+    await server.close()
+  })
+
+  beforeEach(() => {
+    server.reset()
+  })
+
+  afterEach(() => {
+    // per-test cleanup
+  })
+
+  it('runs', () => {})
+})
+```
+
+Use `setupFiles` for project-wide initialization that should apply to every test file.
 
 Example `test/setup.js`:
 
@@ -267,6 +295,55 @@ npm install -D happy-dom
 npx vitest --dom
 ```
 
+## In-source testing
+
+Vitest can run tests that live alongside production code, behind an `import.meta.vitest` guard, so the test bundle is stripped from production builds.
+
+`src/math.js`
+
+```js
+export function add(a, b) {
+  return a + b
+}
+
+if (import.meta.vitest) {
+  const { describe, expect, it } = import.meta.vitest
+  describe('add', () => {
+    it('adds two numbers', () => {
+      expect(add(1, 2)).toBe(3)
+    })
+  })
+}
+```
+
+Enable in `vitest.config.js`:
+
+```js
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    includeSource: ['src/**/*.{js,ts}'],
+  },
+  define: {
+    'import.meta.vitest': 'undefined',
+  },
+})
+```
+
+## Watch mode and UI mode
+
+By default, `vitest` (no `run`) starts in watch mode: it re-runs only the tests affected by file changes, and the CLI accepts interactive commands such as `a` (run all), `f` (only failed), `t` (filter by name), and `q` (quit).
+
+```bash
+npx vitest                  # watch mode (default in TTY)
+npx vitest run              # one-shot, no watch
+npx vitest --ui             # open the @vitest/ui dashboard in the browser
+npx vitest run --reporter=verbose
+```
+
+The UI requires `@vitest/ui` installed as a dev dependency.
+
 ## Snapshots and coverage
 
 Snapshot example:
@@ -299,11 +376,64 @@ npx vitest run --coverage.reporter=text --coverage.reporter=html
 npx vitest run --coverage.thresholds.lines=90
 ```
 
-In `4.0.18`, the built-in coverage defaults are:
+In `4.1.7`, the built-in coverage defaults are:
 
 - `provider: 'v8'`
 - `reportsDirectory: './coverage'`
 - reporters: `text`, `html`, `clover`, and `json`
+
+Vitest supports two coverage providers:
+
+- `v8` (default): uses Node's built-in V8 coverage. Fast, no source transform, but coverage maps back to source via source maps and can show slightly different branch coverage than instrumented runs.
+- `istanbul`: instruments source through Babel. Slower, but matches the long-standing Istanbul reports and works well when you need precise branch coverage.
+
+Install the matching package for the provider you choose:
+
+```bash
+npm install -D @vitest/coverage-v8
+npm install -D @vitest/coverage-istanbul
+```
+
+```js
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    coverage: {
+      provider: 'istanbul',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['src/**/*.{js,ts}'],
+      thresholds: { lines: 90, functions: 90, branches: 80, statements: 90 },
+    },
+  },
+})
+```
+
+## Browser mode
+
+Vitest can run the same tests inside a real browser (Chromium, Firefox, WebKit) via Playwright or WebDriverIO. Install `@vitest/browser` plus the matching provider, then configure:
+
+```bash
+npm install -D @vitest/browser playwright
+```
+
+```js
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    browser: {
+      enabled: true,
+      provider: 'playwright',
+      instances: [
+        { browser: 'chromium' },
+      ],
+    },
+  },
+})
+```
+
+Run it with `npx vitest --browser` or `npx vitest run --browser`. Browser mode is useful when DOM-only emulation via `jsdom` or `happy-dom` is not faithful enough.
 
 ## Typecheck and UI workflows
 
@@ -328,7 +458,7 @@ npx vitest --ui
 
 ## High-value pitfalls
 
-- Vitest `4.0.18` does not support Node 18; use Node 20, 22, or 24+.
+- Vitest `4.1.7` does not support Node 18; use Node 20, 22, or 24+.
 - If your test files are not discovered, either match the default glob `**/*.{test,spec}.?(c|m)[jt]s?(x)` or set `test.include` explicitly.
 - If `describe`, `it`, or `expect` are undefined, either import them from `vitest` or enable `test.globals`.
 - If DOM globals like `document` are missing, install `jsdom` or `happy-dom` and set the environment.

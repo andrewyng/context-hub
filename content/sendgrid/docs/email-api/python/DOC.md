@@ -4,7 +4,8 @@ description: "SendGrid Python SDK for sending emails and managing email communic
 metadata:
   languages: "python"
   versions: "6.12.5"
-  updated-on: "2026-03-01"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "sendgrid,email,transactional,templates,delivery"
 ---

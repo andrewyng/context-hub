@@ -3,8 +3,9 @@ name: bot
 description: "Discord.js SDK for building Discord bots with slash commands and gateway events in JavaScript/TypeScript"
 metadata:
   languages: "javascript"
-  versions: "14.24.0"
-  updated-on: "2026-03-01"
+  versions: "14.26.4"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "discord,bot,slash-commands,gateway,sdk"
 ---
@@ -14,7 +15,7 @@ metadata:
 You are a Discord.js coding expert. Help me with writing code using the Discord API calling the official libraries and SDKs.
 
 You can find the official SDK documentation and code samples here:
-https://discord.js.org/docs/packages/discord.js/14.24.0
+https://discord.js.org/docs/packages/discord.js/14.26.4
 
 ## Golden Rule: Use the Correct and Current SDK
 
@@ -22,7 +23,7 @@ Always use the discord.js library to interact with the Discord API, which is the
 
 - **Library Name:** discord.js
 - **NPM Package:** `discord.js`
-- **Current Version:** 14.24.0 (v14)
+- **Current Version:** 14.26.4 (v14)
 - **Legacy Libraries:** discord.js v12, discord.js v13 are outdated and not recommended
 
 **Installation:**
@@ -1083,7 +1084,7 @@ const connection = joinVoiceChannel({
 
 ## Useful Links
 
-- Documentation: https://discord.js.org/docs/packages/discord.js/14.24.0
+- Documentation: https://discord.js.org/docs/packages/discord.js/14.26.4
 - Guide: https://discordjs.guide/
 - Discord API Docs: https://discord.com/developers/docs
 - Developer Portal: https://discord.com/developers/applications

@@ -25,4 +25,4 @@ This policy covers the `@aisuite/chub` CLI package and the Context Hub API at `a
 
 ## Telemetry & Privacy
 
-Context Hub collects optional, anonymous telemetry (disabled with `telemetry: false` in `~/.chub/config.yaml`). No personally identifiable information is collected. See [DESIGN.md](docs/design.md) for details on the hashed machine identifier.
+Context Hub collects optional, anonymous telemetry (disabled with `telemetry: false` in `~/.chub/config.yaml`). No personally identifiable information is collected. The client identifier is a random 32-byte value generated on first run and stored in `~/.chub/client_id`; it is not derived from any hardware identifier and can be reset by deleting that file.

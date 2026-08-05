@@ -3,9 +3,9 @@ name: package
 description: "Slack Python SDK for Web API calls, webhooks, OAuth installs, Socket Mode, and request verification"
 metadata:
   languages: "python"
-  versions: "3.40.1,3.41.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "3.42.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "slack,slack-sdk,python,chat,web-api,oauth,webhooks,socket-mode"
 ---
@@ -28,27 +28,21 @@ Do not start from the deprecated `slack` / `slackclient` package. The current pa
 Pin the version your project expects:
 
 ```bash
-python -m pip install "slack-sdk==3.40.1"
-```
-
-If you want the latest current patch validated during this session:
-
-```bash
-python -m pip install "slack-sdk==3.41.0"
+python -m pip install "slack-sdk==3.42.0"
 ```
 
 If you use async clients, install `aiohttp` explicitly:
 
 ```bash
-python -m pip install "slack-sdk==3.40.1" aiohttp
+python -m pip install "slack-sdk==3.42.0" aiohttp
 ```
 
 For Socket Mode with alternate transports, add the corresponding library yourself:
 
 ```bash
-python -m pip install "slack-sdk==3.40.1" websocket-client
-python -m pip install "slack-sdk==3.40.1" aiohttp
-python -m pip install "slack-sdk==3.40.1" websockets
+python -m pip install "slack-sdk==3.42.0" websocket-client
+python -m pip install "slack-sdk==3.42.0" aiohttp
+python -m pip install "slack-sdk==3.42.0" websockets
 ```
 
 ## Authentication And Setup
@@ -284,7 +278,7 @@ client.retry_handlers.append(RateLimitErrorRetryHandler(max_retry_count=1))
 
 ## Version-Sensitive Notes
 
-- As of Thursday, March 12, 2026, PyPI lists `3.41.0` as the latest release, while the initial package metadata was `3.40.1` from Tuesday, February 18, 2026.
+- As of Friday, May 29, 2026, PyPI lists `3.42.0` as the latest release of `slack-sdk`.
 - The current Slack docs still describe Python `3.7+` support and the same client surface used here.
 - Since SDK v3, the project name is `slack_sdk` / `slack-sdk`, not `slackclient`, and async-related dependencies are no longer installed automatically.
 - Current docs and PyPI examples use `files_upload_v2`; prefer that over older file-upload examples.

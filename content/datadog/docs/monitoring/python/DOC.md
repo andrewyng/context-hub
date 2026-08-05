@@ -3,8 +3,9 @@ name: monitoring
 description: "Official Datadog API client for Python to submit metrics, manage monitors, and interact with Datadog observability features."
 metadata:
   languages: "python"
-  versions: "2.45.0"
-  updated-on: "2026-03-01"
+  versions: "2.55.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "datadog,monitoring,metrics,observability,apm"
 ---
@@ -13,7 +14,7 @@ metadata:
 
 ## Golden Rule
 
-**ALWAYS use `datadog-api-client` version 2.45.0 or later.**
+**ALWAYS use `datadog-api-client` version 2.55.0 or later.**
 
 This is the official Datadog API client for Python. Do NOT use:
 - `datadog` (legacy library, limited functionality)

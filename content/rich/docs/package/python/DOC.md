@@ -3,9 +3,9 @@ name: package
 description: "Rich Python package guide for terminal formatting, tables, progress bars, logging, markdown, and tracebacks"
 metadata:
   languages: "python"
-  versions: "14.3.3"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "15.0.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "rich,python,terminal,cli,logging,progress,markdown"
 ---
@@ -14,27 +14,27 @@ metadata:
 
 ## Golden Rule
 
-Use `rich` as a terminal rendering layer centered on `Console`, not as a grab bag of unrelated helpers. As of March 12, 2026, PyPI is at `14.3.3`, but the stable docs site still renders as `Rich 14.1.0 documentation`, so combine the stable guides with the upstream changelog for `14.3.x` behavior changes.
+Use `rich` as a terminal rendering layer centered on `Console`, not as a grab bag of unrelated helpers. As of May 29, 2026, PyPI is at `15.0.0`, released 2026-04-12 as a major version that drops Python 3.8. Combine the stable docs site with the upstream changelog for any post-`14.x` behavior changes.
 
 ## Install
 
 Pin the version your project expects:
 
 ```bash
-python -m pip install "rich==14.3.3"
+python -m pip install "rich==15.0.0"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "rich==14.3.3"
-poetry add "rich==14.3.3"
+uv add "rich==15.0.0"
+poetry add "rich==15.0.0"
 ```
 
 Optional Jupyter extra:
 
 ```bash
-python -m pip install "rich[jupyter]==14.3.3"
+python -m pip install "rich[jupyter]==15.0.0"
 ```
 
 Sanity-check terminal support:
@@ -87,11 +87,55 @@ console.print(table)
 console.print(Markdown("## Notes\nUse `Console` for multi-line output."))
 ```
 
-Rich markup is enabled by default on `Console.print()`. If your text contains literal square brackets from user input or logs, either escape it or disable markup for that call.
+`Console.print()` accepts the same kinds of arguments as `print()` plus Rich renderables (`Table`, `Markdown`, `Panel`, `Syntax`, ...). Rich markup like `[bold red]...[/bold red]` is enabled by default. If your text contains literal square brackets from user input or logs, either escape it with `rich.markup.escape()` or call `console.print(text, markup=False)`.
+
+### Panels
+
+`Panel` wraps any renderable in a titled box, useful for grouping output or highlighting status:
+
+```python
+from rich.console import Console
+from rich.panel import Panel
+
+console = Console()
+console.print(Panel.fit("Deploy succeeded", title="status", border_style="green"))
+```
+
+### Syntax highlighting
+
+Render source code with `Syntax`. Specify the lexer name and an optional theme:
+
+```python
+from rich.console import Console
+from rich.syntax import Syntax
+
+console = Console()
+code = "def add(a: int, b: int) -> int:\n    return a + b\n"
+console.print(Syntax(code, "python", theme="monokai", line_numbers=True))
+```
+
+`Syntax.from_path("file.py")` reads and highlights a file in one step.
+
+### Layouts
+
+For dashboard-style output, `Layout` splits the console into named regions you can update independently. Use it sparingly; for full-screen TUIs prefer Textual.
+
+```python
+from rich.console import Console
+from rich.layout import Layout
+from rich.panel import Panel
+
+layout = Layout()
+layout.split_column(Layout(name="header", size=3), Layout(name="body"))
+layout["header"].update(Panel("My App", style="bold"))
+layout["body"].update(Panel("Body content here"))
+
+Console().print(layout)
+```
 
 ### Logging and better tracebacks
 
-Use Rich's logging handler instead of manually colorizing log strings:
+Use Rich's logging handler instead of manually colorizing log strings, and install `traceback` to get readable tracebacks with syntax-highlighted frames:
 
 ```python
 import logging
@@ -111,7 +155,7 @@ log = logging.getLogger("app")
 log.info("server started")
 ```
 
-`RichHandler` integrates with the standard `logging` module. Keep `markup=False` unless you control the log message content, otherwise messages containing `[` and `]` can be interpreted as markup.
+`traceback.install()` replaces `sys.excepthook` so uncaught exceptions render with source context and (with `show_locals=True`) local variables. `RichHandler(rich_tracebacks=True)` makes logged exceptions render the same way. Keep `markup=False` unless you control the log message content, otherwise messages containing `[` and `]` can be interpreted as markup.
 
 ### Progress bars and live status
 
@@ -226,12 +270,13 @@ export TTY_INTERACTIVE=0
 - Progress and live displays are great for human-facing CLIs but usually wrong for non-interactive logs. Disable interactivity in CI.
 - Rich word-wraps output by default. If you are rendering preformatted text where spacing must remain exact, test with `soft_wrap`, `overflow`, or raw file output settings.
 
-## Version-Sensitive Notes For 14.3.x
+## Version-Sensitive Notes For 15.0.0
 
-- PyPI currently publishes `14.3.3` from February 19, 2026. The stable docs site is still branded `14.1.0`, so patch-level behavior after `14.1.0` is better verified from the changelog.
-- `14.3.0` added better support for multi-codepoint glyphs, added the `UNICODE_VERSION` environment variable, exposed `locals_max_depth` and `locals_overflow` in `traceback.install()`, and changed Markdown header, table, and rule styling.
-- `14.3.1` through `14.3.3` fix Unicode-width and grapheme-splitting issues. If your CLI renders emoji, ZWJ sequences, or other complex Unicode, stay on `14.3.3` rather than copying behavior from older blog posts.
+- PyPI currently publishes `15.0.0`, released 2026-04-12. It is a major version bump whose only breaking change in the changelog is dropping Python 3.8.
+- `15.0.0` fixes include: empty `print` now respects the `end` parameter, `Text.from_ansi` preserves newlines, `FileProxy.isatty` is proxied through correctly, and inline code renders properly inside Markdown table cells.
+- The `14.3.x` line shipped Unicode-width and grapheme-splitting fixes plus better multi-codepoint glyph support, the `UNICODE_VERSION` environment variable, and new `locals_max_depth` and `locals_overflow` parameters on `traceback.install()`. `15.0.0` inherits all of that.
 - Since `14.1.0`, Live objects including `Progress` may be nested. If you see older guidance claiming nested live rendering is unsupported, that guidance is stale.
+- The stable docs site may still lag the PyPI release; verify patch-level behavior against the upstream changelog.
 
 ## Canonical Sources
 

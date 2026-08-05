@@ -3,8 +3,9 @@ name: workspace
 description: "Slack Node SDK for building bots, handling workspace events, and messaging integrations"
 metadata:
   languages: "javascript"
-  versions: "7.12.0"
-  updated-on: "2026-03-01"
+  versions: "7.16.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "slack,bot,workspace,messaging,events-api"
 ---

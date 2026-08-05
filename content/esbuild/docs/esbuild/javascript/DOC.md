@@ -3,9 +3,9 @@ name: esbuild
 description: "JavaScript bundler and minifier with practical setup for CLI builds, the JavaScript API, watch mode, code splitting, asset loaders, plugins, and bundle analysis."
 metadata:
   languages: "javascript"
-  versions: "0.27.3"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "0.28.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "esbuild,build,bundler,minifier,typescript,javascript"
 ---
@@ -18,7 +18,7 @@ This package has no auth flow, no package-specific environment variables, and no
 
 ## Install
 
-`esbuild@0.27.3` requires Node.js 18 or newer.
+`esbuild@0.28.0` requires Node.js 18 or newer.
 
 Install it as a development dependency:
 
@@ -82,11 +82,21 @@ await esbuild.build({
 
 ## CLI builds
 
-### Bundle a browser app
+Frequently used CLI flags:
+
+- `--bundle`: include imports in the output instead of leaving them as external references.
+- `--minify`: minify identifiers, whitespace, and syntax.
+- `--target=<env>`: lowest JavaScript target, for example `es2020`, `node18`, `chrome120`.
+- `--platform=<browser|node|neutral>`: changes resolution and defaults.
+- `--outfile=<path>`: emit one output file.
+- `--outdir=<dir>`: emit multiple files into a directory.
+
+### Bundle and minify a browser app
 
 ```bash
 npx esbuild src/main.ts \
   --bundle \
+  --minify \
   --platform=browser \
   --format=esm \
   --target=es2020 \
@@ -123,6 +133,8 @@ By default, CLI watch mode stops when stdin closes. Use `--watch=forever` if you
 
 ## JavaScript API: basic build
 
+Use `build()` for an async build and `buildSync()` for a blocking synchronous build (avoid `buildSync` in long-running tools, since it blocks the event loop).
+
 ```javascript
 import * as esbuild from "esbuild";
 
@@ -135,6 +147,18 @@ await esbuild.build({
   target: ["es2020"],
   sourcemap: true,
   logLevel: "info",
+});
+```
+
+Synchronous variant:
+
+```javascript
+import * as esbuild from "esbuild";
+
+esbuild.buildSync({
+  entryPoints: ["src/index.ts"],
+  bundle: true,
+  outfile: "dist/app.js",
 });
 ```
 
@@ -196,7 +220,7 @@ await esbuild.build({
 });
 ```
 
-Common loader values include `js`, `jsx`, `ts`, `tsx`, `json`, `css`, `text`, `file`, `dataurl`, and `binary`.
+Common loader values include `js`, `jsx`, `ts`, `tsx`, `json`, `css`, `text`, `file`, `dataurl`, and `binary`. esbuild infers `jsx`/`tsx` from file extensions by default; the `css` loader bundles CSS imports into the output.
 
 ## Code splitting
 
@@ -215,6 +239,14 @@ await esbuild.build({
 ```
 
 Code splitting currently only works with `format: "esm"`.
+
+## Tree-shaking
+
+esbuild tree-shakes ESM imports by default when `bundle: true`. Side effects in modules are preserved unless the consuming package declares `"sideEffects": false` in its `package.json` (or an array of files that do have side effects). To force aggressive elimination of unused code at the top level of an entry point, set `treeShaking: true` on `build()` (defaults to `true` when bundling or minifying). For best results:
+
+- Author and consume ES modules instead of CommonJS, so esbuild can statically analyze imports.
+- Mark library packages as side-effect-free in their `package.json` when appropriate.
+- Avoid wildcard re-exports that pull in modules that are never used.
 
 ## Watch mode and local dev server
 
@@ -254,7 +286,7 @@ Use `ctx.rebuild()` when you want an explicit rebuild, `ctx.cancel()` to stop an
 
 ## Transform source without bundling
 
-Use `transform()` when you have source code in memory and only need transpilation or minification.
+Use `transform()` when you have source code in memory and only need transpilation or minification. A `transformSync()` variant is also available.
 
 ```javascript
 import * as esbuild from "esbuild";

@@ -3,9 +3,9 @@ name: deep-research
 description: "Gemini Deep Research API via the Interactions endpoint for autonomous multi-step research with structured reports"
 metadata:
   languages: "python"
-  versions: "1.55.0"
-  revision: 2
-  updated-on: "2026-03-09"
+  versions: "2.7.0"
+  revision: 3
+  updated-on: "2026-05-29"
   source: community
   tags: "gemini,google,deep-research,research,interactions,agent"
 ---
@@ -26,8 +26,10 @@ interact with Gemini models and agents.
 
 - **Interactions API**: Unified interface for Gemini models and agents, with server-side state management
 - **Asynchronous**: Create a background interaction, then poll for completion (typically 5–15 minutes)
-- **Agent model**: `deep-research-pro-preview-12-2025` (the only available agent as of March 2026)
-- **SDK**: `google-genai` >= 1.55.0 wraps the Interactions API natively
+- **Agent models** (as of May 2026):
+    - `deep-research-preview-04-2026` — default, balanced quality and speed
+    - `deep-research-max-preview-04-2026` — maximum comprehensiveness (slower, higher cost)
+- **SDK**: `google-genai` >= 2.7.0 wraps the Interactions API natively
 - **Output**: Markdown report with citations and structured sections
 
 ## Installation
@@ -57,7 +59,7 @@ client = genai.Client()
 
 # Start background research
 interaction = client.interactions.create(
-    agent="deep-research-pro-preview-12-2025",
+    agent="deep-research-preview-04-2026",
     input="Research the current state of AI in disaster relief operations.",
     background=True,
 )
@@ -88,7 +90,7 @@ def deep_research(query: str, timeout_minutes: int = 60) -> str:
     """Run Gemini Deep Research and return the markdown report."""
     # Start background research
     interaction = client.interactions.create(
-        agent="deep-research-pro-preview-12-2025",
+        agent="deep-research-preview-04-2026",
         input=query,
         background=True,
     )
@@ -135,7 +137,7 @@ client = genai.Client()
 
 # Generate plan using a standard model
 plan_interaction = client.interactions.create(
-    model="gemini-2.5-pro",
+    model="gemini-3.1-pro-preview",
     input=f'Create a detailed research plan for: "{topic}". '
           "Break it into key areas and questions. Be concise but comprehensive.",
 )
@@ -153,7 +155,7 @@ chain interactions using `previous_interaction_id`:
 ```python
 # First research task
 interaction1 = client.interactions.create(
-    agent="deep-research-pro-preview-12-2025",
+    agent="deep-research-preview-04-2026",
     input="Research quantum computing breakthroughs in 2026.",
     background=True,
 )
@@ -161,7 +163,7 @@ interaction1 = client.interactions.create(
 
 # Follow-up referencing previous context
 interaction2 = client.interactions.create(
-    agent="deep-research-pro-preview-12-2025",
+    agent="deep-research-preview-04-2026",
     input="Now compare these breakthroughs with classical computing limitations.",
     background=True,
     previous_interaction_id=interaction1.id,
@@ -173,7 +175,7 @@ interaction2 = client.interactions.create(
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `input` | string | Yes | The research query or topic |
-| `agent` | string | Yes | Must be `deep-research-pro-preview-12-2025` |
+| `agent` | string | Yes | One of `deep-research-preview-04-2026` (default) or `deep-research-max-preview-04-2026` (highest depth) |
 | `background` | boolean | Yes | Set to `True` for async execution |
 | `previous_interaction_id` | string | No | Chain to a previous interaction for context |
 
@@ -193,7 +195,7 @@ interaction2 = client.interactions.create(
 - **Rate limits**: The Interactions API has separate rate limits from `generateContent`. Expect lower throughput.
 - **Report quality**: The agent performs real web searches. More specific queries produce better reports.
 - **Plan first**: For best results, generate a research plan with a standard model first, then pass it to Deep Research.
-- **Agent name**: As of March 2026, the only available agent is `deep-research-pro-preview-12-2025`.
+- **Agent name**: As of May 2026, use `deep-research-preview-04-2026` for typical research, or `deep-research-max-preview-04-2026` for maximum-depth reports (longer wall time and higher cost).
 - **Audio inputs not supported**: The Deep Research agent does not accept audio inputs.
 - **Output is markdown**: Reports come back as structured markdown with headers, bullet points, and citations.
 - **Google Search is built-in**: The agent uses Google Search by default. Grounding restrictions apply to results.

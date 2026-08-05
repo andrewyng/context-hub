@@ -3,9 +3,9 @@ name: package
 description: "New Relic Python agent for APM instrumentation, transaction tracing, error reporting, and logs in context"
 metadata:
   languages: "python"
-  versions: "11.5.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "13.0.1"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "newrelic,apm,observability,monitoring,tracing,logging"
 ---
@@ -21,14 +21,14 @@ Use `newrelic` as an early-process instrumentation agent, not as a library you i
 Pin the version your project expects:
 
 ```bash
-python -m pip install "newrelic==11.5.0"
+python -m pip install "newrelic==13.0.1"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "newrelic==11.5.0"
-poetry add "newrelic==11.5.0"
+uv add "newrelic==13.0.1"
+poetry add "newrelic==13.0.1"
 ```
 
 ## Initial Setup
@@ -182,9 +182,11 @@ Operational guidance:
 - If the app name in APM does not match expectations, check both the local config file and any server-side config overrides in New Relic.
 - If transaction data appears but logs are duplicated, review whether both agent log forwarding and an external log pipeline are enabled.
 
-## Version-Sensitive Notes For 11.5.0
+## Version-Sensitive Notes For 13.0.1
 
-- `11.5.0` adds Hybrid Agent tracing support with OpenTelemetry API compatibility and `TraceIdRatioBased` sampler support. This capability is disabled by default and can be enabled with `otel_enabled = true` or `NEW_RELIC_OTEL_ENABLED=true`.
+- `13.0.1` is the current published release on PyPI. Treat the release notes page as authoritative for changelog details when wiring up a specific feature.
+- The `13.x` line requires Python `3.9+`. Older Python runtimes need to stay on a previous agent line.
+- `11.5.0` introduced Hybrid Agent tracing support with OpenTelemetry API compatibility and `TraceIdRatioBased` sampler support. This capability is disabled by default and can be enabled with `otel_enabled = true` or `NEW_RELIC_OTEL_ENABLED=true`.
 - `11.0.0` removed several long-deprecated APIs. Older snippets from blogs or internal wikis may still reference removed calls, so prefer the current Python agent API guide.
 - `11.0.0` also renamed the application logging forwarding setting from `application_logging.forwarding.max_samples_stored` to `application_logging.forwarding.max_samples`.
 - If you need `.toml` config support, that requires `10.3.0+` and Python `3.11+`.

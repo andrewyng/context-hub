@@ -3,8 +3,9 @@ name: auth
 description: "Stytch Node.js SDK authentication guide for passwordless and OTP-based authentication"
 metadata:
   languages: "javascript"
-  versions: "12.43.0"
-  updated-on: "2026-03-02"
+  versions: "14.0.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "stytch,auth,authentication,passwordless,otp"
 ---
@@ -19,7 +20,7 @@ metadata:
 npm install stytch
 ```
 
-**Current version: 12.43.0**
+**Current version: 14.0.0**
 
 **DO NOT use:**
 - Deprecated `@stytch/stytch-js` (deprecated in favor of `@stytch/vanilla-js` for frontend)

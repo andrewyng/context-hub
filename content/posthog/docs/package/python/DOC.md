@@ -3,9 +3,9 @@ name: package
 description: "PostHog Python SDK for product analytics, feature flags, experiments, and error tracking"
 metadata:
   languages: "python"
-  versions: "7.9.11"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "7.16.2"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "posthog,analytics,feature-flags,experiments,error-tracking,python"
 ---
@@ -21,20 +21,20 @@ Use the official `posthog` package, initialize it with your project token and Po
 Pin the package version your project expects:
 
 ```bash
-python -m pip install "posthog==7.9.11"
+python -m pip install "posthog==7.16.2"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "posthog==7.9.11"
-poetry add "posthog==7.9.11"
+uv add "posthog==7.16.2"
+poetry add "posthog==7.16.2"
 ```
 
 Optional extra for LangChain integration:
 
 ```bash
-python -m pip install "posthog[langchain]==7.9.11"
+python -m pip install "posthog[langchain]==7.16.2"
 ```
 
 ## Authentication And Setup
@@ -307,8 +307,8 @@ posthog.disabled = True
 
 - `6.x` introduced the contexts API and breaking changes from `5.x`; do not copy `5.x` patterns blindly into `7.x` projects.
 - `6.3.0+` changed feature-flag capture behavior: `send_feature_flags` is explicit, and dict-based advanced control became available.
-- This guide is pinned to `7.9.11`, but PyPI lists `7.9.12` as the latest release on March 12, 2026. Check release drift before pinning examples for a fresh project.
-- The package metadata currently shown on PyPI for `7.9.12` says `Requires: Python >=3.10`. The PostHog docs page separately says Python `3.9` is no longer supported. Inference: treat current `7.9.x` work as Python `3.10+` unless your exact pinned artifact proves otherwise.
+- This guide is pinned to `7.16.2`, the latest release as of May 29, 2026. Check release drift before pinning examples for a fresh project.
+- The package metadata on PyPI for `7.16.2` says `Requires: Python >=3.10`. The PostHog docs page separately confirms Python `3.9` is no longer supported. Treat current `7.16.x` work as Python `3.10+` unless your exact pinned artifact proves otherwise.
 
 ## Official Sources
 

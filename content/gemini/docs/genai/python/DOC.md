@@ -3,8 +3,9 @@ name: genai
 description: "Google Gemini GenAI SDK for multimodal LLM interactions, image generation (Nano Banana), and video generation in Python"
 metadata:
   languages: "python"
-  versions: "1.56.0"
-  updated-on: "2026-03-01"
+  versions: "2.7.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "gemini,google,genai,llm,multimodal,nano banana,imagen,image generation,veo,video generation"
 ---
@@ -72,17 +73,20 @@ The `google-genai` library requires creating a client object for all API calls.
 
 ## Models
 
-- By default, use the following models as of March 2026:
-    - **General Text & Multimodal Tasks:** `gemini-2.5-flash`
-    - **Coding and Complex Reasoning Tasks:** `gemini-2.5-pro`
-    - **Image Generation Tasks:** `imagen-4.0-fast-generate-001`,
-        `imagen-4.0-generate-001` or `imagen-4.0-ultra-generate-001`
-    - **Image Editing Tasks:** `gemini-2.5-flash-image-preview`
-    - **Video Generation Tasks:** `veo-3.0-fast-generate-preview` or
-        `veo-3.0-generate-preview`.
+- By default, use the following models as of May 2026:
+    - **General Text & Multimodal Tasks:** `gemini-3.5-flash` (stable)
+    - **Coding and Complex Reasoning Tasks:** `gemini-3.1-pro-preview`
+    - **Low-latency / Cost-Sensitive Tasks:** `gemini-3.1-flash-lite`
+    - **Image Generation (Nano Banana 2):** `gemini-3.1-flash-image`
+    - **Image Generation (Nano Banana Pro):** `gemini-3-pro-image`
+    - **Image Generation (Imagen 4):** `imagen-4.0-fast-generate-001`,
+        `imagen-4.0-generate-001`, or `imagen-4.0-ultra-generate-001`
+    - **Video Generation Tasks:** `veo-3.1-lite-generate-preview` or
+        `veo-3.1-generate-preview`.
 
-- It is also acceptable to use following models if explicitly requested by the
-    user:
+- It is also acceptable to use the following models if explicitly requested by
+    the user:
+    - **Gemini 2.5 Series**: `gemini-2.5-flash`, `gemini-2.5-pro`
     - **Gemini 2.0 Series**: `gemini-2.0-flash`, `gemini-2.0-pro`
 
 - Do not use the following deprecated models (or their variants like
@@ -101,7 +105,7 @@ from google import genai
 client = genai.Client()
 
 response = client.models.generate_content(
-  model='gemini-2.5-flash',
+  model='gemini-3.5-flash',
   contents='why is the sky blue?',
 )
 
@@ -119,7 +123,7 @@ client = genai.Client()
 image = Image.open(img_path)
 
 response = client.models.generate_content(
-  model='gemini-2.5-flash',
+  model='gemini-3.5-flash',
   contents=[image, "explain that image"],
 )
 
@@ -136,7 +140,7 @@ from google.genai import types
     image_bytes = f.read()
 
   response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemini-3.5-flash',
     contents=[
       types.Part.from_bytes(
         data=image_bytes,
@@ -155,7 +159,7 @@ For larger files, use `client.files.upload`:
 f = client.files.upload(file=img_path)
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemini-3.5-flash',
     contents=[f, "can you describe this image?"]
 )
 ```
@@ -173,9 +177,15 @@ Below are examples of advanced configurations.
 
 ### Thinking
 
-Gemini 2.5 series models support thinking, which is on by default for
-`gemini-2.5-flash`. It can be adjusted by using `thinking_budget` setting.
-Setting it to zero turns thinking off, and will reduce latency.
+Gemini 2.5 and 3.x series models support thinking. The configuration differs
+between model families:
+
+- **Gemini 3.x** uses `thinking_level` with values `"minimal"`, `"low"`,
+    `"medium"`, or `"high"`.
+- **Gemini 2.5** uses `thinking_budget` (token count). Setting it to zero turns
+    thinking off and reduces latency on `gemini-2.5-flash`.
+
+Gemini 3.x (recommended):
 
 ```python
 from google import genai
@@ -183,6 +193,20 @@ from google.genai import types
 
 client = genai.Client()
 
+client.models.generate_content(
+  model='gemini-3.5-flash',
+  contents="What is AI?",
+  config=types.GenerateContentConfig(
+    thinking_config=types.ThinkingConfig(
+      thinking_level="low",
+    )
+  )
+)
+```
+
+Gemini 2.5 (legacy budget API):
+
+```python
 client.models.generate_content(
   model='gemini-2.5-flash',
   contents="What is AI?",
@@ -196,12 +220,15 @@ client.models.generate_content(
 
 IMPORTANT NOTES:
 
-- Minimum thinking budget for `gemini-2.5-pro` is `128` and thinking can not
-    be turned off for that model.
-- No models (apart from Gemini 2.5 series) support thinking or thinking
-    budgets APIs. Do not try to adjust thinking budgets other models (such as
-    `gemini-2.0-flash` or `gemini-2.0-pro`) otherwise it will cause syntax
-    errors.
+- Minimum thinking budget for `gemini-2.5-pro` is `128` and thinking cannot be
+    turned off for that model.
+- `gemini-3.1-pro-preview` always thinks; you cannot disable thinking on Pro
+    tier models.
+- Gemini 2.0 and earlier models do not support thinking. Do not pass
+    `thinking_config` to them (such as `gemini-2.0-flash`) otherwise it will
+    cause errors.
+- Do not mix `thinking_level` (3.x) and `thinking_budget` (2.5) on the same
+    request — pick the one matching your model family.
 
 ### System instructions
 
@@ -218,7 +245,7 @@ config = types.GenerateContentConfig(
 )
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemini-3.5-flash',
     contents='Tell me a pirate joke',
     config=config,
 )
@@ -246,7 +273,7 @@ client = genai.Client()
 
 img = Image.open("/path/to/img")
 response = client.models.generate_content(
-    model="gemini-2.0-flash",
+    model="gemini-3.5-flash",
     contents=['Do these look store-bought or homemade?', img],
     config=types.GenerateContentConfig(
       safety_settings=[
@@ -271,7 +298,7 @@ from google import genai
 client = genai.Client()
 
 response = client.models.generate_content_stream(
-    model="gemini-2.5-flash",
+    model="gemini-3.5-flash",
     contents=["Explain how AI works"]
 )
 for chunk in response:
@@ -287,7 +314,7 @@ history.
 from google import genai
 
 client = genai.Client()
-chat = client.chats.create(model="gemini-2.5-flash")
+chat = client.chats.create(model="gemini-3.5-flash")
 
 response = chat.send_message("I have 2 dogs in my house.")
 print(response.text)
@@ -321,7 +348,7 @@ class Recipe(BaseModel):
 
 # Request the model to populate the schema
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemini-3.5-flash',
     contents="Provide a classic recipe for chocolate chip cookies.",
     config=types.GenerateContentConfig(
         response_mime_type="application/json",
@@ -354,7 +381,7 @@ def get_current_weather(city: str) -> str:
 
 # Make the function available to the model as a tool
 response = client.models.generate_content(
-  model='gemini-2.5-flash',
+  model='gemini-3.5-flash',
   contents="What is the weather like in Boston?",
   config=types.GenerateContentConfig(
       tools=[get_current_weather]
@@ -401,9 +428,9 @@ for generated_image in result.generated_images:
 
 ### Edit images
 
-Editing images is better done using the Gemini native image generation model,
-and it is recommended to use chat mode. Configs are not supported in this model
-(except modality).
+Editing images is better done using the Gemini native image generation model
+(Nano Banana 2 / Pro), and it is recommended to use chat mode. Configs are not
+supported in this model (except modality).
 
 ```python
 from google import genai
@@ -417,8 +444,8 @@ prompt = """
 """
 image = PIL.Image.open('/path/to/image.png')
 
-# Create the chat
-chat = client.chats.create(model="gemini-2.5-flash-image-preview")
+# Create the chat using Nano Banana 2 (use 'gemini-3-pro-image' for Pro tier)
+chat = client.chats.create(model="gemini-3.1-flash-image")
 # Send the image and ask for it to be edited
 response = chat.send_message([prompt, image])
 
@@ -452,7 +479,7 @@ client = genai.Client()
 PIL_image = Image.open("path/to/image.png") # Optional
 
 operation = client.models.generate_videos(
-    model="veo-3.0-fast-generate-preview",
+    model="veo-3.1-lite-generate-preview",
     prompt="Panning wide shot of a calico kitten sleeping in the sunshine",
     image = PIL_image,
     config=types.GenerateVideosConfig(
@@ -486,7 +513,7 @@ from google import genai
 client = genai.Client()
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemini-3.5-flash',
     contents="What was the score of the latest Olympique Lyonnais game?",
     config={"tools": [{"google_search": {}}]},
 )
@@ -517,7 +544,7 @@ from google import genai
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-2.5-flash",
+    model="gemini-3.5-flash",
     contents="How does AI work?"
 )
 print(response.text)
@@ -532,7 +559,7 @@ from google.genai import types
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-2.5-flash",
+    model="gemini-3.5-flash",
     contents=[
       types.Content(role="user", parts=[types.Part.from_text(text="How does AI work?")]),
     ]

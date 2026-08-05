@@ -3,9 +3,9 @@ name: vite
 description: "Vite build tool for JavaScript projects, including local development, production builds, environment handling, configuration, and the Node.js API."
 metadata:
   languages: "javascript"
-  versions: "7.3.1"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "7.8.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "vite,javascript,build,dev-server,bundler,frontend"
 ---
@@ -16,9 +16,19 @@ metadata:
 
 Vite is local build tooling for frontend apps and custom dev/build pipelines. It does not require API keys or service authentication.
 
-`vite@7.3.1` requires Node.js `^20.19.0 || >=22.12.0`.
+`vite@7.8.0` requires Node.js `^20.19.0 || >=22.12.0`.
 
-Install it as a development dependency:
+Scaffold a new project from an official template:
+
+```bash
+npm create vite@latest my-app -- --template vanilla
+cd my-app
+npm install
+```
+
+Available templates include `vanilla`, `vanilla-ts`, `vue`, `vue-ts`, `react`, `react-ts`, `react-swc`, `react-swc-ts`, `preact`, `preact-ts`, `lit`, `lit-ts`, `svelte`, `svelte-ts`, `solid`, `solid-ts`, and `qwik`/`qwik-ts`.
+
+Or install Vite directly as a development dependency in an existing project:
 
 ```bash
 npm install --save-dev vite
@@ -93,11 +103,50 @@ export default defineConfig({
 });
 ```
 
+TypeScript projects can name the config `vite.config.ts` instead. The `defineConfig` helper gives type-checking and autocompletion for the full config shape.
+
 Start local development:
 
 ```bash
 npm run dev
 ```
+
+## Plugins
+
+Plugins extend or replace Vite's default behavior. Add them to the `plugins` array; framework integrations are typically published as their own packages.
+
+```ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import vue from "@vitejs/plugin-vue";
+
+export default defineConfig({
+  plugins: [react(), vue()],
+});
+```
+
+A minimal inline plugin uses the Rollup plugin interface plus Vite-specific hooks:
+
+```js
+import { defineConfig } from "vite";
+
+function bannerPlugin() {
+  return {
+    name: "banner",
+    transform(code, id) {
+      if (id.endsWith(".js")) {
+        return { code: `/* built with vite */\n${code}`, map: null };
+      }
+    },
+  };
+}
+
+export default defineConfig({
+  plugins: [bannerPlugin()],
+});
+```
+
+Vite-specific hooks include `config`, `configResolved`, `configureServer`, `transformIndexHtml`, `handleHotUpdate`, and the standard Rollup hooks (`resolveId`, `load`, `transform`, etc.).
 
 ## Environment Variables and Config
 
@@ -137,6 +186,69 @@ export default defineConfig(({ mode }) => {
 ```
 
 Use `loadEnv()` for config-time decisions. Use `import.meta.env` inside app code.
+
+Built-in `import.meta.env` values include `MODE`, `BASE_URL`, `PROD`, `DEV`, and `SSR`.
+
+## HMR API
+
+Modules can opt into hot module replacement by interacting with `import.meta.hot`. Vite tree-shakes these branches out in production builds.
+
+```js
+if (import.meta.hot) {
+  import.meta.hot.accept((newModule) => {
+    if (newModule) {
+      // Apply the updated module
+    }
+  });
+
+  import.meta.hot.accept("./dep.js", (newDep) => {
+    // Re-run with the updated dependency
+  });
+
+  import.meta.hot.dispose((data) => {
+    // Tear down side effects before the module is replaced
+  });
+
+  import.meta.hot.invalidate();
+}
+```
+
+Common methods:
+
+- `accept(cb)` and `accept(deps, cb)` accept self-updates or updates for listed dependencies.
+- `dispose(cb)` runs before the next update, useful for cleanup.
+- `prune(cb)` runs when the module is no longer imported.
+- `invalidate()` rejects the update and forces a full reload up the import chain.
+- `on(event, cb)` and `off(event, cb)` subscribe to dev-server events such as `vite:beforeUpdate` and `vite:error`.
+- `send(event, data)` posts a custom payload back to plugins that registered for it.
+
+## Library Mode
+
+Use `build.lib` when you want Vite to emit a distributable library instead of an HTML app.
+
+```js
+import { defineConfig } from "vite";
+import { resolve } from "node:path";
+
+export default defineConfig({
+  build: {
+    lib: {
+      entry: resolve(__dirname, "src/index.js"),
+      name: "MyLib",
+      fileName: (format) => `my-lib.${format}.js`,
+      formats: ["es", "cjs", "umd"],
+    },
+    rollupOptions: {
+      external: ["vue"],
+      output: {
+        globals: { vue: "Vue" },
+      },
+    },
+  },
+});
+```
+
+In library mode, Vite skips HTML entry handling and writes only the requested module formats. Declare `peerDependencies` in `package.json` and list them under `external` so consumers provide their own copies.
 
 ## Common CLI Workflows
 
@@ -273,7 +385,7 @@ export default defineConfig({
 
 ## Important Pitfalls
 
-- `vite@7.3.1` does not support older Node.js releases; check the engine requirement before debugging odd startup failures.
+- `vite@7.8.0` does not support older Node.js releases; check the engine requirement before debugging odd startup failures.
 - Keep client-visible env values under the `VITE_` prefix by default. Values exposed through `import.meta.env` should be treated as public browser config.
 - `server.host: "0.0.0.0"` listens on all addresses. Use it only when you intentionally want LAN or public reachability.
 - Avoid `server.allowedHosts: true` unless you understand the DNS rebinding risk; Vite documents that setting as not recommended.
@@ -283,7 +395,7 @@ export default defineConfig({
 
 ## Version-Sensitive Notes
 
-- This guide targets `vite@7.3.1`.
+- This guide targets `vite@7.8.0`.
 - The current package exports the main JavaScript helpers from `vite`, including `defineConfig`, `loadEnv`, `mergeConfig`, `createServer`, `build`, `preview`, `normalizePath`, and `searchForWorkspaceRoot`.
 - The CLI for this version exposes `vite`, `vite build`, and `vite preview`, with `optimize` still present but marked deprecated because dependency pre-bundling now runs automatically.
 - The default client env prefix in this version is `VITE_`.

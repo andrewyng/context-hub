@@ -3,9 +3,9 @@ name: svelte
 description: "Svelte JavaScript package guide for building reactive UI with Svelte 5 components, runes, stores, and Vite"
 metadata:
   languages: "javascript"
-  versions: "5.53.10"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "5.56.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "svelte,javascript,ui,frontend,components,vite"
 ---
@@ -32,7 +32,7 @@ npm run dev
 To add Svelte to an existing Vite project manually:
 
 ```bash
-npm install -D svelte@5.53.10 vite @sveltejs/vite-plugin-svelte
+npm install -D svelte@5.56.0 vite @sveltejs/vite-plugin-svelte
 ```
 
 Svelte has no package-specific authentication step and no required environment variables.
@@ -242,6 +242,128 @@ Use `onMount(...)` for browser-only work such as `fetch`, `window`, or `localSto
 
 `onMount(...)` only runs in the browser. If the same component is rendered on the server, code inside `onMount(...)` is skipped there.
 
+## Two-Way Bound Props With `$bindable`
+
+A child can opt a specific prop into two-way binding by marking it with `$bindable(...)`. The parent then uses `bind:` to keep its own state in sync.
+
+`src/lib/TextField.svelte`:
+
+```svelte
+<script>
+  let { value = $bindable(''), placeholder = '' } = $props()
+</script>
+
+<input bind:value placeholder={placeholder} />
+```
+
+`App.svelte`:
+
+```svelte
+<script>
+  import TextField from './lib/TextField.svelte'
+
+  let name = $state('')
+</script>
+
+<TextField bind:value={name} placeholder="Your name" />
+<p>Hello, {name}</p>
+```
+
+Only props declared with `$bindable(...)` can be bound from the parent. The optional argument to `$bindable(...)` is the default value when the parent does not bind.
+
+## Snippets
+
+Snippets are reusable chunks of markup defined inside a component with `{#snippet}` and rendered with `{@render}`. They replace most uses of named slots from Svelte 4.
+
+```svelte
+<script>
+  let items = $state(['apples', 'oranges', 'pears'])
+</script>
+
+{#snippet row(item, index)}
+  <li>{index + 1}. {item}</li>
+{/snippet}
+
+<ul>
+  {#each items as item, i}
+    {@render row(item, i)}
+  {/each}
+</ul>
+```
+
+A parent can pass a snippet down as a prop. The default `children` prop is the component's body.
+
+`src/lib/Card.svelte`:
+
+```svelte
+<script>
+  let { title, children, footer } = $props()
+</script>
+
+<section class="card">
+  <h2>{title}</h2>
+  <div>{@render children()}</div>
+  {#if footer}
+    <footer>{@render footer()}</footer>
+  {/if}
+</section>
+```
+
+`App.svelte`:
+
+```svelte
+<script>
+  import Card from './lib/Card.svelte'
+</script>
+
+<Card title="Hello">
+  <p>Body content goes here.</p>
+
+  {#snippet footer()}
+    <small>Posted today</small>
+  {/snippet}
+</Card>
+```
+
+## Debug With `$inspect`
+
+`$inspect(...)` logs values whenever any tracked dependency changes. It is stripped from production builds.
+
+```svelte
+<script>
+  let count = $state(0)
+  let doubled = $derived(count * 2)
+
+  $inspect(count, doubled)
+  // Or with a custom handler:
+  $inspect(count).with((type, value) => {
+    console.log(type, value) // type is "init" or "update"
+  })
+</script>
+```
+
+## Transitions And Animations
+
+Built-in transitions live in `svelte/transition`. Use `transition:`, `in:`, or `out:` directives on elements inside conditional or keyed blocks.
+
+```svelte
+<script>
+  import { fade, fly } from 'svelte/transition'
+
+  let visible = $state(true)
+</script>
+
+<button onclick={() => (visible = !visible)}>Toggle</button>
+
+{#if visible}
+  <p in:fly={{ y: 20, duration: 300 }} out:fade={{ duration: 200 }}>
+    Hello
+  </p>
+{/if}
+```
+
+The `animate:flip` directive from `svelte/animate` smoothly relocates items in a keyed `{#each}` block when they reorder.
+
 ## Shared State With Stores
 
 Rune state is the default inside components, but Svelte stores are still useful when state must live in a separate module or be shared across unrelated components.
@@ -294,6 +416,6 @@ If you call `hydrate(...)` on empty markup, or `mount(...)` on server-rendered m
 - `onMount(...)` is browser-only. Do not read `window`, `document`, or `localStorage` at module evaluation time if the component can also render on the server.
 - Store auto-subscriptions like `$theme` only work inside `.svelte` files.
 
-## Version Notes For 5.53.10
+## Version Notes For 5.56.0
 
-This guide targets `svelte@5.53.10` and the Svelte 5 rune APIs. If you are maintaining older Svelte 4 code, you may still see legacy syntax in existing apps, but new Svelte 5 code should follow the rune-based patterns shown here.
+This guide targets `svelte@5.56.0` and the Svelte 5 rune APIs. If you are maintaining older Svelte 4 code, you may still see legacy syntax in existing apps, but new Svelte 5 code should follow the rune-based patterns shown here.

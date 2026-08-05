@@ -3,8 +3,9 @@ name: orm
 description: "Prisma ORM client for JavaScript/TypeScript with type-safe database access and migrations"
 metadata:
   languages: "javascript"
-  versions: "6.19.0"
-  updated-on: "2026-03-01"
+  versions: "8.0.14"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "prisma,orm,database,typescript,migrations"
 ---
@@ -13,11 +14,11 @@ metadata:
 
 ## Golden Rule
 
-**ALWAYS use `@prisma/client` version 6.19.0+ with the `prisma` CLI for development.**
+**ALWAYS use `@prisma/client` version 8.0.14+ with the `prisma` CLI for development.**
 
 ```bash
-npm install @prisma/client@6.19.0
-npm install -D prisma@6.19.0
+npm install @prisma/client@8.0.14
+npm install -D prisma@8.0.14
 ```
 
 **DO NOT** use deprecated packages like:
@@ -333,6 +334,26 @@ npx prisma migrate reset
 
 ```bash
 npx prisma generate
+```
+
+### Push Schema Without Migrations (Prototyping)
+
+`db push` syncs the database to your schema without creating migration files. Use it for prototyping or for databases without migration history (e.g. MongoDB).
+
+```bash
+npx prisma db push
+```
+
+### Pull Schema From an Existing Database
+
+```bash
+npx prisma db pull
+```
+
+### Open Prisma Studio
+
+```bash
+npx prisma studio
 ```
 
 ---

@@ -4,17 +4,19 @@ description: "Core Redux APIs for creating stores, reducers, middleware, and sub
 metadata:
   languages: "javascript"
   versions: "5.0.1"
-  revision: 1
-  updated-on: "2026-03-13"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "redux,state,store,reducer,middleware,javascript"
 ---
 
 # Redux Core Guide
 
-This guide covers the standalone `redux` core package.
+This guide covers the standalone `redux` core package at version `5.0.1`.
 
-For most new Redux application code, the Redux maintainers recommend `@reduxjs/toolkit` instead of building directly on `createStore`. Use the core `redux` package when you want the low-level store primitives directly, are learning the Redux data flow, or are integrating Redux into a library.
+For new application code, the Redux maintainers recommend **Redux Toolkit** (`@reduxjs/toolkit`) instead of building directly on the core package. Toolkit is the standard, batteries-included way to write Redux today: it sets up the store, generates action creators and reducers from `createSlice`, integrates Immer, configures dev middleware, and ships RTK Query for data fetching.
+
+Use the core `redux` package when you want the low-level store primitives directly, you are learning the Redux data flow, or you are integrating Redux into a library.
 
 ## Install
 
@@ -26,7 +28,7 @@ npm install redux
 
 ## Create a Store
 
-In Redux 5, `createStore` is deprecated in favor of Redux Toolkit. If you intentionally want the core store API, import `legacy_createStore` and alias it locally.
+In Redux 5, `createStore` is deprecated in favor of Redux Toolkit's `configureStore`. If you intentionally want the core store API, import `legacy_createStore` and alias it locally.
 
 ```javascript
 import { legacy_createStore as createStore } from "redux";
@@ -57,6 +59,23 @@ unsubscribe();
 ```
 
 Use `store.getState()` to read the current state, `store.dispatch()` to send actions, and `store.subscribe()` to react after every dispatch.
+
+For new code, prefer this Redux Toolkit equivalent:
+
+```javascript
+import { configureStore, createSlice } from "@reduxjs/toolkit";
+
+const counterSlice = createSlice({
+  name: "counter",
+  initialState: { count: 0 },
+  reducers: {
+    increment: (state) => { state.count += 1; },
+    add: (state, action) => { state.count += action.payload; },
+  },
+});
+
+const store = configureStore({ reducer: { counter: counterSlice.reducer } });
+```
 
 ## Hydrate Initial State
 
@@ -261,6 +280,6 @@ Replacing the reducer dispatches an internal action so newly added reducers can 
 
 ## Version Notes for `redux@5`
 
-- `createStore` is intentionally marked deprecated; use `legacy_createStore` if you still need the core store API.
+- `createStore` is intentionally marked deprecated; use `legacy_createStore` if you still need the core store API, or migrate to `configureStore` from Redux Toolkit.
 - `redux@5` exports `isAction()` and `isPlainObject()` utility guards if you need to validate inputs in custom integrations.
-- The TypeScript `AnyAction` type is deprecated in the package declarations in favor of stricter action typing.
+- The TypeScript `AnyAction` type is deprecated in the package declarations in favor of stricter action typing with `UnknownAction`.

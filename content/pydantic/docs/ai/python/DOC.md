@@ -3,9 +3,9 @@ name: ai
 description: "PydanticAI framework for building typed Python agents with tools, structured output, message history, and multi-provider model support"
 metadata:
   languages: "python"
-  versions: "1.67.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "1.104.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "pydantic-ai,python,agents,llm,pydantic,tools,structured-output"
 ---
@@ -21,22 +21,22 @@ Use `pydantic-ai` when you want typed agent workflows in Python, but treat it as
 Install the full package when you want the default provider integrations and optional observability dependencies:
 
 ```bash
-python -m pip install "pydantic-ai==1.67.0"
+python -m pip install "pydantic-ai==1.104.0"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "pydantic-ai==1.67.0"
-poetry add "pydantic-ai==1.67.0"
+uv add "pydantic-ai==1.104.0"
+poetry add "pydantic-ai==1.104.0"
 ```
 
 If you want a smaller install and only the providers you actually use, install `pydantic-ai-slim` with extras:
 
 ```bash
-python -m pip install "pydantic-ai-slim[openai]==1.67.0"
-python -m pip install "pydantic-ai-slim[anthropic]==1.67.0"
-python -m pip install "pydantic-ai-slim[logfire]==1.67.0"
+python -m pip install "pydantic-ai-slim[openai]==1.104.0"
+python -m pip install "pydantic-ai-slim[anthropic]==1.104.0"
+python -m pip install "pydantic-ai-slim[logfire]==1.104.0"
 ```
 
 Use the non-slim package unless dependency size is a real constraint. Agents often fail by installing `pydantic-ai-slim` with no provider extras, then trying to use a provider client that was never installed.
@@ -236,10 +236,11 @@ The package also integrates with Pydantic Logfire for tracing and observability.
 - `run_sync()` blocks. In FastAPI, asyncio workers, or other async runtimes, use `await agent.run(...)` instead.
 - Provider credentials are separate from `pydantic-ai` itself. `pip install pydantic-ai` does not configure `OPENAI_API_KEY`, Anthropic keys, or any gateway tokens.
 
-## Version-Sensitive Notes For 1.67.0
+## Version-Sensitive Notes For 1.104.0
 
-- PyPI and the official docs currently align on `1.67.0` as of 2026-03-12.
-- `1.67.0` is in the stable `1.x` line. The official version policy says `v1` should avoid intentional breaking changes in minor releases; treat pre-v1 blog posts and old examples as suspect.
+- PyPI and the official docs currently align on `1.104.0` as of 2026-05-29; the package requires Python `>=3.10`.
+- `1.104.0` is in the stable `1.x` line. The official version policy says `v1` should avoid intentional breaking changes in minor releases; treat pre-v1 blog posts and old examples as suspect.
+- The `1.x` line has moved quickly since `1.0`; minor version jumps add provider integrations, MCP transports, and observability surfaces rather than breaking the agent API.
 - The docs still call out some beta surfaces in the broader ecosystem, especially around `pydantic_graph`. Do not assume beta-marked pieces have the same stability guarantees as the core agent APIs.
 - If you are migrating from older `0.x` examples, prefer the current docs for naming and result handling. The modern API centers on `Agent`, `instructions`, `output_type`, `RunContext`, and `result.output`.
 

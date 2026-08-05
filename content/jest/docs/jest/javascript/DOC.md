@@ -3,9 +3,9 @@ name: jest
 description: "Jest test runner for JavaScript projects, including configuration, async tests, mocks, snapshots, and CLI usage"
 metadata:
   languages: "javascript"
-  versions: "30.3.0"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "30.4.2"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "jest,testing,javascript,unit-testing,mocking,snapshots"
 ---
@@ -14,7 +14,7 @@ metadata:
 
 Jest runs JavaScript tests, provides `expect` assertions, includes mock helpers such as `jest.fn()` and `jest.spyOn()`, and supports snapshots and watch mode from the CLI.
 
-This guide covers the common Node.js setup for `jest@30.3.0` and the extra step required for browser-like DOM tests.
+This guide covers the common Node.js setup for `jest@30.4.2` and the extra step required for browser-like DOM tests.
 
 ## Requirements
 
@@ -68,6 +68,27 @@ test('adds two numbers', () => {
   expect(sum(1, 2)).toBe(3);
 });
 ```
+
+Group tests with `describe` and write assertions with `expect` matchers:
+
+```javascript
+const { sum } = require('./sum');
+
+describe('sum', () => {
+  it('returns the sum of two integers', () => {
+    expect(sum(1, 2)).toBe(3);
+    expect(sum(1, 2)).toEqual(3);
+    expect(sum(0, 0)).not.toBeNaN();
+  });
+
+  it('handles negative numbers', () => {
+    expect(sum(-2, 5)).toBeGreaterThan(0);
+    expect(sum(-2, 5)).toBeLessThanOrEqual(3);
+  });
+});
+```
+
+Common matchers include `toBe`, `toEqual`, `toStrictEqual`, `toContain`, `toHaveLength`, `toMatch`, `toThrow`, `toBeNull`, `toBeUndefined`, `toBeTruthy`, `toHaveBeenCalledWith`, and `toHaveBeenCalledTimes`.
 
 Run all tests:
 
@@ -160,6 +181,16 @@ test('handles failures', async () => {
 Use `jest.fn()` for stand-alone mocks and `jest.spyOn()` when you want to replace an existing method temporarily.
 
 ```javascript
+test('records calls on a mock function', () => {
+  const onClick = jest.fn();
+
+  onClick('first');
+  onClick('second');
+
+  expect(onClick).toHaveBeenCalledTimes(2);
+  expect(onClick).toHaveBeenNthCalledWith(2, 'second');
+});
+
 test('spies on Date.now', () => {
   const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1700000000000);
 
@@ -170,6 +201,50 @@ test('spies on Date.now', () => {
 ```
 
 If you use `jest.spyOn()`, restore the original implementation in the test itself or from a shared `afterEach` hook.
+
+Use `jest.mock()` to replace an entire module. The call is hoisted to the top of the file by Jest's Babel transform:
+
+```javascript
+jest.mock('./api');
+
+const { fetchUser } = require('./api');
+const { loadUser } = require('./user-service');
+
+beforeEach(() => {
+  jest.resetAllMocks();
+});
+
+test('uses the mocked module', async () => {
+  fetchUser.mockResolvedValue({ id: 'u_1', name: 'Ada' });
+
+  await expect(loadUser('u_1')).resolves.toEqual({ id: 'u_1', name: 'Ada' });
+  expect(fetchUser).toHaveBeenCalledWith('u_1');
+});
+```
+
+## Setup and teardown
+
+Use `beforeAll`, `beforeEach`, `afterEach`, and `afterAll` for shared setup. They can be scoped to a file or to a `describe` block.
+
+```javascript
+let server;
+
+beforeAll(async () => {
+  server = await startTestServer();
+});
+
+afterAll(async () => {
+  await server.close();
+});
+
+beforeEach(() => {
+  server.reset();
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+```
 
 ## Snapshot tests
 
@@ -192,6 +267,35 @@ npm test -- -u
 ```
 
 In CI mode, Jest does not write snapshot files unless you explicitly pass `-u` or `--updateSnapshot`.
+
+## ESM notes
+
+Jest's classic transform runs CommonJS by default. To run native ESM tests without a transpiler:
+
+- Use `.mjs` test files or set `"type": "module"` in `package.json`.
+- Run Jest with experimental VM modules:
+
+```bash
+node --experimental-vm-modules node_modules/jest/bin/jest.js
+```
+
+- ESM hoisting of `jest.mock()` does not work the same way. Use `jest.unstable_mockModule()` plus dynamic `import()`:
+
+```javascript
+import { jest } from '@jest/globals';
+
+jest.unstable_mockModule('./api.js', () => ({
+  fetchUser: jest.fn().mockResolvedValue({ id: 'u_1' }),
+}));
+
+const { loadUser } = await import('./user-service.js');
+
+test('uses the ESM mocked module', async () => {
+  await expect(loadUser('u_1')).resolves.toEqual({ id: 'u_1' });
+});
+```
+
+- Import `jest`, `expect`, `describe`, `test`, and hooks from `@jest/globals` in ESM files; the globals are not injected automatically.
 
 ## DOM tests with jsdom
 
@@ -245,6 +349,24 @@ Run all tests and collect coverage:
 ```bash
 npx jest --coverage
 ```
+
+Configure coverage in `jest.config.cjs`:
+
+```javascript
+/** @type {import('jest').Config} */
+module.exports = {
+  collectCoverage: true,
+  coverageProvider: 'v8',
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  collectCoverageFrom: ['src/**/*.{js,ts}', '!src/**/*.d.ts'],
+  coverageThreshold: {
+    global: { branches: 80, functions: 80, lines: 80, statements: 80 },
+  },
+};
+```
+
+Jest 30 ships two providers: `babel` (default, instrumented through Babel) and `v8` (uses Node's built-in V8 coverage).
 
 Run tests serially in one process:
 

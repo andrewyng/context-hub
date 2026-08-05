@@ -3,19 +3,20 @@ name: error-tracking
 description: "Sentry Python SDK for error tracking, performance monitoring, and distributed tracing in Python applications."
 metadata:
   languages: "python"
-  versions: "2.43.0"
-  updated-on: "2026-03-01"
+  versions: "2.61.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "sentry,monitoring,error-tracking,performance,tracing"
 ---
 
-# Sentry Python SDK (2.43.0)
+# Sentry Python SDK (2.61.0)
 
 ## Golden Rule
 
 **ALWAYS use `sentry-sdk` for Python applications.**
 
-The current stable version is **2.43.0**. Do not use deprecated packages like `raven`.
+The current stable version is **2.61.0**. Do not use deprecated packages like `raven`.
 
 ## Installation
 

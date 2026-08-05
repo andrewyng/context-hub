@@ -3,8 +3,9 @@ name: genai
 description: "Google Gemini GenAI SDK for multimodal LLM interactions, image generation (Nano Banana), and video generation in JavaScript/TypeScript"
 metadata:
   languages: "javascript"
-  versions: "1.43.0"
-  updated-on: "2026-03-01"
+  versions: "2.7.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "gemini,google,genai,llm,multimodal,nano banana,imagen,image generation,veo,video generation"
 ---
@@ -84,17 +85,20 @@ const ai = new GoogleGenAI({});
 
 ## Models
 
-- By default, use the following models as of March 2026:
-    - **General Text & Multimodal Tasks:** `gemini-2.5-flash`
-    - **Coding and Complex Reasoning Tasks:** `gemini-2.5-pro`
-    - **Image Generation Tasks:** `imagen-4.0-fast-generate-001`,
-        `imagen-4.0-generate-001` or `imagen-4.0-ultra-generate-001`
-    - **Image Editing Tasks:** `gemini-2.5-flash-image-preview`
-    - **Video Generation Tasks:** `veo-3.0-fast-generate-preview` or
-        `veo-3.0-generate-preview`.
+- By default, use the following models as of May 2026:
+    - **General Text & Multimodal Tasks:** `gemini-3.5-flash` (stable)
+    - **Coding and Complex Reasoning Tasks:** `gemini-3.1-pro-preview`
+    - **Low-latency / Cost-Sensitive Tasks:** `gemini-3.1-flash-lite`
+    - **Image Generation (Nano Banana 2):** `gemini-3.1-flash-image`
+    - **Image Generation (Nano Banana Pro):** `gemini-3-pro-image`
+    - **Image Generation (Imagen 4):** `imagen-4.0-fast-generate-001`,
+        `imagen-4.0-generate-001`, or `imagen-4.0-ultra-generate-001`
+    - **Video Generation Tasks:** `veo-3.1-lite-generate-preview` or
+        `veo-3.1-generate-preview`.
 
-- It is also acceptable to use the following model if explicitly requested by
+- It is also acceptable to use the following models if explicitly requested by
     the user:
+    - **Gemini 2.5 Series**: `gemini-2.5-flash`, `gemini-2.5-pro`
     - **Gemini 2.0 Series**: `gemini-2.0-flash`, `gemini-2.0-pro`
 
 - Do not use the following deprecated models (or their variants like
@@ -114,7 +118,7 @@ const ai = new GoogleGenAI({}); // Assumes GEMINI_API_KEY is set
 
 async function run() {
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.5-flash',
     contents: 'why is the sky blue?',
   });
 
@@ -146,7 +150,7 @@ async function run() {
     const imagePart = fileToGenerativePart("path/to/image.jpg", "image/jpeg");
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash',
         contents: [imagePart, "explain that image"],
     });
 
@@ -172,7 +176,7 @@ async function run() {
     });
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash',
          contents: createUserContent([
           createPartFromUri(f.uri, f.mimeType),
           "Describe this audio clip"
@@ -198,9 +202,15 @@ Below are examples of advanced configurations.
 
 ### Thinking
 
-Gemini 2.5 series models support thinking, which is on by default for
-`gemini-2.5-flash`. It can be adjusted by using `thinking_budget` setting.
-Setting it to zero turns thinking off, and will reduce latency.
+Gemini 2.5 and 3.x series models support thinking. The configuration differs
+between model families:
+
+- **Gemini 3.x** uses `thinkingLevel` with values `"minimal"`, `"low"`,
+    `"medium"`, or `"high"`.
+- **Gemini 2.5** uses `thinkingBudget` (token count). Setting it to zero turns
+    thinking off on `gemini-2.5-flash`, reducing latency.
+
+Gemini 3.x (recommended):
 
 ```javascript
 import { GoogleGenAI } from "@google/genai";
@@ -209,15 +219,12 @@ const ai = new GoogleGenAI({});
 
 async function main() {
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-pro",
+    model: "gemini-3.1-pro-preview",
     contents: "Provide a list of 3 famous physicists and their key contributions",
     config: {
       thinkingConfig: {
-        thinkingBudget: 1024,
-        // Turn off thinking:
-        // thinkingBudget: 0
-        // Turn on dynamic thinking:
-        // thinkingBudget: -1
+        thinkingLevel: "low",        // "minimal", "low", "medium", "high"
+        includeThoughts: true,
       },
     },
   });
@@ -228,14 +235,33 @@ async function main() {
 main();
 ```
 
+Gemini 2.5 (legacy budget API):
+
+```javascript
+await ai.models.generateContent({
+  model: "gemini-2.5-pro",
+  contents: "Explain quantum entanglement in plain English.",
+  config: {
+    thinkingConfig: {
+      thinkingBudget: 1024,
+      // thinkingBudget: 0    // turn off (flash only)
+      // thinkingBudget: -1   // dynamic
+    },
+  },
+});
+```
+
 IMPORTANT NOTES:
 
-- Minimum thinking budget for `gemini-2.5-pro` is `128` and thinking can not
-    be turned off for that model.
-- No models (apart from Gemini 2.5 series) support thinking or thinking
-    budgets APIs. Do not try to adjust thinking budgets other models (such as
-    `gemini-2.0-flash` or `gemini-2.0-pro`) otherwise it will cause syntax
-    errors.
+- Minimum thinking budget for `gemini-2.5-pro` is `128` and thinking cannot be
+    turned off for that model.
+- `gemini-3.1-pro-preview` always thinks; you cannot disable thinking on Pro
+    tier models.
+- Gemini 2.0 and earlier models do not support thinking. Do not pass
+    `thinkingConfig` to them (such as `gemini-2.0-flash` or `gemini-2.0-pro`)
+    otherwise it will cause errors.
+- Do not mix `thinkingLevel` (3.x) and `thinkingBudget` (2.5) on the same
+    request — pick the one matching your model family.
 
 ### System instructions
 
@@ -248,7 +274,7 @@ const ai = new GoogleGenAI({});
 
 async function run() {
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash',
         contents: "Hello.",
         config: {
             systemInstruction: "You are a pirate",
@@ -288,7 +314,7 @@ function fileToGenerativePart(path, mimeType): Part {
 async function run() {
     const img = fileToGenerativePart("/path/to/img.jpg", "image/jpeg");
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: ['Do these look store-bought or homemade?', img],
         config: {
             safetySettings: [
@@ -314,7 +340,7 @@ const ai = new GoogleGenAI({});
 
 async function run() {
   const responseStream = await ai.models.generateContentStream({
-    model: "gemini-2.5-flash",
+    model: "gemini-3.5-flash",
     contents: ["Explain how AI works"],
   });
 
@@ -337,7 +363,7 @@ import { GoogleGenAI } from '@google/genai';
 const ai = new GoogleGenAI({});
 
 async function run() {
-    const chat = ai.chats.create({model: "gemini-2.5-flash"});
+    const chat = ai.chats.create({model: "gemini-3.5-flash"});
 
     let response = await chat.sendMessage({message:"I have 2 dogs in my house."});
     console.log(response.text);
@@ -354,7 +380,7 @@ run();
 ``` It is also possible to use streaming with Chat:
 
 ```javascript
-    const chat = ai.chats.create({model: "gemini-2.5-flash"});
+    const chat = ai.chats.create({model: "gemini-3.5-flash"});
     const stream = await chat.sendMessageStream({message:"I have 2 dogs in my house."});
     for await (const chunk of stream) {
       console.log(chunk.text);
@@ -417,7 +443,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({});
 const response = await ai.models.generateContent({
-   model: "gemini-2.5-flash",
+   model: "gemini-3.5-flash",
    contents: "List a few popular cookie recipes, and include the amounts of ingredients.",
    config: {
      responseMimeType: "application/json",
@@ -493,7 +519,7 @@ async function run() {
     };
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash',
         contents: 'Dim the lights so the room feels cozy and warm.',
         config: {
             tools: [{functionDeclarations: [controlLightDeclaration]}]
@@ -540,8 +566,9 @@ Note: Do not include negativePrompts in config, it's not supported.
 
 ### Edit Images
 
-Editing images is better done using the Gemini native image generation model.
-Configs are not supported in this model (except modality).
+Editing images is better done using the Gemini native image generation model
+(Nano Banana 2 / Pro). Configs are not supported in this model (except
+modality).
 
 ```javascript
 import { GoogleGenAI } from '@google/genai';
@@ -549,7 +576,7 @@ import { GoogleGenAI } from '@google/genai';
 const ai = new GoogleGenAI({});
 
 const response = await ai.models.generateContent({
-  model: 'gemini-2.5-flash-image-preview',
+  model: 'gemini-3.1-flash-image',  // Nano Banana 2 (use 'gemini-3-pro-image' for Pro tier)
   contents: [imagePart, 'koala eating a nano banana']
 });
 for (const part of response.candidates[0].content.parts) {
@@ -574,7 +601,7 @@ const ai = new GoogleGenAI({});
 
 async function main() {
   let operation = await ai.models.generateVideos({
-    model: "veo-3.0-fast-generate-preview",
+    model: "veo-3.1-lite-generate-preview",
     prompt: "Panning wide shot of a calico kitten sleeping in the sunshine",
     config: {
       personGeneration: "dont_allow",
@@ -611,7 +638,7 @@ const ai = new GoogleGenAI({});
 
 async function run() {
     const response = await ai.models.generateContent({
-       model: "gemini-2.5-flash",
+       model: "gemini-3.5-flash",
        contents: "Who won the latest F1 race?",
        config: {
          tools: [{googleSearch: {}}],
@@ -645,7 +672,7 @@ const ai = new GoogleGenAI({});
 
 async function run() {
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: "How does AI work?",
     });
     console.log(response.text);
@@ -661,7 +688,7 @@ const ai = new GoogleGenAI({});
 
 async function run() {
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: [
             { role: "user", parts: [{ text: "How does AI work?" }] },
         ],

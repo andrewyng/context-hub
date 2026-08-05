@@ -3,8 +3,9 @@ name: auth
 description: "Firebase Authentication JavaScript SDK - Comprehensive coding guide for Firebase auth in JavaScript projects"
 metadata:
   languages: "javascript"
-  versions: "12.4.0"
-  updated-on: "2026-03-02"
+  versions: "12.14.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "firebase,auth,google,identity,session"
 ---

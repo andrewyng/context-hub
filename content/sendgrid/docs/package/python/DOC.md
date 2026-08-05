@@ -4,8 +4,8 @@ description: "Twilio SendGrid Python SDK for sending email and calling the SendG
 metadata:
   languages: "python"
   versions: "6.12.5"
-  revision: 1
-  updated-on: "2026-03-12"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "sendgrid,twilio,email,transactional-email,templates,delivery"
 ---
@@ -208,7 +208,7 @@ print(response.status_code)  # 200 in sandbox mode
 
 ## Version-Sensitive Notes
 
-- The version used here `6.12.5` matches the current stable PyPI release as of March 12, 2026.
+- The version used here `6.12.5` matches the current stable PyPI release as of May 29, 2026.
 - PyPI also lists `7.0.0rc1` and `7.0.0rc2` as pre-releases. Do not assume 7.x examples apply to the stable package.
 - PyPI's project description says the `6.x` line is a breaking change from `5.x`; do not copy `5.x` tutorials into a `6.12.5` project without checking release notes.
 - The Twilio quickstart page is stale in two places: it still says the SDK supports Python `2.7, 3.5, 3.6, 3.7, and 3.8`, and its sample install output still shows `sendgrid-6.4.6`. PyPI classifiers for `6.12.5` include Python `3.12` and `3.13`, and the upstream changelog says `6.12.0` added Python `3.12` and `3.13` support.

@@ -3,9 +3,9 @@ name: package
 description: "Cohere Python SDK guide for chat, embeddings, rerank, classification, and async usage"
 metadata:
   languages: "python"
-  versions: "5.20.7"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "7.0.2"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "cohere,python,llm,chat,embeddings,rerank"
 ---
@@ -19,7 +19,7 @@ Use the official `cohere` PyPI package when a Python project needs Cohere-hosted
 - Ecosystem: `pypi`
 - Package: `cohere`
 - Import: `import cohere`
-- Version covered here: `5.20.7`
+- Version covered here: `7.0.2`
 - Official docs root: `https://docs.cohere.com/`
 - Reference landing page: `https://docs.cohere.com/reference/about`
 
@@ -28,7 +28,7 @@ Use the official `cohere` PyPI package when a Python project needs Cohere-hosted
 Install the package directly:
 
 ```bash
-pip install cohere==5.20.7
+pip install cohere==7.0.2
 ```
 
 If the project does not need an exact pin, `pip install cohere` is the normal install path.
@@ -106,6 +106,67 @@ async def main() -> None:
 
 asyncio.run(main())
 ```
+
+### Streaming Chat
+
+Use `chat_stream` to consume tokens as they arrive. Events are typed; check the `type` field before reading deltas.
+
+```python
+import os
+import cohere
+
+co = cohere.ClientV2(api_key=os.environ["CO_API_KEY"])
+
+stream = co.chat_stream(
+    model="command-a-03-2025",
+    messages=[{"role": "user", "content": "Count from 1 to 5."}],
+)
+
+for event in stream:
+    if event.type == "content-delta":
+        text = event.delta.message.content.text
+        if text:
+            print(text, end="", flush=True)
+print()
+```
+
+### Tool / Function Calling
+
+Pass JSON-schema tool definitions and inspect `tool_calls` on the returned message.
+
+```python
+import os
+import cohere
+
+co = cohere.ClientV2(api_key=os.environ["CO_API_KEY"])
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather for a city.",
+            "parameters": {
+                "type": "object",
+                "properties": {"city": {"type": "string"}},
+                "required": ["city"],
+            },
+        },
+    }
+]
+
+response = co.chat(
+    model="command-a-03-2025",
+    messages=[{"role": "user", "content": "What is the weather in Berkeley?"}],
+    tools=tools,
+)
+
+if response.message.tool_calls:
+    for call in response.message.tool_calls:
+        print(call.function.name, call.function.arguments)
+```
+
+The `arguments` value is a JSON string. To finish a tool round trip, append a `{"role": "tool", "tool_call_id": call.id, "content": ...}` message and call `co.chat(...)` again with the same `tools` list.
 
 ### Embeddings
 
@@ -198,10 +259,11 @@ print(response.classifications[0].prediction)
 - Assuming the embed response is always a plain list. In v2, embeddings are typed, for example `response.embeddings.float_`.
 - Catching broad exceptions only. Use `cohere.core.api_error.ApiError` for request failures you expect from the SDK.
 
-## Version-Sensitive Notes For `5.20.7`
+## Version-Sensitive Notes For `7.0.2`
 
-- This doc is pinned to `cohere` `5.20.7`, but the official docs site is organized around the current v2 API docs rather than versioned per package release.
-- The official `cohere-python` repository includes a v4-to-v5 migration guide. If a codebase still uses pre-v5 snippets, check that guide before rewriting imports or error handling.
+- This doc is pinned to `cohere` `7.0.2`, but the official docs site is organized around the current v2 API docs rather than versioned per package release.
+- `cohere` 7.x continues to expose `ClientV2` and `AsyncClientV2` as the default entry points; legacy `cohere.Client` (v1) snippets should be migrated.
+- The official `cohere-python` repository includes a v4-to-v5 migration guide. If a codebase still uses pre-v5 snippets, check that guide before rewriting imports or error handling. The 6.x and 7.x lines have been incremental on top of the v5 surface.
 - The docs URL points to the API reference landing page. For implementation work, the most useful current pages are under `https://docs.cohere.com/v2/docs/`.
 
 ## Official Sources

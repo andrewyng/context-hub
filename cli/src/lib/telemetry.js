@@ -1,4 +1,5 @@
 import { loadConfig } from './config.js';
+import { FEEDBACK_FETCH_TIMEOUT_MS } from './constants.js';
 
 const DEFAULT_TELEMETRY_URL = 'https://api.aichub.org/v1';
 
@@ -46,7 +47,7 @@ export async function sendFeedback(entryId, entryType, rating, opts = {}) {
   const telemetryUrl = getTelemetryUrl();
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3000);
+  const timeout = setTimeout(() => controller.abort(), FEEDBACK_FETCH_TIMEOUT_MS);
 
   try {
     const res = await fetch(`${telemetryUrl}/feedback`, {

@@ -3,9 +3,9 @@ name: react
 description: "React runtime for building component UIs in JavaScript with hooks, context, Suspense, and lazy loading."
 metadata:
   languages: "javascript"
-  versions: "19.2.4"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "19.2.6"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "react,javascript,ui,components,hooks,context,suspense"
 ---
@@ -244,6 +244,271 @@ export function ProductSearch() {
 
 `useMemo` is a performance optimization. Your code should still be correct if React recalculates the value.
 
+### Group related state transitions with `useReducer`
+
+Use `useReducer` when state updates are non-trivial or several actions update the same state in different ways.
+
+```jsx
+import { useReducer } from "react";
+
+const initialState = { count: 0 };
+
+function reducer(state, action) {
+  switch (action.type) {
+    case "increment":
+      return { count: state.count + 1 };
+    case "decrement":
+      return { count: state.count - 1 };
+    case "reset":
+      return initialState;
+    default:
+      throw new Error(`Unknown action: ${action.type}`);
+  }
+}
+
+export function Counter() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  return (
+    <>
+      <p>Count: {state.count}</p>
+      <button onClick={() => dispatch({ type: "increment" })}>+</button>
+      <button onClick={() => dispatch({ type: "decrement" })}>-</button>
+      <button onClick={() => dispatch({ type: "reset" })}>Reset</button>
+    </>
+  );
+}
+```
+
+### Stabilize callback identity with `useCallback`
+
+Wrap a function in `useCallback` when a referentially stable callback matters, such as when passing it to a memoized child component or as a dependency to another hook.
+
+```jsx
+import { useCallback, useState } from "react";
+
+export function TodoList({ todos }) {
+  const [filter, setFilter] = useState("");
+
+  const handleChange = useCallback((event) => {
+    setFilter(event.target.value);
+  }, []);
+
+  return (
+    <>
+      <input value={filter} onChange={handleChange} />
+      <ul>
+        {todos
+          .filter((todo) => todo.text.includes(filter))
+          .map((todo) => (
+            <li key={todo.id}>{todo.text}</li>
+          ))}
+      </ul>
+    </>
+  );
+}
+```
+
+### Hold mutable values and DOM nodes with `useRef`
+
+Use `useRef` to keep a mutable value across renders without triggering a re-render, or to hold a DOM node reference.
+
+```jsx
+import { useEffect, useRef } from "react";
+
+export function AutoFocusInput() {
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  return <input ref={inputRef} />;
+}
+```
+
+### Keep the UI responsive with `useTransition`
+
+Mark non-urgent state updates with `useTransition` so React can keep the previous UI visible while it computes the new one.
+
+```jsx
+import { useState, useTransition } from "react";
+
+export function TabSwitcher({ tabs, renderTab }) {
+  const [activeTab, setActiveTab] = useState(tabs[0]);
+  const [isPending, startTransition] = useTransition();
+
+  function selectTab(tab) {
+    startTransition(() => {
+      setActiveTab(tab);
+    });
+  }
+
+  return (
+    <>
+      <nav>
+        {tabs.map((tab) => (
+          <button key={tab} onClick={() => selectTab(tab)}>
+            {tab}
+          </button>
+        ))}
+      </nav>
+
+      {isPending ? <p>Loading…</p> : renderTab(activeTab)}
+    </>
+  );
+}
+```
+
+### Defer expensive re-renders with `useDeferredValue`
+
+`useDeferredValue` lets a slow part of the tree render with a stale value while a more important update finishes.
+
+```jsx
+import { useDeferredValue, useState } from "react";
+import { SearchResults } from "./SearchResults.jsx";
+
+export function SearchBox() {
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
+
+  return (
+    <>
+      <input value={query} onChange={(event) => setQuery(event.target.value)} />
+      <SearchResults query={deferredQuery} />
+    </>
+  );
+}
+```
+
+### Show optimistic UI with `useOptimistic`
+
+`useOptimistic` lets you render a temporary "optimistic" state during an async action and roll back automatically if the action throws.
+
+```jsx
+import { useOptimistic, useState } from "react";
+
+async function sendMessage(text) {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  return { id: crypto.randomUUID(), text };
+}
+
+export function Thread() {
+  const [messages, setMessages] = useState([]);
+  const [optimisticMessages, addOptimisticMessage] = useOptimistic(
+    messages,
+    (current, pending) => [...current, { id: "pending", text: pending, pending: true }],
+  );
+
+  async function submit(formData) {
+    const text = formData.get("text");
+    addOptimisticMessage(text);
+    const saved = await sendMessage(text);
+    setMessages((current) => [...current, saved]);
+  }
+
+  return (
+    <>
+      <ul>
+        {optimisticMessages.map((message) => (
+          <li key={message.id} style={{ opacity: message.pending ? 0.5 : 1 }}>
+            {message.text}
+          </li>
+        ))}
+      </ul>
+
+      <form action={submit}>
+        <input name="text" required />
+        <button type="submit">Send</button>
+      </form>
+    </>
+  );
+}
+```
+
+### Track form action state with `useActionState`
+
+`useActionState` wraps a server or client action and exposes the latest result plus pending state.
+
+```jsx
+import { useActionState } from "react";
+
+async function subscribe(_previousState, formData) {
+  const email = formData.get("email");
+
+  if (!email.includes("@")) {
+    return { ok: false, message: "Please enter a valid email" };
+  }
+
+  return { ok: true, message: `Subscribed ${email}` };
+}
+
+export function SubscribeForm() {
+  const [state, formAction, isPending] = useActionState(subscribe, null);
+
+  return (
+    <form action={formAction}>
+      <input name="email" type="email" required />
+      <button type="submit" disabled={isPending}>
+        {isPending ? "Submitting…" : "Subscribe"}
+      </button>
+      {state ? <p>{state.message}</p> : null}
+    </form>
+  );
+}
+```
+
+### Read promises and context with `use`
+
+`use` reads a Promise or a Context inside a component. When given a Promise, it suspends until the promise resolves.
+
+```jsx
+import { Suspense, use } from "react";
+
+function UserProfile({ userPromise }) {
+  const user = use(userPromise);
+  return <h2>{user.name}</h2>;
+}
+
+export function UserPage({ userPromise }) {
+  return (
+    <Suspense fallback={<p>Loading…</p>}>
+      <UserProfile userPromise={userPromise} />
+    </Suspense>
+  );
+}
+```
+
+Unlike other hooks, `use` may be called inside loops and conditionals.
+
+### Catch render errors with an error boundary
+
+React does not provide a hook for catching errors. Use a class component with `componentDidCatch` or `getDerivedStateFromError`, or use a library such as `react-error-boundary`.
+
+```jsx
+import { Component } from "react";
+
+export class ErrorBoundary extends Component {
+  state = { error: null };
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error("Render error", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.error) {
+      return <p>Something went wrong.</p>;
+    }
+
+    return this.props.children;
+  }
+}
+```
+
 ### Split code with `lazy` and `Suspense`
 
 Use `lazy` for component-level code splitting and wrap the lazy component in `Suspense` with a fallback UI.
@@ -270,6 +535,19 @@ export function SettingsPage() {
 }
 ```
 
+## React Server Components
+
+React 19 ships first-class support for React Server Components (RSC). A framework such as Next.js (App Router) is responsible for bundling, the RSC payload, and serving server modules.
+
+Quick rules:
+
+- Server Components are the default in RSC frameworks. They run on the server, can `await` data, and never ship to the browser.
+- Hooks that depend on the browser (`useState`, `useEffect`, refs, event handlers) are not allowed in Server Components.
+- Mark a file with `'use client'` at the top to opt into a Client Component module.
+- Mark a module function with `'use server'` to expose it as a Server Action callable from a Client Component or `<form action={...}>`.
+
+`react` itself only provides the building blocks. Use a framework integration to actually render Server Components.
+
 ## Important Pitfalls
 
 - `react` does not create or hydrate browser roots. Import `createRoot` or `hydrateRoot` from `react-dom/client`.
@@ -282,7 +560,7 @@ export function SettingsPage() {
 
 ## Version-Sensitive Notes
 
-- This guide targets `react==19.2.4`.
+- This guide targets `react@19.2.6`.
 - Pair `react` with a matching React 19 `react-dom` release in browser apps.
 - The React 19 reference documents context providers using the context object directly, for example `<ThemeContext value={theme}>`.
 - The React 19 reference also includes newer hooks such as `useActionState`, `useOptimistic`, and `use` in addition to the long-standing core hooks.

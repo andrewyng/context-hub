@@ -3,8 +3,9 @@ name: realtime
 description: "LiveKit Client SDK for JavaScript/TypeScript enabling real-time video, audio, and data communication via WebRTC."
 metadata:
   languages: "javascript"
-  versions: "2.15.13"
-  updated-on: "2026-03-01"
+  versions: "2.19.1"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "livekit,realtime,webrtc,video,audio"
 ---
@@ -19,7 +20,7 @@ Always use the official LiveKit Client SDK for JavaScript/TypeScript, which is t
 
 - **Library Name:** LiveKit Client SDK
 - **Package Name:** `livekit-client`
-- **Current Version:** 2.11.3 
+- **Current Version:** 2.19.1
 
 **Installation:**
 - **Correct:** `npm install livekit-client`

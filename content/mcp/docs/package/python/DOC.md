@@ -3,9 +3,9 @@ name: package
 description: "mcp package guide for Python MCP servers and clients with FastMCP, stdio, and Streamable HTTP"
 metadata:
   languages: "python"
-  versions: "1.26.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "1.27.2"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "mcp,model-context-protocol,python,fastmcp,server,client,stdio,streamable-http,oauth"
 ---
@@ -28,14 +28,14 @@ For most server work, start with `FastMCP`. Drop down to the low-level server AP
 Install the exact version covered here:
 
 ```bash
-pip install mcp==1.26.0
+pip install mcp==1.27.2
 ```
 
 Common package-manager equivalents:
 
 ```bash
-uv add mcp==1.26.0
-poetry add mcp==1.26.0
+uv add mcp==1.27.2
+poetry add mcp==1.27.2
 ```
 
 If you are writing both server and client code in the same project, the base package is usually enough. Add web-framework or auth dependencies separately only when your server integration needs them.
@@ -231,12 +231,13 @@ This is the canonical pattern for testing a local server from Python without inv
 - Do not leak long-running work past session or transport shutdown. Keep async context managers scoped tightly.
 - Do not assume local stdio and remote HTTP share the same operational concerns. Stdio is process-launch/config oriented; HTTP adds auth, routing, proxies, and deployment timeouts.
 
-## Version-Sensitive Notes For 1.26.0
+## Version-Sensitive Notes For 1.27.2
 
-- PyPI is the authoritative source for the covered package version: `1.26.0`.
-- PyPI metadata for `1.26.0` requires Python `>=3.10`.
+- PyPI is the authoritative source for the covered package version: `1.27.2`.
+- PyPI metadata for `1.27.2` requires Python `>=3.10`.
+- The `1.27.x` line adds streamable HTTP idle timeouts, RFC 8707 resource validation in the OAuth client, and binds transport sessions to authenticated principals. `AccessToken` now carries subject and claims.
 - The docs and spec emphasize Streamable HTTP as the current HTTP transport. Older SSE-era examples are the most likely source of stale guidance when copying from blogs, gists, or older issue threads.
-- The official docs root is not version-pinned to `1.26.0`. When a docs example and the package version appear to drift, trust PyPI for the released version and prefer the Python SDK repository examples over third-party material.
+- The official docs root is not version-pinned to `1.27.2`. When a docs example and the package version appear to drift, trust PyPI for the released version and prefer the Python SDK repository examples over third-party material.
 
 ## Official Sources
 
@@ -245,4 +246,4 @@ This is the canonical pattern for testing a local server from Python without inv
 - MCP transport docs: https://modelcontextprotocol.io/specification/2025-06-18/basic/transports
 - Python SDK repository: https://github.com/modelcontextprotocol/python-sdk
 - PyPI project page: https://pypi.org/project/mcp/
-- PyPI release metadata for `1.26.0`: https://pypi.org/pypi/mcp/1.26.0/json
+- PyPI release metadata for `1.27.2`: https://pypi.org/pypi/mcp/1.27.2/json

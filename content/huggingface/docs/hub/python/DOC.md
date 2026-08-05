@@ -3,9 +3,9 @@ name: package
 description: "huggingface-hub for Python: authenticate, download files and snapshots, query Hub repos, and upload models, datasets, or Spaces"
 metadata:
   languages: "python"
-  versions: "1.6.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "1.17.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "huggingface-hub,huggingface,hub,models,datasets,spaces,ml"
 ---
@@ -29,22 +29,22 @@ For Python code, the main imports come from `huggingface_hub`, while the install
 Pin the package version your project expects:
 
 ```bash
-python -m pip install "huggingface-hub==1.6.0"
+python -m pip install "huggingface-hub==1.17.0"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "huggingface-hub==1.6.0"
-poetry add "huggingface-hub==1.6.0"
+uv add "huggingface-hub==1.17.0"
+poetry add "huggingface-hub==1.17.0"
 ```
 
 Useful extras documented by Hugging Face and PyPI metadata:
 
 ```bash
-python -m pip install "huggingface-hub[mcp]==1.6.0"
-python -m pip install "huggingface-hub[torch]==1.6.0"
-python -m pip install "huggingface-hub[hf-xet]==1.6.0"
+python -m pip install "huggingface-hub[mcp]==1.17.0"
+python -m pip install "huggingface-hub[torch]==1.17.0"
+python -m pip install "huggingface-hub[hf-xet]==1.17.0"
 ```
 
 ## Imports At A Glance
@@ -318,14 +318,24 @@ path = hf_hub_download(
 - `HfFileSystem` is convenient but slower than direct `HfApi` calls for simple metadata or file operations.
 - In offline mode, code that expects fresh metadata or remote existence checks will fail unless the artifacts are already cached locally.
 
-## Version-Sensitive Notes For 1.6.0
+## Version-Sensitive Notes For 1.17.0
 
-- PyPI lists `huggingface-hub 1.6.0` released on March 6, 2026.
-- The current docs root publishes `main v1.6.0`, so the primary Hugging Face docs are aligned with the package version for this session.
+- PyPI lists `huggingface-hub 1.17.0` as the current release for this session.
+- The current docs root publishes `main v1.17.0`, so the primary Hugging Face docs are aligned with the package version for this session.
 - The v1.x line requires Python 3.9+.
-- The v1.0 migration notes still matter in `1.6.0`: the library switched to `httpx`, the `Repository` class was removed, `use_auth_token` was removed in favor of `token`, and several cache-constant internals moved or were removed.
+- The v1.0 migration notes still apply in `1.17.0`: the library switched to `httpx`, the `Repository` class was removed, `use_auth_token` was removed in favor of `token`, and several cache-constant internals moved or were removed.
 - If you need code that spans both `0.x` and `1.x`, prefer `huggingface_hub.HfHubHttpError` for shared exception handling because it maps cleanly across the backend switch.
-- The `1.6.0` release adds CLI commands for discussions, webhooks, dataset parquet and SQL export, repo duplication, and bucket support in `HfFileSystem`. These are useful if your automation shells out to `hf` alongside the Python API.
+- Notable additions since `1.6.0` in the `1.x` line worth knowing about:
+  - `CommitOperationCopy` and `copy_files()` support cross-repository copies without re-uploading.
+  - `parse_hf_uri()` and the `HfUri` dataclass centralize `hf://` URI parsing.
+  - `search_spaces()` enables embedding-based semantic search for Spaces.
+  - `fetch_space_logs()` and `get_space_secrets()` give programmatic access to Space build/runtime logs and secret metadata; `hf spaces ssh` opens an SSH session to a Space Dev Mode container.
+  - Jobs gained an independent `JobHardware` enum, plus `update_job_labels()` and `update_scheduled_job_labels()` helpers.
+- Behavior changes worth noting:
+  - URI parsing now requires `namespace/name` format; single-segment IDs are no longer accepted.
+  - `model_name` is deprecated on `list_models()`; use `search=` instead.
+  - The CLI standardized on a `--format [auto|human|agent|json|quiet]` flag and renamed `hf skills upgrade` to `hf skills update`. New CLI subcommands include `hf repos ls`, `hf skills list`, and `hf update`.
+  - Token file permissions are hardened to `0o600` (parent dirs to `0o700`).
 
 ## Official Sources
 
@@ -339,4 +349,4 @@ path = hf_hub_download(
 - `HfFileSystem` reference: `https://huggingface.co/docs/huggingface_hub/en/package_reference/hf_file_system`
 - Migration notes: `https://huggingface.co/docs/huggingface_hub/en/concepts/migration`
 - PyPI: `https://pypi.org/project/huggingface-hub/`
-- GitHub release `v1.6.0`: `https://github.com/huggingface/huggingface_hub/releases/tag/v1.6.0`
+- GitHub releases (latest `v1.17.0`): `https://github.com/huggingface/huggingface_hub/releases`

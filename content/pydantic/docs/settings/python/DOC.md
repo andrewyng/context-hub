@@ -1,11 +1,11 @@
 ---
 name: settings
-description: "pydantic-settings 2.13.1 package guide for typed application settings, dotenv files, CLI parsing, and secret sources in Python"
+description: "pydantic-settings 2.14.1 package guide for typed application settings, dotenv files, CLI parsing, and secret sources in Python"
 metadata:
   languages: "python"
-  versions: "2.13.1"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "2.14.1"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "pydantic-settings,python,configuration,environment,settings,secrets,cli"
 ---
@@ -29,24 +29,24 @@ Reach for it when you want:
 Pin the version your project expects:
 
 ```bash
-python -m pip install "pydantic-settings==2.13.1"
+python -m pip install "pydantic-settings==2.14.1"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "pydantic-settings==2.13.1"
-poetry add "pydantic-settings==2.13.1"
+uv add "pydantic-settings==2.14.1"
+poetry add "pydantic-settings==2.14.1"
 ```
 
 Optional extras published on PyPI:
 
 ```bash
-python -m pip install "pydantic-settings[toml]==2.13.1"
-python -m pip install "pydantic-settings[yaml]==2.13.1"
-python -m pip install "pydantic-settings[aws-secrets-manager]==2.13.1"
-python -m pip install "pydantic-settings[azure-key-vault]==2.13.1"
-python -m pip install "pydantic-settings[gcp-secret-manager]==2.13.1"
+python -m pip install "pydantic-settings[toml]==2.14.1"
+python -m pip install "pydantic-settings[yaml]==2.14.1"
+python -m pip install "pydantic-settings[aws-secrets-manager]==2.14.1"
+python -m pip install "pydantic-settings[azure-key-vault]==2.14.1"
+python -m pip install "pydantic-settings[gcp-secret-manager]==2.14.1"
 ```
 
 ## Core Pattern
@@ -244,7 +244,7 @@ Important boundary:
 
 ## Version-Sensitive Notes
 
-- As of March 12, 2026, PyPI lists `2.13.1`, which matches the version covered here.
+- As of May 29, 2026, PyPI lists `2.14.1`, which matches the version covered here.
 - The official docs live under the main Pydantic docs site, not a separate `pydantic-settings` docs domain.
 - This package is for the Pydantic v2 settings model. Older blog posts that import `BaseSettings` from `pydantic` are v1-era examples and should not be copied into new code.
 - Python `>=3.10` is required for the current package release.

@@ -3,9 +3,9 @@ name: vue
 description: "Vue 3 runtime for building reactive component UIs in JavaScript with the Composition API, single-file components, and app-level configuration."
 metadata:
   languages: "javascript"
-  versions: "3.5.30"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "3.5.35"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "vue,javascript,ui,components,reactivity,composition-api"
 ---
@@ -252,6 +252,176 @@ if (!apiBaseUrl) {
 </template>
 ```
 
+### Two-way bind props with `defineModel()`
+
+`defineModel()` is the stable `<script setup>` macro for declaring a `v-model`-compatible prop. The returned ref reads the prop and emits `update:modelValue` (or `update:<name>`) on write.
+
+```vue
+<!-- components/EmailField.vue -->
+<script setup>
+const email = defineModel({ type: String, default: "" });
+const optIn = defineModel("optIn", { type: Boolean, default: false });
+</script>
+
+<template>
+  <label>
+    Email
+    <input v-model="email" type="email" />
+  </label>
+
+  <label>
+    <input v-model="optIn" type="checkbox" />
+    Subscribe
+  </label>
+</template>
+```
+
+```vue
+<!-- Parent -->
+<script setup>
+import { ref } from "vue";
+import EmailField from "./components/EmailField.vue";
+
+const email = ref("");
+const optIn = ref(false);
+</script>
+
+<template>
+  <EmailField v-model="email" v-model:optIn="optIn" />
+</template>
+```
+
+### Run side effects with lifecycle hooks
+
+Import lifecycle hooks from `vue` and call them synchronously inside `<script setup>`.
+
+```vue
+<script setup>
+import { onMounted, onBeforeUnmount, onUpdated } from "vue";
+
+let timerId;
+
+onMounted(() => {
+  timerId = setInterval(() => console.log("tick"), 1000);
+});
+
+onBeforeUnmount(() => {
+  clearInterval(timerId);
+});
+
+onUpdated(() => {
+  console.log("DOM updated");
+});
+</script>
+```
+
+Common hooks: `onBeforeMount`, `onMounted`, `onBeforeUpdate`, `onUpdated`, `onBeforeUnmount`, `onUnmounted`, `onErrorCaptured`.
+
+### Render async children with `<Suspense>`
+
+`<Suspense>` waits for async dependencies (top-level `await` in `<script setup>` or async components) before showing the default slot. Use the `fallback` slot for the loading state.
+
+```vue
+<!-- components/UserProfile.vue -->
+<script setup>
+const props = defineProps({ userId: { type: Number, required: true } });
+
+const response = await fetch(`/api/users/${props.userId}`);
+const user = await response.json();
+</script>
+
+<template>
+  <p>{{ user.name }}</p>
+</template>
+```
+
+```vue
+<!-- Parent -->
+<script setup>
+import UserProfile from "./components/UserProfile.vue";
+</script>
+
+<template>
+  <Suspense>
+    <UserProfile :user-id="1" />
+    <template #fallback>
+      <p>Loading user...</p>
+    </template>
+  </Suspense>
+</template>
+```
+
+### Render into a different DOM node with `<Teleport>`
+
+`<Teleport>` moves its children to a target element outside the current component tree. This is useful for modals, toasts, and tooltips that need to escape parent overflow or stacking contexts.
+
+```vue
+<script setup>
+import { ref } from "vue";
+
+const open = ref(false);
+</script>
+
+<template>
+  <button type="button" @click="open = true">Open modal</button>
+
+  <Teleport to="body">
+    <div v-if="open" class="modal">
+      <p>I render directly under &lt;body&gt;.</p>
+      <button type="button" @click="open = false">Close</button>
+    </div>
+  </Teleport>
+</template>
+```
+
+### Centralize state with Pinia (optional)
+
+For state that must be shared across many components, the Vue team recommends Pinia. Install separately and register as a plugin.
+
+```bash
+npm install pinia
+```
+
+```javascript
+// src/main.js
+import { createApp } from "vue";
+import { createPinia } from "pinia";
+import App from "./App.vue";
+
+createApp(App).use(createPinia()).mount("#app");
+```
+
+```javascript
+// src/stores/counter.js
+import { defineStore } from "pinia";
+import { computed, ref } from "vue";
+
+export const useCounterStore = defineStore("counter", () => {
+  const count = ref(0);
+  const doubled = computed(() => count.value * 2);
+
+  function increment() {
+    count.value += 1;
+  }
+
+  return { count, doubled, increment };
+});
+```
+
+```vue
+<script setup>
+import { useCounterStore } from "./stores/counter";
+
+const counter = useCounterStore();
+</script>
+
+<template>
+  <button type="button" @click="counter.increment">
+    {{ counter.count }} (doubled: {{ counter.doubled }})
+  </button>
+</template>
+```
+
 ### Access DOM elements with template refs
 
 In Vue 3.5, `useTemplateRef()` provides a concise way to read a template ref from `<script setup>`.
@@ -283,8 +453,9 @@ onMounted(() => {
 
 ## Version-Sensitive Notes
 
-- This guide targets `vue==3.5.30`.
+- This guide targets `vue==3.5.35`.
 - `useTemplateRef()` is part of the Vue 3.5 API. Older Vue 3 code often uses `const el = ref(null)` for the same job.
+- `defineModel()` is a stable `<script setup>` macro for two-way bound props (`v-model`).
 - Use `createSSRApp()` rather than `createApp()` when hydrating HTML that was rendered on the server.
 
 ## Official Sources

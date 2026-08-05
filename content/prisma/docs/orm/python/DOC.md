@@ -4,7 +4,8 @@ description: "Prisma Client Python for type-safe database access and schema-driv
 metadata:
   languages: "python"
   versions: "0.15.0"
-  updated-on: "2026-03-01"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "prisma,orm,database,python,migrations"
 ---

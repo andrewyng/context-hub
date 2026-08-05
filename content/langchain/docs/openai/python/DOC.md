@@ -1,11 +1,11 @@
 ---
 name: openai
-description: "langchain-openai package guide for Python covering ChatOpenAI, OpenAIEmbeddings, Responses API, Azure setup, and 1.1.11 notes"
+description: "langchain-openai package guide for Python covering ChatOpenAI, OpenAIEmbeddings, Responses API, Azure setup, and 1.2.2 notes"
 metadata:
   languages: "python"
-  versions: "1.1.11"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "1.2.2"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "langchain-openai,langchain,openai,python,llm,embeddings,azure-openai"
 ---
@@ -27,32 +27,32 @@ Important boundary: `langchain-openai` is an integration package, not the full f
 
 ## Version-Sensitive Notes
 
-- This entry is pinned to the version used here `1.1.11`.
-- PyPI still shows `1.1.11` as the current release on 2026-03-12, so the version used here matches upstream for review.
+- This entry is pinned to the version used here `1.2.2`.
+- PyPI shows `1.2.2` as the current release on 2026-05-29, so the version used here matches upstream for review.
 - The docs URL `https://python.langchain.com/api_reference/openai/` is a legacy LangChain API-reference landing page. Current conceptual guides live under `docs.langchain.com`, and the current Python API reference is under `reference.langchain.com`.
 - LangChain's release policy treats integration packages such as `langchain-openai` as separately versioned packages. Do not assume they should match `langchain` or `langchain-core` patch versions.
 - Official docs note that `ChatOpenAI` can automatically use the OpenAI Responses API in some cases and can be forced with `use_responses_api=True`. If behavior matters, test against the exact model and request shape you use.
 - Official docs also note that, as of `langchain-openai >= 1.0.1`, `ChatOpenAI` and `OpenAIEmbeddings` can target Azure OpenAI's v1 API directly. Older Azure-specific examples may still use `AzureChatOpenAI` and `AzureOpenAIEmbeddings`.
-- The current chat integration guide marks OpenAI tool search as requiring `langchain-openai >= 1.1.11`, so this pinned version is new enough for that feature.
+- The current chat integration guide marks OpenAI tool search and related newer features as requiring recent `langchain-openai >= 1.1.x` versions, so this pinned version is new enough for those features.
 
 ## Install
 
 Pin the integration package and whichever LangChain package your app actually uses:
 
 ```bash
-python -m pip install "langchain-openai==1.1.11" "langchain-core"
+python -m pip install "langchain-openai==1.2.2" "langchain-core"
 ```
 
 Typical application install:
 
 ```bash
-python -m pip install "langchain==1.2.11" "langchain-openai==1.1.11"
+python -m pip install "langchain==1.3.2" "langchain-openai==1.2.2"
 ```
 
 If you are using Azure and want to stay close to LangChain's Azure-specific examples, the same package provides those classes:
 
 ```bash
-python -m pip install "langchain-openai==1.1.11"
+python -m pip install "langchain-openai==1.2.2"
 ```
 
 ## Auth And Setup
@@ -282,7 +282,7 @@ Keep these in constructor arguments or environment variables, not hard-coded ins
 - Installing `langchain-openai` alone is not enough if your code also imports `langchain` or `langchain_core` abstractions.
 - Do not assume every `langchain-*` package should share the same version number. `langchain-openai` is separately versioned.
 - Older blog posts often show legacy `OpenAI` completion classes or pre-Responses OpenAI behavior. For new code, prefer `ChatOpenAI` unless you specifically need older completion behavior.
-- The hosted docs are live product docs, not an archive pinned to `1.1.11`. If you are debugging a version-specific mismatch, check PyPI release history and the LangChain release policy before copying a newer example verbatim.
+- The hosted docs are live product docs, not an archive pinned to `1.2.2`. If you are debugging a version-specific mismatch, check PyPI release history and the LangChain release policy before copying a newer example verbatim.
 - When streaming, usage metadata is not automatic in all paths. If your code depends on token counts, enable the documented usage option and test it.
 - If you are targeting Azure, do not mix OpenAI and Azure environment variables casually. Pick either the Azure-specific class pattern or the Azure v1 `base_url` pattern and keep the configuration consistent.
 - `OpenAIEmbeddings.dimensions` applies to the newer embedding models; do not assume every model supports custom dimensions.

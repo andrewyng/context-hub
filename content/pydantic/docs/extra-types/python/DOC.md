@@ -1,11 +1,11 @@
 ---
 name: extra-types
-description: "pydantic-extra-types 2.11.0 guide for validating colors, countries, phone numbers, payment cards, coordinates, and time zones in Python"
+description: "pydantic-extra-types 2.11.1 guide for validating colors, countries, phone numbers, payment cards, coordinates, time zones, ISBN, MAC addresses, currencies, and more in Python"
 metadata:
   languages: "python"
-  versions: "2.11.0"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "2.11.1"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "pydantic,pydantic-extra-types,python,validation,types,phone-numbers,countries,timezones"
 ---
@@ -23,28 +23,59 @@ There is no client object, auth flow, or environment-variable setup. You import 
 Pin the package version your project expects:
 
 ```bash
-python -m pip install "pydantic-extra-types==2.11.0"
+python -m pip install "pydantic-extra-types==2.11.1"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "pydantic-extra-types==2.11.0"
-poetry add "pydantic-extra-types==2.11.0"
+uv add "pydantic-extra-types==2.11.1"
+poetry add "pydantic-extra-types==2.11.1"
 ```
 
 Optional extras published on PyPI:
 
 ```bash
-python -m pip install "pydantic-extra-types[phonenumbers]==2.11.0"
-python -m pip install "pydantic-extra-types[all]==2.11.0"
+python -m pip install "pydantic-extra-types[phonenumbers]==2.11.1"
+python -m pip install "pydantic-extra-types[pycountry]==2.11.1"
+python -m pip install "pydantic-extra-types[pendulum]==2.11.1"
+python -m pip install "pydantic-extra-types[python-ulid]==2.11.1"
+python -m pip install "pydantic-extra-types[semver]==2.11.1"
+python -m pip install "pydantic-extra-types[uuid-utils]==2.11.1"
+python -m pip install "pydantic-extra-types[cron]==2.11.1"
+python -m pip install "pydantic-extra-types[all]==2.11.1"
 ```
 
 Notes:
 
-- PyPI lists Python `>=3.9` for `2.11.0`.
+- PyPI lists Python `>=3.9` for `2.11.1`.
 - The package is for the Pydantic v2 ecosystem; these types are no longer imported from `pydantic` itself.
 - If your runtime does not have an IANA timezone database available, install `tzdata` before using `TimeZoneName`.
+
+## Types Provided
+
+`pydantic-extra-types` ships these types (import from `pydantic_extra_types.<module>`):
+
+- `color.Color` — CSS color values with `.as_hex()`, `.as_rgb_tuple()`, `.as_hsl()`.
+- `country.CountryAlpha2`, `CountryAlpha3`, `CountryNumericCode`, `CountryShortName`, `CountryOfficialName` — ISO 3166 country codes.
+- `coordinate.Coordinate`, `Latitude`, `Longitude` — geographic coordinates.
+- `currency_code.Currency`, `ISO4217` — ISO 4217 currency codes.
+- `language_code.LanguageAlpha2`, `LanguageName` — ISO 639 language codes.
+- `mac_address.MacAddress` — MAC addresses.
+- `payment.PaymentCardNumber` with `.brand`, `.bin`, `.last4`, `.masked`.
+- `phone_numbers.PhoneNumber`, `PhoneNumberValidator` — requires the `phonenumbers` extra.
+- `routing_number.ABARoutingNumber` — US bank routing numbers.
+- `s3.S3Path` — S3 URI parsing.
+- `script_code.ISO_15924` — script codes.
+- `semantic_version.SemanticVersion` — semver strings; requires the `semver` extra.
+- `semver.VersionType` — alternative semver type via `semver` extra.
+- `timezone_name.TimeZoneName` — IANA timezone identifiers.
+- `ulid.ULID` — universally unique lexicographically sortable IDs; requires the `python-ulid` extra.
+- `isbn.ISBN` — ISBN-10 and ISBN-13.
+- `pendulum_dt.DateTime`, `Date`, `Duration` — Pendulum datetime types; requires the `pendulum` extra.
+- `domain.DomainStr` — domain name strings.
+- `epoch.Number`, `Integer` — Unix epoch time values.
+- `mongo_object_id.MongoObjectId` — MongoDB ObjectId values.
 
 ## Core Pattern
 
@@ -183,11 +214,11 @@ This is the simplest pattern for parsing config values, CLI inputs, or isolated 
 - `PhoneNumber` requires the `phonenumbers` dependency. Install the `phonenumbers` extra before using it.
 - `TimeZoneName` relies on the IANA timezone database. Install `tzdata` if your deployment image does not already provide timezone data.
 - The main Pydantic types docs note that strictness and extra constraints are not applied to these extra types. If you need narrower rules, add a validator, use `Annotated` metadata such as `PhoneNumberValidator`, or define a subtype such as a custom `PhoneNumber` subclass.
-- The official docs root uses `/latest/`, so copy examples cautiously if your project is pinned to a much older or newer wheel than `2.11.0`.
+- The official docs root uses `/latest/`, so copy examples cautiously if your project is pinned to a much older or newer wheel than `2.11.1`.
 
-## Version-Sensitive Notes For `2.11.0`
+## Version-Sensitive Notes For `2.11.1`
 
-- PyPI lists `2.11.0` as the package version covered here and requires Python `>=3.9`.
+- PyPI lists `2.11.1` as the current package version as of `2026-05-29` and requires Python `>=3.9`.
 - The current maintainer docs for extra types live under the main Pydantic docs site, not a separate package site.
 - Pydantic v2 moved these types out of the main package. If you are migrating v1 code, prefer imports from `pydantic_extra_types.*` and re-check any old field examples.
 
@@ -201,4 +232,4 @@ This is the simplest pattern for parsing config values, CLI inputs, or isolated 
 - Phone numbers API: `https://docs.pydantic.dev/2.11/api/pydantic_extra_types_phone_numbers/`
 - Timezone name API: `https://docs.pydantic.dev/latest/api/pydantic_extra_types_timezone_name/`
 - Main types docs: `https://docs.pydantic.dev/latest/api/types/`
-- PyPI: `https://pypi.org/project/pydantic-extra-types/2.11.0/`
+- PyPI: `https://pypi.org/project/pydantic-extra-types/2.11.1/`

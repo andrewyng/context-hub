@@ -3,9 +3,9 @@ name: playwright
 description: "Playwright for JavaScript and Node.js: browser automation, locators, auth state reuse, and browser installation"
 metadata:
   languages: "javascript"
-  versions: "1.58.2"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "1.60.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "playwright,javascript,nodejs,browser,testing,e2e,automation"
 ---
@@ -279,42 +279,216 @@ npm install -D @playwright/test
 npx playwright install
 ```
 
-Minimal `playwright.config.ts`:
+### Configure projects and parallelism
+
+`playwright.config.ts` ties together test discovery, parallel workers, browser projects, traces, and reporters.
 
 ```typescript
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 2 : undefined,
+  reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000',
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
   projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox',  use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit',   use: { ...devices['Desktop Safari'] } },
+    { name: 'mobile-chrome', use: { ...devices['Pixel 7'] } },
   ],
 });
 ```
 
-Minimal test:
+`fullyParallel: true` runs tests inside a file in parallel; `workers` controls how many processes execute test files concurrently.
+
+### Write tests with `test()` and `expect()`
+
+`test()` defines a test case and receives Playwright's built-in fixtures (`page`, `context`, `browser`, `request`, and friends). `expect()` provides locator-aware web-first assertions that auto-retry until they pass or hit the timeout.
 
 ```typescript
 import { test, expect } from '@playwright/test';
 
 test('homepage shows docs link', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Docs' })).toBeVisible();
+
+  const docsLink = page.getByRole('link', { name: 'Docs' });
+
+  await expect(docsLink).toBeVisible();
+  await expect(docsLink).toHaveAttribute('href', /\/docs/);
 });
 ```
 
-Run it:
+Group related tests with `test.describe()`, share setup with `test.beforeEach()` / `test.afterEach()`, and skip or mark conditionally with `test.skip()`, `test.fixme()`, `test.fail()`, and `test.slow()`:
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('checkout', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/cart');
+  });
+
+  test('renders the cart total', async ({ page }) => {
+    await expect(page.getByTestId('cart-total')).toHaveText(/\$\d+/);
+  });
+
+  test.skip('legacy promo banner', async ({ page }) => {
+    // covered by visual tests instead
+  });
+});
+```
+
+### Locators and web-first assertions
+
+Prefer accessibility-first locators that the runner can auto-wait on:
+
+```typescript
+page.getByRole('button', { name: 'Sign in' });
+page.getByRole('heading', { level: 1, name: 'Dashboard' });
+page.getByLabel('Email');
+page.getByPlaceholder('you@example.com');
+page.getByText('Welcome back');
+page.getByTestId('user-menu');
+page.locator('main').getByRole('list').getByRole('listitem').first();
+```
+
+Common assertions on locators:
+
+```typescript
+await expect(locator).toBeVisible();
+await expect(locator).toBeHidden();
+await expect(locator).toBeEnabled();
+await expect(locator).toBeChecked();
+await expect(locator).toHaveText('Welcome');
+await expect(locator).toContainText('Welcome');
+await expect(locator).toHaveValue('hello');
+await expect(locator).toHaveCount(3);
+await expect(locator).toHaveAttribute('href', /\/docs/);
+await expect(page).toHaveURL(/\/dashboard$/);
+await expect(page).toHaveTitle(/Playwright/);
+```
+
+### Page Object Model
+
+Wrap repeated locator chains and flows in a class to keep tests readable.
+
+`tests/pages/login.page.ts`
+
+```typescript
+import type { Page } from '@playwright/test';
+
+export class LoginPage {
+  constructor(private readonly page: Page) {}
+
+  readonly email = this.page.getByLabel('Email');
+  readonly password = this.page.getByLabel('Password');
+  readonly submit = this.page.getByRole('button', { name: 'Sign in' });
+
+  async goto() {
+    await this.page.goto('/login');
+  }
+
+  async signIn(email: string, password: string) {
+    await this.email.fill(email);
+    await this.password.fill(password);
+    await this.submit.click();
+  }
+}
+```
+
+`tests/login.spec.ts`
+
+```typescript
+import { test, expect } from '@playwright/test';
+import { LoginPage } from './pages/login.page';
+
+test('user can sign in', async ({ page }) => {
+  const login = new LoginPage(page);
+  await login.goto();
+  await login.signIn('user@example.com', 'correct-horse-battery-staple');
+
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+});
+```
+
+### Custom fixtures
+
+Extend `test` with project-specific fixtures so each test gets a ready-to-use object instead of repeating setup.
+
+```typescript
+import { test as base, expect } from '@playwright/test';
+import { LoginPage } from './pages/login.page';
+
+type Fixtures = {
+  loginPage: LoginPage;
+};
+
+export const test = base.extend<Fixtures>({
+  loginPage: async ({ page }, use) => {
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+    await use(loginPage);
+  },
+});
+
+export { expect };
+
+test('uses the loginPage fixture', async ({ loginPage, page }) => {
+  await loginPage.signIn('user@example.com', 'correct-horse-battery-staple');
+  await expect(page).toHaveURL(/\/dashboard/);
+});
+```
+
+### Traces, screenshots, and video
+
+Enable artifacts in `use`, and they appear in the HTML report on failure:
+
+```typescript
+use: {
+  trace: 'on-first-retry',     // 'on' | 'off' | 'retain-on-failure' | 'on-first-retry'
+  screenshot: 'only-on-failure', // 'on' | 'off' | 'only-on-failure'
+  video: 'retain-on-failure',
+}
+```
+
+Open the trace viewer for a specific run:
+
+```bash
+npx playwright show-trace test-results/.../trace.zip
+npx playwright show-report
+```
+
+### Codegen
+
+Bootstrap selectors and flows interactively:
+
+```bash
+npx playwright codegen https://example.com
+npx playwright codegen --target=javascript --output=tests/example.spec.ts https://example.com
+```
+
+Simplify generated locators into role/label/test-id forms before committing.
+
+### Running tests
 
 ```bash
 npx playwright test
+npx playwright test tests/login.spec.ts
+npx playwright test -g "sign in"
 npx playwright test --project=chromium --headed
+npx playwright test --workers=4
+npx playwright test --repeat-each=3
+npx playwright test --ui          # interactive UI mode
+npx playwright test --debug       # step through with Playwright Inspector
 ```
 
 ## Common Pitfalls
@@ -351,12 +525,13 @@ A browser can host many contexts. Reusing one context across unrelated tests ten
 
 Storage-state files, screenshots, videos, and traces can contain secrets, account data, and internal URLs. Keep them out of version control unless they are sanitized fixtures created for testing.
 
-## Version-Sensitive Notes For 1.58.2
+## Version-Sensitive Notes For 1.60.0
 
-- Playwright `1.58.x` includes the `1.58.0` breaking removals of `_react`, `_vue`, `:light`, and the Chromium `devtools` launch option.
+- The `1.58.0` breaking removals of `_react`, `_vue`, `:light`, and the Chromium `devtools` launch option still apply through `1.60.x`.
 - If you are copying older snippets, rewrite selector logic around role, label, text, or test-id locators instead of removed selector engines.
 - If you relied on the old `devtools` launch flag, switch to Chromium launch arguments or Playwright Inspector-based debugging.
-- Playwright `1.58` also dropped macOS 13 support for WebKit.
+- macOS 13 is no longer supported for WebKit.
+- Re-run `npx playwright install` after upgrading to `1.60.0`; the browser binaries shipped with this release require a fresh download.
 
 ## Official Source URLs
 

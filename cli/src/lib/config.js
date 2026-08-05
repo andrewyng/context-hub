@@ -5,6 +5,7 @@ import { parse as parseYaml } from 'yaml';
 
 const DEFAULT_CDN_URL = 'https://cdn.aichub.org/v1';
 const DEFAULT_TELEMETRY_URL = 'https://api.aichub.org/v1';
+const DEFAULT_HELP_TIMEOUT_MS = 2000;
 
 const DEFAULTS = {
   output_dir: '.context',
@@ -14,12 +15,19 @@ const DEFAULTS = {
   telemetry: true,
   feedback: true,
   telemetry_url: DEFAULT_TELEMETRY_URL,
+  help_timeout_ms: DEFAULT_HELP_TIMEOUT_MS,
 };
 
 let _config = null;
 
 export function getChubDir() {
   return process.env.CHUB_DIR || join(homedir(), '.chub');
+}
+
+function getHelpUrlFromSources(sources) {
+  const remoteSource = sources.find((source) => typeof source?.url === 'string' && source.url.trim());
+  if (!remoteSource) return null;
+  return `${remoteSource.url.trim().replace(/\/+$/, '')}/help/{version}.json`;
 }
 
 export function loadConfig() {
@@ -53,6 +61,13 @@ export function loadConfig() {
     telemetry: fileConfig.telemetry !== undefined ? fileConfig.telemetry : DEFAULTS.telemetry,
     feedback: fileConfig.feedback !== undefined ? fileConfig.feedback : DEFAULTS.feedback,
     telemetry_url: fileConfig.telemetry_url || DEFAULTS.telemetry_url,
+    help_url: process.env.CHUB_HELP_URL
+      ?? (fileConfig.help_url !== undefined ? fileConfig.help_url : getHelpUrlFromSources(sources)),
+    help_timeout_ms: Number.parseInt(
+      process.env.CHUB_HELP_TIMEOUT_MS
+      ?? (fileConfig.help_timeout_ms ?? DEFAULTS.help_timeout_ms),
+      10
+    ) || DEFAULTS.help_timeout_ms,
   };
 
   return _config;

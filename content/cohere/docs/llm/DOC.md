@@ -3,8 +3,9 @@ name: llm
 description: "Cohere API JavaScript/TypeScript SDK coding guide for LLM, embeddings, and rerank"
 metadata:
   languages: "javascript"
-  versions: "7.19.0"
-  updated-on: "2026-03-02"
+  versions: "8.0.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "cohere,llm,ai,embeddings,rerank"
 ---
@@ -819,7 +820,7 @@ async function chatWithBackoff(messages, retries = 3, delay = 1000) {
 
 ### Model Selection
 
-**Current Production Models (as of 2025):** `command-a-03-2025` (latest Command A model with 256K context, 111B parameters, highest throughput - 150% faster than Command R+), `command-r-plus-08-2024` (Command R+ with strong reasoning capabilities), `embed-english-v3.0` (English embeddings with 1024 dimensions), `embed-multilingual-v3.0` (multilingual embeddings supporting 100+ languages), `rerank-english-v3.0` (English reranking model), and `rerank-multilingual-v3.0` (multilingual reranking).
+**Current Production Models (verified May 2026):** `command-a-03-2025` (latest Command A model with 256K context, 111B parameters, highest throughput - 150% faster than Command R+), `command-r-plus-08-2024` (Command R+ with strong reasoning capabilities), `embed-english-v3.0` (English embeddings with 1024 dimensions), `embed-multilingual-v3.0` (multilingual embeddings supporting 100+ languages), `rerank-english-v3.0` (English reranking model), and `rerank-multilingual-v3.0` (multilingual reranking). Verify current model IDs in the Cohere docs before deploying — model availability evolves independently of the SDK version.
 
 **Choosing the right model:**
 
@@ -1017,12 +1018,13 @@ class EmbeddingCache {
 // package.json - Pin exact SDK version
 {
   "dependencies": {
-    "cohere-ai": "7.14.0"
+    "cohere-ai": "8.0.0"
   }
 }
 ```
 
 - Pin exact SDK version in `package.json`
+- `cohere-ai` 8.x requires Node.js 18 or higher
 - Review changelog before upgrading
 - Test thoroughly in staging before production deployment
 - Monitor Cohere's release notes for breaking changes

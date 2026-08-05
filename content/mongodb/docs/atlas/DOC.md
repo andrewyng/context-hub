@@ -3,63 +3,64 @@ name: atlas
 description: "MongoDB Node.js driver for interacting with MongoDB Atlas databases using the official JavaScript/TypeScript SDK."
 metadata:
   languages: "javascript"
-  versions: "6.20.0"
-  updated-on: "2026-03-01"
+  versions: "7.2.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "mongodb,atlas,database,nosql,driver"
 ---
 
 # MongoDB Atlas Coding Guidelines (JavaScript/TypeScript)
 
-You are a MongoDB Atlas coding expert. Help me with writing code using the MongoDB Node.js driver calling the official libraries and SDKs.
+You are a MongoDB Atlas coding expert. Help me with writing code using the MongoDB Node.js driver, calling the official libraries and SDKs.
 
-## Golden Rule: Use the Correct and Current SDK
+## Golden Rule: Use The Official Driver
 
 Always use the official MongoDB Node.js driver for all MongoDB Atlas interactions.
 
-- **Library Name:** MongoDB Node.js Driver
-- **NPM Package:** `mongodb`
+- **Library name:** MongoDB Node.js Driver
+- **NPM package:** `mongodb`
 - **GitHub:** https://github.com/mongodb/node-mongodb-native
-
-**Installation:**
+- **Current `latest` dist-tag (May 29, 2026):** `7.2.0`
 
 ```bash
-npm install mongodb
+npm install mongodb@7
 ```
 
-**Import Patterns:**
+When upgrading from `mongodb@6`, watch for changes around server selection, BSON imports, and removed legacy callback APIs.
+
+### Import patterns
 
 ```javascript
-// ES6 import (recommended)
+// ES module (recommended)
 import { MongoClient } from 'mongodb';
 
-// CommonJS require
+// CommonJS
 const { MongoClient } = require('mongodb');
 
-// Additional utilities
-import { MongoClient, ObjectId, Timestamp } from 'mongodb';
+// Common utilities
+import { MongoClient, ObjectId, Timestamp, ServerApiVersion } from 'mongodb';
 ```
 
-**Do NOT use:**
-- Deprecated MongoDB packages
-- Third-party MongoDB wrappers (unless specifically requested)
-- Old connection patterns from MongoDB driver v2 or v3
+### Do not use
 
-## Installation and Environment Setup
+- Deprecated MongoDB packages (`mongodb-core`, `mongodb-legacy` callback-style helpers unless you need them explicitly)
+- Third-party MongoDB wrappers unless they are required by your team
+- Connection patterns from driver v2/v3 (callbacks, `MongoClient.connect(url, cb)` factory style)
+
+## Installation And Environment Setup
 
 ```bash
-npm install mongodb
+npm install mongodb@7
 ```
 
-**Environment Variables Setup:**
-
-Create a `.env` file in your project root:
+`.env` for an Atlas cluster:
 
 ```bash
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
 ```
 
-**Using dotenv for environment variables:**
+Atlas connection strings use the `mongodb+srv://` scheme, which performs DNS SRV lookups against your cluster's seed host to discover replica set members and TLS settings.
 
 ```bash
 npm install dotenv
@@ -72,11 +73,11 @@ import { MongoClient } from 'mongodb';
 const uri = process.env.MONGODB_URI;
 ```
 
-## Initialization and Connection
+## Initialization And Connection
 
-The MongoDB driver requires creating a `MongoClient` instance for all database operations.
+`MongoClient` is the entry point. Call `connect()` once per process and reuse the client; it manages an internal connection pool.
 
-**Basic Connection:**
+### Basic connect
 
 ```javascript
 import { MongoClient } from 'mongodb';
@@ -87,13 +88,11 @@ const client = new MongoClient(uri);
 async function main() {
   try {
     await client.connect();
-    console.log('Connected to MongoDB Atlas');
 
     const database = client.db('myDatabase');
     const collection = database.collection('myCollection');
 
-    // Perform operations...
-
+    // ...operations
   } finally {
     await client.close();
   }
@@ -102,55 +101,41 @@ async function main() {
 main().catch(console.error);
 ```
 
-**Connection with Options:**
+### Connect with Stable API options
 
 ```javascript
 import { MongoClient, ServerApiVersion } from 'mongodb';
 
-const uri = process.env.MONGODB_URI;
-
-const client = new MongoClient(uri, {
+const client = new MongoClient(process.env.MONGODB_URI, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 
-async function run() {
-  try {
-    await client.connect();
-    await client.db('admin').command({ ping: 1 });
-    console.log('Pinged your deployment. Successfully connected to MongoDB!');
-  } finally {
-    await client.close();
-  }
-}
-
-run().catch(console.error);
+await client.connect();
+await client.db('admin').command({ ping: 1 });
 ```
 
-**Reusable Connection Pattern:**
+### Reusable client (long-lived process)
 
 ```javascript
 import { MongoClient } from 'mongodb';
 
-let client;
-let clientPromise;
-
 const uri = process.env.MONGODB_URI;
 const options = {};
 
+let clientPromise;
+
 if (process.env.NODE_ENV === 'development') {
-  // In development mode, use a global variable to preserve connection
   if (!global._mongoClientPromise) {
-    client = new MongoClient(uri, options);
+    const client = new MongoClient(uri, options);
     global._mongoClientPromise = client.connect();
   }
   clientPromise = global._mongoClientPromise;
 } else {
-  // In production mode, create a new client
-  client = new MongoClient(uri, options);
+  const client = new MongoClient(uri, options);
   clientPromise = client.connect();
 }
 
@@ -159,1883 +144,756 @@ export default clientPromise;
 
 ## CRUD Operations
 
-### Insert Documents
-
-**Insert One Document:**
+### Insert
 
 ```javascript
-import { MongoClient } from 'mongodb';
+const database = client.db('sample_db');
+const users = database.collection('users');
 
-const client = new MongoClient(process.env.MONGODB_URI);
+await users.insertOne({
+  name: 'John Doe',
+  email: 'john@example.com',
+  age: 30,
+  createdAt: new Date(),
+});
 
-async function insertDocument() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+const result = await users.insertMany([
+  { name: 'Alice', email: 'alice@example.com', age: 25 },
+  { name: 'Bob',   email: 'bob@example.com',   age: 32 },
+]);
 
-    const doc = {
-      name: 'John Doe',
-      email: 'john@example.com',
-      age: 30,
-      createdAt: new Date()
-    };
+console.log(result.insertedCount, result.insertedIds);
 
-    const result = await collection.insertOne(doc);
-    console.log(`Document inserted with _id: ${result.insertedId}`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-insertDocument().catch(console.error);
+await users.insertOne(
+  { name: 'David', email: 'david@example.com' },
+  { writeConcern: { w: 'majority', wtimeout: 5000 } },
+);
 ```
 
-**Insert Multiple Documents:**
+### Find
 
 ```javascript
-async function insertMultipleDocuments() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+const users = client.db('sample_db').collection('users');
 
-    const docs = [
-      { name: 'Alice', email: 'alice@example.com', age: 25 },
-      { name: 'Bob', email: 'bob@example.com', age: 32 },
-      { name: 'Charlie', email: 'charlie@example.com', age: 28 }
-    ];
+const allDocs = await users.find({}).toArray();
+const adults = await users.find({ age: { $gt: 25 } }).toArray();
+const one = await users.findOne({ email: 'john@example.com' });
 
-    const result = await collection.insertMany(docs);
-    console.log(`${result.insertedCount} documents inserted`);
-    console.log('Inserted IDs:', result.insertedIds);
+const projected = await users
+  .find({ age: { $gte: 25 } }, { projection: { _id: 0, name: 1, email: 1 } })
+  .toArray();
 
-  } finally {
-    await client.close();
-  }
-}
-
-insertMultipleDocuments().catch(console.error);
+const paged = await users
+  .find({})
+  .sort({ age: -1 })
+  .skip(5)
+  .limit(10)
+  .toArray();
 ```
 
-**Insert with Options:**
+#### Offset pagination
 
 ```javascript
-async function insertWithOptions() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+async function page(coll, pageNum = 1, pageSize = 10) {
+  const documents = await coll
+    .find({})
+    .sort({ createdAt: -1 })
+    .skip((pageNum - 1) * pageSize)
+    .limit(pageSize)
+    .toArray();
 
-    const doc = { name: 'David', email: 'david@example.com' };
+  const total = await coll.countDocuments({});
 
-    const result = await collection.insertOne(doc, {
-      writeConcern: { w: 'majority', wtimeout: 5000 }
-    });
-
-    console.log(`Document inserted: ${result.insertedId}`);
-
-  } finally {
-    await client.close();
-  }
+  return {
+    documents,
+    page: pageNum,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+    totalDocuments: total,
+  };
 }
-
-insertWithOptions().catch(console.error);
 ```
 
-### Find Documents
-
-**Find All Documents:**
+#### Cursor-based pagination (recommended at scale)
 
 ```javascript
-async function findAllDocuments() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+async function pageByCursor(coll, lastId = null, pageSize = 10) {
+  const query = lastId ? { _id: { $gt: lastId } } : {};
 
-    const cursor = collection.find({});
-    const documents = await cursor.toArray();
+  const documents = await coll
+    .find(query)
+    .sort({ _id: 1 })
+    .limit(pageSize)
+    .toArray();
 
-    console.log('All documents:', documents);
-
-  } finally {
-    await client.close();
-  }
+  return {
+    documents,
+    nextCursor: documents.length ? documents[documents.length - 1]._id : null,
+  };
 }
-
-findAllDocuments().catch(console.error);
 ```
 
-**Find with Filter:**
+### Update
 
 ```javascript
-async function findWithFilter() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+const users = client.db('sample_db').collection('users');
 
-    // Find users older than 25
-    const query = { age: { $gt: 25 } };
-    const cursor = collection.find(query);
-    const results = await cursor.toArray();
+await users.updateOne(
+  { email: 'john@example.com' },
+  { $set: { age: 31, updatedAt: new Date() } },
+);
 
-    console.log('Users older than 25:', results);
+await users.updateMany(
+  { age: { $lt: 30 } },
+  { $set: { category: 'young', updatedAt: new Date() } },
+);
 
-  } finally {
-    await client.close();
-  }
-}
+await users.updateOne(
+  { email: 'newuser@example.com' },
+  {
+    $set: {
+      name: 'New User',
+      email: 'newuser@example.com',
+      createdAt: new Date(),
+    },
+  },
+  { upsert: true },
+);
 
-findWithFilter().catch(console.error);
+await users.updateOne(
+  { email: 'john@example.com' },
+  {
+    $set: { status: 'active' },
+    $inc: { loginCount: 1 },
+    $push: { tags: 'premium' },
+    $currentDate: { lastModified: true },
+  },
+);
+
+await users.replaceOne(
+  { email: 'john@example.com' },
+  {
+    name: 'John Doe Updated',
+    email: 'john@example.com',
+    age: 31,
+    status: 'active',
+    updatedAt: new Date(),
+  },
+);
+
+const after = await users.findOneAndUpdate(
+  { email: 'john@example.com' },
+  { $inc: { age: 1 } },
+  { returnDocument: 'after' },
+);
 ```
 
-**Find One Document:**
+### Delete
 
 ```javascript
-async function findOneDocument() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const query = { email: 'john@example.com' };
-    const user = await collection.findOne(query);
-
-    if (user) {
-      console.log('Found user:', user);
-    } else {
-      console.log('User not found');
-    }
-
-  } finally {
-    await client.close();
-  }
-}
-
-findOneDocument().catch(console.error);
-```
-
-**Find with Projection:**
-
-```javascript
-async function findWithProjection() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const query = { age: { $gte: 25 } };
-    const options = {
-      projection: { _id: 0, name: 1, email: 1 }
-    };
-
-    const cursor = collection.find(query, options);
-    const results = await cursor.toArray();
-
-    console.log('Users (name and email only):', results);
-
-  } finally {
-    await client.close();
-  }
-}
-
-findWithProjection().catch(console.error);
-```
-
-**Find with Sort, Limit, and Skip:**
-
-```javascript
-async function findWithSortLimitSkip() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const cursor = collection.find({})
-      .sort({ age: -1 })  // Sort by age descending
-      .limit(10)          // Limit to 10 results
-      .skip(5);           // Skip first 5 results
-
-    const results = await cursor.toArray();
-
-    console.log('Sorted and paginated results:', results);
-
-  } finally {
-    await client.close();
-  }
-}
-
-findWithSortLimitSkip().catch(console.error);
-```
-
-**Pagination Pattern:**
-
-```javascript
-async function paginateDocuments(page = 1, pageSize = 10) {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const skip = (page - 1) * pageSize;
-
-    const cursor = collection.find({})
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(pageSize);
-
-    const documents = await cursor.toArray();
-    const total = await collection.countDocuments({});
-
-    return {
-      documents,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
-      totalDocuments: total
-    };
-
-  } finally {
-    await client.close();
-  }
-}
-
-paginateDocuments(1, 20).then(console.log).catch(console.error);
-```
-
-**Cursor-Based Pagination (Better Performance):**
-
-```javascript
-async function cursorPagination(lastId = null, pageSize = 10) {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const query = lastId ? { _id: { $gt: lastId } } : {};
-
-    const cursor = collection.find(query)
-      .sort({ _id: 1 })
-      .limit(pageSize);
-
-    const documents = await cursor.toArray();
-
-    return {
-      documents,
-      nextCursor: documents.length > 0
-        ? documents[documents.length - 1]._id
-        : null
-    };
-
-  } finally {
-    await client.close();
-  }
-}
-
-cursorPagination(null, 20).then(console.log).catch(console.error);
-```
-
-### Update Documents
-
-**Update One Document:**
-
-```javascript
-async function updateOneDocument() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const filter = { email: 'john@example.com' };
-    const update = {
-      $set: { age: 31, updatedAt: new Date() }
-    };
-
-    const result = await collection.updateOne(filter, update);
-
-    console.log(`${result.matchedCount} document(s) matched the filter`);
-    console.log(`${result.modifiedCount} document(s) updated`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-updateOneDocument().catch(console.error);
-```
-
-**Update Multiple Documents:**
-
-```javascript
-async function updateManyDocuments() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const filter = { age: { $lt: 30 } };
-    const update = {
-      $set: { category: 'young', updatedAt: new Date() }
-    };
-
-    const result = await collection.updateMany(filter, update);
-
-    console.log(`${result.matchedCount} document(s) matched`);
-    console.log(`${result.modifiedCount} document(s) updated`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-updateManyDocuments().catch(console.error);
-```
-
-**Update with Upsert:**
-
-```javascript
-async function updateWithUpsert() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const filter = { email: 'newuser@example.com' };
-    const update = {
-      $set: {
-        name: 'New User',
-        email: 'newuser@example.com',
-        age: 22,
-        createdAt: new Date()
-      }
-    };
-
-    const options = { upsert: true };
-    const result = await collection.updateOne(filter, update, options);
-
-    if (result.upsertedId) {
-      console.log(`Document inserted with _id: ${result.upsertedId}`);
-    } else {
-      console.log(`${result.modifiedCount} document(s) updated`);
-    }
-
-  } finally {
-    await client.close();
-  }
-}
-
-updateWithUpsert().catch(console.error);
-```
-
-**Update Operators:**
-
-```javascript
-async function updateOperators() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const filter = { email: 'john@example.com' };
-    const update = {
-      $set: { status: 'active' },
-      $inc: { loginCount: 1 },
-      $push: { tags: 'premium' },
-      $currentDate: { lastModified: true }
-    };
-
-    const result = await collection.updateOne(filter, update);
-    console.log(`${result.modifiedCount} document(s) updated`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-updateOperators().catch(console.error);
-```
-
-**Replace Document:**
-
-```javascript
-async function replaceDocument() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const filter = { email: 'john@example.com' };
-    const replacement = {
-      name: 'John Doe Updated',
-      email: 'john@example.com',
-      age: 31,
-      status: 'active',
-      updatedAt: new Date()
-    };
-
-    const result = await collection.replaceOne(filter, replacement);
-    console.log(`${result.modifiedCount} document(s) replaced`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-replaceDocument().catch(console.error);
-```
-
-**Find and Modify:**
-
-```javascript
-async function findAndModify() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const filter = { email: 'john@example.com' };
-    const update = { $inc: { age: 1 } };
-    const options = {
-      returnDocument: 'after',  // Return the updated document
-      upsert: false
-    };
-
-    const result = await collection.findOneAndUpdate(filter, update, options);
-
-    if (result) {
-      console.log('Updated document:', result);
-    }
-
-  } finally {
-    await client.close();
-  }
-}
-
-findAndModify().catch(console.error);
-```
-
-### Delete Documents
-
-**Delete One Document:**
-
-```javascript
-async function deleteOneDocument() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const filter = { email: 'john@example.com' };
-    const result = await collection.deleteOne(filter);
-
-    console.log(`${result.deletedCount} document(s) deleted`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-deleteOneDocument().catch(console.error);
-```
-
-**Delete Multiple Documents:**
-
-```javascript
-async function deleteManyDocuments() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const filter = { age: { $lt: 18 } };
-    const result = await collection.deleteMany(filter);
-
-    console.log(`${result.deletedCount} document(s) deleted`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-deleteManyDocuments().catch(console.error);
-```
-
-**Find and Delete:**
-
-```javascript
-async function findAndDelete() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const filter = { email: 'john@example.com' };
-    const options = {
-      sort: { createdAt: -1 }
-    };
-
-    const result = await collection.findOneAndDelete(filter, options);
-
-    if (result) {
-      console.log('Deleted document:', result);
-    } else {
-      console.log('No document found to delete');
-    }
-
-  } finally {
-    await client.close();
-  }
-}
-
-findAndDelete().catch(console.error);
+const users = client.db('sample_db').collection('users');
+
+await users.deleteOne({ email: 'john@example.com' });
+await users.deleteMany({ age: { $lt: 18 } });
+
+const deleted = await users.findOneAndDelete(
+  { email: 'john@example.com' },
+  { sort: { createdAt: -1 } },
+);
 ```
 
 ## Aggregation Pipeline
 
-**Basic Aggregation:**
-
 ```javascript
-async function basicAggregation() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+const users = client.db('sample_db').collection('users');
 
-    const pipeline = [
-      { $match: { age: { $gte: 25 } } },
-      { $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          avgAge: { $avg: '$age' }
-        }
-      },
-      { $sort: { count: -1 } }
-    ];
-
-    const results = await collection.aggregate(pipeline).toArray();
-    console.log('Aggregation results:', results);
-
-  } finally {
-    await client.close();
-  }
-}
-
-basicAggregation().catch(console.error);
+const summary = await users.aggregate([
+  { $match: { age: { $gte: 25 } } },
+  {
+    $group: {
+      _id: '$status',
+      count: { $sum: 1 },
+      avgAge: { $avg: '$age' },
+    },
+  },
+  { $sort: { count: -1 } },
+]).toArray();
 ```
 
-**Advanced Aggregation with Multiple Stages:**
+### Multi-stage report
 
 ```javascript
-async function advancedAggregation() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('orders');
+const orders = client.db('sample_db').collection('orders');
 
-    const pipeline = [
-      {
-        $match: {
-          status: 'completed',
-          createdAt: { $gte: new Date('2024-01-01') }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' }
+const monthly = await orders.aggregate([
+  {
+    $match: {
+      status: 'completed',
+      createdAt: { $gte: new Date('2026-01-01') },
+    },
+  },
+  {
+    $group: {
+      _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+      totalSales: { $sum: '$amount' },
+      orderCount: { $sum: 1 },
+      avgOrderValue: { $avg: '$amount' },
+    },
+  },
+  { $sort: { '_id.year': 1, '_id.month': 1 } },
+  {
+    $project: {
+      _id: 0,
+      year: '$_id.year',
+      month: '$_id.month',
+      totalSales: 1,
+      orderCount: 1,
+      avgOrderValue: { $round: ['$avgOrderValue', 2] },
+    },
+  },
+]).toArray();
+```
+
+### `$lookup` join
+
+```javascript
+const orders = client.db('sample_db').collection('orders');
+
+const withUser = await orders.aggregate([
+  {
+    $lookup: {
+      from: 'users',
+      localField: 'userId',
+      foreignField: '_id',
+      as: 'userDetails',
+    },
+  },
+  { $unwind: '$userDetails' },
+  {
+    $project: {
+      orderNumber: 1,
+      amount: 1,
+      userName: '$userDetails.name',
+      userEmail: '$userDetails.email',
+    },
+  },
+]).toArray();
+```
+
+### `$facet` for multiple pipelines
+
+```javascript
+const products = client.db('sample_db').collection('products');
+
+const analytics = await products.aggregate([
+  {
+    $facet: {
+      categoryCounts: [
+        { $group: { _id: '$category', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ],
+      priceStats: [
+        {
+          $group: {
+            _id: null,
+            avgPrice: { $avg: '$price' },
+            minPrice: { $min: '$price' },
+            maxPrice: { $max: '$price' },
           },
-          totalSales: { $sum: '$amount' },
-          orderCount: { $sum: 1 },
-          avgOrderValue: { $avg: '$amount' }
-        }
-      },
-      {
-        $sort: { '_id.year': 1, '_id.month': 1 }
-      },
-      {
-        $project: {
-          _id: 0,
-          year: '$_id.year',
-          month: '$_id.month',
-          totalSales: 1,
-          orderCount: 1,
-          avgOrderValue: { $round: ['$avgOrderValue', 2] }
-        }
-      }
-    ];
-
-    const results = await collection.aggregate(pipeline).toArray();
-    console.log('Sales report:', results);
-
-  } finally {
-    await client.close();
-  }
-}
-
-advancedAggregation().catch(console.error);
+        },
+      ],
+      topProducts: [
+        { $sort: { sales: -1 } },
+        { $limit: 5 },
+        { $project: { name: 1, sales: 1, price: 1 } },
+      ],
+    },
+  },
+]).toArray();
 ```
 
-**Aggregation with $lookup (Join):**
+### Atlas Vector Search
+
+Atlas exposes vector search as the `$vectorSearch` aggregation stage. Define a `vectorSearch` index in the Atlas UI or via the management API, then query it from the driver:
 
 ```javascript
-async function aggregationWithLookup() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('orders');
+const docs = client.db('sample_db').collection('docs');
 
-    const pipeline = [
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'userId',
-          foreignField: '_id',
-          as: 'userDetails'
-        }
-      },
-      {
-        $unwind: '$userDetails'
-      },
-      {
-        $project: {
-          orderNumber: 1,
-          amount: 1,
-          userName: '$userDetails.name',
-          userEmail: '$userDetails.email'
-        }
-      }
-    ];
-
-    const results = await collection.aggregate(pipeline).toArray();
-    console.log('Orders with user details:', results);
-
-  } finally {
-    await client.close();
-  }
-}
-
-aggregationWithLookup().catch(console.error);
+const matches = await docs.aggregate([
+  {
+    $vectorSearch: {
+      index: 'docs_embedding_index',
+      path: 'embedding',
+      queryVector: queryEmbedding,         // number[]
+      numCandidates: 200,
+      limit: 10,
+      // optional pre-filter on indexed fields
+      filter: { category: 'guide' },
+    },
+  },
+  {
+    $project: {
+      _id: 1,
+      title: 1,
+      score: { $meta: 'vectorSearchScore' },
+    },
+  },
+]).toArray();
 ```
 
-**Aggregation with $facet (Multiple Pipelines):**
-
-```javascript
-async function aggregationWithFacet() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('products');
-
-    const pipeline = [
-      {
-        $facet: {
-          categoryCounts: [
-            { $group: { _id: '$category', count: { $sum: 1 } } },
-            { $sort: { count: -1 } }
-          ],
-          priceStats: [
-            {
-              $group: {
-                _id: null,
-                avgPrice: { $avg: '$price' },
-                minPrice: { $min: '$price' },
-                maxPrice: { $max: '$price' }
-              }
-            }
-          ],
-          topProducts: [
-            { $sort: { sales: -1 } },
-            { $limit: 5 },
-            { $project: { name: 1, sales: 1, price: 1 } }
-          ]
-        }
-      }
-    ];
-
-    const results = await collection.aggregate(pipeline).toArray();
-    console.log('Product analytics:', results[0]);
-
-  } finally {
-    await client.close();
-  }
-}
-
-aggregationWithFacet().catch(console.error);
-```
+`$vectorSearch` requires an Atlas cluster with a vector search index defined for the queried path; it is not available on self-hosted MongoDB without Atlas Search.
 
 ## Indexes
 
-**Create Single Field Index:**
-
 ```javascript
-async function createIndex() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+const users = client.db('sample_db').collection('users');
 
-    const result = await collection.createIndex({ email: 1 });
-    console.log(`Index created: ${result}`);
+await users.createIndex({ email: 1 });
+await users.createIndex({ lastName: 1, firstName: 1 });
+await users.createIndex({ email: 1 }, { unique: true });
 
-  } finally {
-    await client.close();
-  }
-}
+const articles = client.db('sample_db').collection('articles');
+await articles.createIndex({ title: 'text', content: 'text' });
 
-createIndex().catch(console.error);
-```
+const search = await articles
+  .find(
+    { $text: { $search: 'mongodb tutorial' } },
+    { projection: { score: { $meta: 'textScore' } } },
+  )
+  .sort({ score: { $meta: 'textScore' } })
+  .toArray();
 
-**Create Compound Index:**
+const locations = client.db('sample_db').collection('locations');
+await locations.createIndex({ location: '2dsphere' });
 
-```javascript
-async function createCompoundIndex() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+const nearby = await locations.find({
+  location: {
+    $near: {
+      $geometry: { type: 'Point', coordinates: [-73.9667, 40.78] },
+      $maxDistance: 5000,
+    },
+  },
+}).limit(10).toArray();
 
-    const result = await collection.createIndex(
-      { lastName: 1, firstName: 1 }
-    );
-    console.log(`Compound index created: ${result}`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-createCompoundIndex().catch(console.error);
-```
-
-**Create Unique Index:**
-
-```javascript
-async function createUniqueIndex() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const result = await collection.createIndex(
-      { email: 1 },
-      { unique: true }
-    );
-    console.log(`Unique index created: ${result}`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-createUniqueIndex().catch(console.error);
-```
-
-**Create Text Index:**
-
-```javascript
-async function createTextIndex() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('articles');
-
-    const result = await collection.createIndex(
-      { title: 'text', content: 'text' }
-    );
-    console.log(`Text index created: ${result}`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-createTextIndex().catch(console.error);
-```
-
-**Text Search Query:**
-
-```javascript
-async function textSearch() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('articles');
-
-    const query = { $text: { $search: 'mongodb tutorial' } };
-    const projection = { score: { $meta: 'textScore' } };
-
-    const cursor = collection
-      .find(query, { projection })
-      .sort({ score: { $meta: 'textScore' } });
-
-    const results = await cursor.toArray();
-    console.log('Search results:', results);
-
-  } finally {
-    await client.close();
-  }
-}
-
-textSearch().catch(console.error);
-```
-
-**Create 2dsphere Index (Geospatial):**
-
-```javascript
-async function createGeospatialIndex() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('locations');
-
-    const result = await collection.createIndex(
-      { location: '2dsphere' }
-    );
-    console.log(`Geospatial index created: ${result}`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-createGeospatialIndex().catch(console.error);
-```
-
-**Geospatial Query ($near):**
-
-```javascript
-async function geospatialNearQuery() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('locations');
-
-    const query = {
-      location: {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: [-73.9667, 40.78]  // [longitude, latitude]
-          },
-          $maxDistance: 5000  // 5km in meters
-        }
-      }
-    };
-
-    const results = await collection.find(query).limit(10).toArray();
-    console.log('Nearby locations:', results);
-
-  } finally {
-    await client.close();
-  }
-}
-
-geospatialNearQuery().catch(console.error);
-```
-
-**Geospatial Query ($geoWithin):**
-
-```javascript
-async function geospatialWithinQuery() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('locations');
-
-    const query = {
-      location: {
-        $geoWithin: {
-          $geometry: {
-            type: 'Polygon',
-            coordinates: [[
-              [-74.0, 40.7],
-              [-73.9, 40.7],
-              [-73.9, 40.8],
-              [-74.0, 40.8],
-              [-74.0, 40.7]
-            ]]
-          }
-        }
-      }
-    };
-
-    const results = await collection.find(query).toArray();
-    console.log('Locations within polygon:', results);
-
-  } finally {
-    await client.close();
-  }
-}
-
-geospatialWithinQuery().catch(console.error);
-```
-
-**List Indexes:**
-
-```javascript
-async function listIndexes() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const indexes = await collection.listIndexes().toArray();
-    console.log('Indexes:', indexes);
-
-  } finally {
-    await client.close();
-  }
-}
-
-listIndexes().catch(console.error);
-```
-
-**Drop Index:**
-
-```javascript
-async function dropIndex() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const result = await collection.dropIndex('email_1');
-    console.log('Index dropped:', result);
-
-  } finally {
-    await client.close();
-  }
-}
-
-dropIndex().catch(console.error);
-```
-
-## Bulk Write Operations
-
-**Bulk Write with Mixed Operations:**
-
-```javascript
-async function bulkWrite() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    const operations = [
-      {
-        insertOne: {
-          document: { name: 'User 1', email: 'user1@example.com' }
-        }
+const within = await locations.find({
+  location: {
+    $geoWithin: {
+      $geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [-74.0, 40.7], [-73.9, 40.7], [-73.9, 40.8], [-74.0, 40.8], [-74.0, 40.7],
+        ]],
       },
-      {
-        updateOne: {
-          filter: { email: 'john@example.com' },
-          update: { $set: { status: 'active' } }
-        }
-      },
-      {
-        updateMany: {
-          filter: { age: { $lt: 25 } },
-          update: { $set: { category: 'young' } }
-        }
-      },
-      {
-        deleteOne: {
-          filter: { email: 'old@example.com' }
-        }
-      },
-      {
-        replaceOne: {
-          filter: { email: 'replace@example.com' },
-          replacement: { name: 'Replaced', email: 'replace@example.com', age: 40 }
-        }
-      }
-    ];
+    },
+  },
+}).toArray();
 
-    const result = await collection.bulkWrite(operations);
-
-    console.log(`${result.insertedCount} documents inserted`);
-    console.log(`${result.modifiedCount} documents modified`);
-    console.log(`${result.deletedCount} documents deleted`);
-    console.log(`${result.upsertedCount} documents upserted`);
-
-  } finally {
-    await client.close();
-  }
-}
-
-bulkWrite().catch(console.error);
+const indexes = await users.listIndexes().toArray();
+await users.dropIndex('email_1');
 ```
 
-**Ordered vs Unordered Bulk Write:**
+## Bulk Write
 
 ```javascript
-async function orderedVsUnorderedBulk() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+const users = client.db('sample_db').collection('users');
 
-    const operations = [
-      { insertOne: { document: { name: 'User A' } } },
-      { insertOne: { document: { name: 'User B' } } }
-    ];
+const result = await users.bulkWrite([
+  { insertOne: { document: { name: 'User 1', email: 'user1@example.com' } } },
+  {
+    updateOne: {
+      filter: { email: 'john@example.com' },
+      update: { $set: { status: 'active' } },
+    },
+  },
+  {
+    updateMany: {
+      filter: { age: { $lt: 25 } },
+      update: { $set: { category: 'young' } },
+    },
+  },
+  { deleteOne: { filter: { email: 'old@example.com' } } },
+  {
+    replaceOne: {
+      filter: { email: 'replace@example.com' },
+      replacement: { name: 'Replaced', email: 'replace@example.com', age: 40 },
+    },
+  },
+]);
 
-    // Ordered (default): stops on first error
-    const orderedResult = await collection.bulkWrite(operations, { ordered: true });
+console.log(
+  result.insertedCount,
+  result.modifiedCount,
+  result.deletedCount,
+  result.upsertedCount,
+);
+```
 
-    // Unordered: continues on errors, may execute in parallel
-    const unorderedResult = await collection.bulkWrite(operations, { ordered: false });
+Ordered (default) bulk writes stop at the first error. Unordered bulk writes continue and may run operations in parallel:
 
-    console.log('Ordered result:', orderedResult);
-    console.log('Unordered result:', unorderedResult);
-
-  } finally {
-    await client.close();
-  }
-}
-
-orderedVsUnorderedBulk().catch(console.error);
+```javascript
+await users.bulkWrite(operations, { ordered: false });
 ```
 
 ## Transactions
 
-**Transaction with Session (Convenient API):**
+Transactions require a replica set or sharded cluster — Atlas provides both.
+
+### `withTransaction` (recommended)
+
+`withTransaction` handles commit retry on `TransientTransactionError` and `UnknownTransactionCommitResult` for you.
 
 ```javascript
-async function transactionExample() {
+async function transferFunds() {
   const session = client.startSession();
-
   try {
-    await client.connect();
     const database = client.db('sample_db');
 
     const result = await session.withTransaction(async () => {
       const accounts = database.collection('accounts');
       const transactions = database.collection('transactions');
 
-      // Deduct from account A
       await accounts.updateOne(
         { accountId: 'A' },
         { $inc: { balance: -100 } },
-        { session }
+        { session },
       );
 
-      // Add to account B
       await accounts.updateOne(
         { accountId: 'B' },
         { $inc: { balance: 100 } },
-        { session }
+        { session },
       );
 
-      // Record transaction
       await transactions.insertOne(
-        {
-          from: 'A',
-          to: 'B',
-          amount: 100,
-          timestamp: new Date()
-        },
-        { session }
+        { from: 'A', to: 'B', amount: 100, timestamp: new Date() },
+        { session },
       );
 
-      return 'Transaction completed';
+      return 'ok';
     });
 
-    console.log(result);
-
+    return result;
   } finally {
     await session.endSession();
-    await client.close();
   }
 }
-
-transactionExample().catch(console.error);
 ```
 
-**Transaction with Core API (Manual Control):**
+### Manual start/commit/abort
 
 ```javascript
 async function manualTransaction() {
   const session = client.startSession();
-
   try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const accounts = database.collection('accounts');
-
-    // Start transaction
     session.startTransaction({
       readConcern: { level: 'snapshot' },
-      writeConcern: { w: 'majority' }
+      writeConcern: { w: 'majority' },
     });
 
-    try {
-      // Perform operations within transaction
-      await accounts.updateOne(
-        { accountId: 'A' },
-        { $inc: { balance: -100 } },
-        { session }
-      );
+    const accounts = client.db('sample_db').collection('accounts');
 
-      await accounts.updateOne(
-        { accountId: 'B' },
-        { $inc: { balance: 100 } },
-        { session }
-      );
+    await accounts.updateOne(
+      { accountId: 'A' },
+      { $inc: { balance: -100 } },
+      { session },
+    );
+    await accounts.updateOne(
+      { accountId: 'B' },
+      { $inc: { balance: 100 } },
+      { session },
+    );
 
-      // Commit transaction
-      await session.commitTransaction();
-      console.log('Transaction committed');
-
-    } catch (error) {
-      // Abort transaction on error
-      await session.abortTransaction();
-      console.error('Transaction aborted:', error);
-      throw error;
-    }
-
+    await session.commitTransaction();
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
   } finally {
     await session.endSession();
-    await client.close();
   }
 }
-
-manualTransaction().catch(console.error);
-```
-
-**Transaction with Retry Logic:**
-
-```javascript
-async function transactionWithRetry() {
-  const session = client.startSession();
-
-  async function runTransactionWithRetry(txnFunc, session) {
-    while (true) {
-      try {
-        return await txnFunc(session);
-      } catch (error) {
-        if (error.hasErrorLabel('TransientTransactionError')) {
-          console.log('TransientTransactionError, retrying transaction...');
-          continue;
-        }
-        throw error;
-      }
-    }
-  }
-
-  async function commitWithRetry(session) {
-    while (true) {
-      try {
-        await session.commitTransaction();
-        console.log('Transaction committed');
-        break;
-      } catch (error) {
-        if (error.hasErrorLabel('UnknownTransactionCommitResult')) {
-          console.log('UnknownTransactionCommitResult, retrying commit...');
-          continue;
-        }
-        throw error;
-      }
-    }
-  }
-
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-
-    await runTransactionWithRetry(async (session) => {
-      session.startTransaction();
-
-      const accounts = database.collection('accounts');
-
-      await accounts.updateOne(
-        { accountId: 'A' },
-        { $inc: { balance: -50 } },
-        { session }
-      );
-
-      await accounts.updateOne(
-        { accountId: 'B' },
-        { $inc: { balance: 50 } },
-        { session }
-      );
-
-      await commitWithRetry(session);
-    }, session);
-
-  } finally {
-    await session.endSession();
-    await client.close();
-  }
-}
-
-transactionWithRetry().catch(console.error);
 ```
 
 ## Change Streams
 
-**Watch Collection for Changes:**
-
 ```javascript
-async function watchCollection() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+const users = client.db('sample_db').collection('users');
 
-    const changeStream = collection.watch();
+const changeStream = users.watch();
 
-    console.log('Watching for changes...');
+changeStream.on('change', (change) => {
+  console.log('Change:', change);
+});
 
-    changeStream.on('change', (change) => {
-      console.log('Change detected:', change);
-    });
-
-    changeStream.on('error', (error) => {
-      console.error('Change stream error:', error);
-    });
-
-    // Keep the connection open
-    // In production, you'd handle this differently
-
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-watchCollection().catch(console.error);
+changeStream.on('error', (error) => {
+  console.error('Change stream error:', error);
+});
 ```
 
-**Watch with Filter Pipeline:**
+With a filter pipeline and `for await`:
 
 ```javascript
-async function watchWithFilter() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+const stream = users.watch([
+  {
+    $match: {
+      operationType: { $in: ['insert', 'update'] },
+      'fullDocument.age': { $gte: 18 },
+    },
+  },
+]);
 
-    const pipeline = [
-      {
-        $match: {
-          'operationType': { $in: ['insert', 'update'] },
-          'fullDocument.age': { $gte: 18 }
-        }
-      }
-    ];
-
-    const changeStream = collection.watch(pipeline);
-
-    console.log('Watching for adult user changes...');
-
-    for await (const change of changeStream) {
-      console.log('Change:', change);
-
-      if (change.operationType === 'insert') {
-        console.log('New user inserted:', change.fullDocument);
-      } else if (change.operationType === 'update') {
-        console.log('User updated:', change.documentKey);
-      }
-    }
-
-  } catch (error) {
-    console.error(error);
+for await (const change of stream) {
+  if (change.operationType === 'insert') {
+    console.log('Inserted:', change.fullDocument);
+  } else if (change.operationType === 'update') {
+    console.log('Updated:', change.documentKey);
   }
 }
-
-watchWithFilter().catch(console.error);
 ```
 
-**Watch Database for Changes:**
+Database- and cluster-level streams:
 
 ```javascript
-async function watchDatabase() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-
-    const changeStream = database.watch();
-
-    console.log('Watching database for changes...');
-
-    changeStream.on('change', (change) => {
-      console.log(`Change in collection ${change.ns.coll}:`, change);
-    });
-
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-watchDatabase().catch(console.error);
+client.db('sample_db').watch();
+client.watch();
 ```
 
 ## ObjectId Utilities
 
-**Working with ObjectId:**
-
 ```javascript
 import { ObjectId } from 'mongodb';
 
-async function objectIdExamples() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+const users = client.db('sample_db').collection('users');
 
-    // Generate new ObjectId
-    const newId = new ObjectId();
-    console.log('New ObjectId:', newId.toString());
+const newId = new ObjectId();
 
-    // Insert with custom ObjectId
-    await collection.insertOne({
-      _id: new ObjectId(),
-      name: 'User with custom ID'
-    });
+await users.insertOne({ _id: new ObjectId(), name: 'User with custom ID' });
 
-    // Find by ObjectId string
-    const userId = '507f1f77bcf86cd799439011';
-    const user = await collection.findOne({
-      _id: new ObjectId(userId)
-    });
+const user = await users.findOne({ _id: new ObjectId('507f1f77bcf86cd799439011') });
 
-    // Get timestamp from ObjectId
-    if (user) {
-      const timestamp = user._id.getTimestamp();
-      console.log('Document created at:', timestamp);
-    }
-
-    // Validate ObjectId
-    const isValid = ObjectId.isValid('507f1f77bcf86cd799439011');
-    console.log('Is valid ObjectId:', isValid);
-
-  } finally {
-    await client.close();
-  }
+if (user) {
+  const timestamp = user._id.getTimestamp();
+  console.log(timestamp);
 }
 
-objectIdExamples().catch(console.error);
+ObjectId.isValid('507f1f77bcf86cd799439011');
 ```
 
 ## Error Handling
 
-**Comprehensive Error Handling:**
-
 ```javascript
 import { MongoClient, MongoServerError } from 'mongodb';
 
-async function errorHandlingExample() {
-  const client = new MongoClient(process.env.MONGODB_URI);
-
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    // Attempt operation
-    await collection.insertOne({
-      email: 'duplicate@example.com'
-    });
-
-  } catch (error) {
-    if (error instanceof MongoServerError) {
-      switch (error.code) {
-        case 11000:
-          console.error('Duplicate key error:', error.message);
-          break;
-        case 121:
-          console.error('Document validation failed:', error.message);
-          break;
-        default:
-          console.error('MongoDB server error:', error.message);
-      }
-    } else if (error.name === 'MongoNetworkError') {
-      console.error('Network error - cannot connect to MongoDB:', error.message);
-    } else if (error.name === 'MongoParseError') {
-      console.error('Invalid connection string:', error.message);
-    } else {
-      console.error('Unexpected error:', error);
+try {
+  await client.db('sample_db').collection('users').insertOne({
+    email: 'duplicate@example.com',
+  });
+} catch (error) {
+  if (error instanceof MongoServerError) {
+    switch (error.code) {
+      case 11000:
+        console.error('Duplicate key:', error.message);
+        break;
+      case 121:
+        console.error('Document validation failed:', error.message);
+        break;
+      default:
+        console.error('MongoDB server error:', error.message);
     }
-  } finally {
-    await client.close();
+  } else if (error.name === 'MongoNetworkError') {
+    console.error('Network error:', error.message);
+  } else if (error.name === 'MongoParseError') {
+    console.error('Invalid connection string:', error.message);
+  } else {
+    throw error;
   }
 }
-
-errorHandlingExample().catch(console.error);
 ```
 
-**Retry Logic for Transient Errors:**
+### Retry helper
 
 ```javascript
-async function retryOperation(operation, maxRetries = 3) {
+async function withRetry(operation, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await operation();
     } catch (error) {
-      if (attempt === maxRetries) {
-        throw error;
-      }
-
       const isRetryable =
         error.name === 'MongoNetworkError' ||
         error.code === 'ETIMEDOUT' ||
         error.code === 'ECONNRESET';
 
-      if (!isRetryable) {
+      if (!isRetryable || attempt === maxRetries) {
         throw error;
       }
 
-      const delay = Math.pow(2, attempt) * 1000;
-      console.log(`Attempt ${attempt} failed, retrying in ${delay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((r) => setTimeout(r, 2 ** attempt * 1000));
     }
   }
 }
-
-async function useRetryLogic() {
-  const client = new MongoClient(process.env.MONGODB_URI);
-
-  try {
-    await retryOperation(async () => {
-      await client.connect();
-      const database = client.db('sample_db');
-      const collection = database.collection('users');
-
-      return await collection.findOne({ email: 'test@example.com' });
-    });
-
-  } finally {
-    await client.close();
-  }
-}
-
-useRetryLogic().catch(console.error);
 ```
 
 ## Query Operators
 
-**Comparison Operators:**
+### Comparison
 
 ```javascript
-async function comparisonOperators() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('products');
-
-    // $eq (equal)
-    const equal = await collection.find({ price: { $eq: 99 } }).toArray();
-
-    // $ne (not equal)
-    const notEqual = await collection.find({ status: { $ne: 'discontinued' } }).toArray();
-
-    // $gt, $gte (greater than, greater than or equal)
-    const greaterThan = await collection.find({ price: { $gt: 50 } }).toArray();
-    const greaterOrEqual = await collection.find({ stock: { $gte: 100 } }).toArray();
-
-    // $lt, $lte (less than, less than or equal)
-    const lessThan = await collection.find({ price: { $lt: 100 } }).toArray();
-    const lessOrEqual = await collection.find({ rating: { $lte: 3 } }).toArray();
-
-    // $in (in array)
-    const inArray = await collection.find({
-      category: { $in: ['electronics', 'computers'] }
-    }).toArray();
-
-    // $nin (not in array)
-    const notInArray = await collection.find({
-      status: { $nin: ['discontinued', 'out-of-stock'] }
-    }).toArray();
-
-    console.log('Query results:', equal, notEqual, greaterThan);
-
-  } finally {
-    await client.close();
-  }
-}
-
-comparisonOperators().catch(console.error);
+collection.find({ price: { $eq: 99 } });
+collection.find({ status: { $ne: 'discontinued' } });
+collection.find({ price: { $gt: 50 } });
+collection.find({ stock: { $gte: 100 } });
+collection.find({ price: { $lt: 100 } });
+collection.find({ rating: { $lte: 3 } });
+collection.find({ category: { $in: ['electronics', 'computers'] } });
+collection.find({ status: { $nin: ['discontinued', 'out-of-stock'] } });
 ```
 
-**Logical Operators:**
+### Logical
 
 ```javascript
-async function logicalOperators() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('products');
+collection.find({
+  $and: [{ price: { $lt: 100 } }, { stock: { $gt: 0 } }],
+});
 
-    // $and
-    const andQuery = await collection.find({
-      $and: [
-        { price: { $lt: 100 } },
-        { stock: { $gt: 0 } }
-      ]
-    }).toArray();
+collection.find({
+  $or: [{ category: 'electronics' }, { featured: true }],
+});
 
-    // $or
-    const orQuery = await collection.find({
-      $or: [
-        { category: 'electronics' },
-        { featured: true }
-      ]
-    }).toArray();
+collection.find({ price: { $not: { $gt: 100 } } });
 
-    // $not
-    const notQuery = await collection.find({
-      price: { $not: { $gt: 100 } }
-    }).toArray();
-
-    // $nor
-    const norQuery = await collection.find({
-      $nor: [
-        { status: 'discontinued' },
-        { stock: 0 }
-      ]
-    }).toArray();
-
-    console.log('Logical query results:', andQuery.length, orQuery.length);
-
-  } finally {
-    await client.close();
-  }
-}
-
-logicalOperators().catch(console.error);
+collection.find({
+  $nor: [{ status: 'discontinued' }, { stock: 0 }],
+});
 ```
 
-**Element Operators:**
+### Element
 
 ```javascript
-async function elementOperators() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    // $exists
-    const hasPhone = await collection.find({
-      phone: { $exists: true }
-    }).toArray();
-
-    // $type
-    const stringEmails = await collection.find({
-      email: { $type: 'string' }
-    }).toArray();
-
-    console.log('Element query results:', hasPhone.length, stringEmails.length);
-
-  } finally {
-    await client.close();
-  }
-}
-
-elementOperators().catch(console.error);
+collection.find({ phone: { $exists: true } });
+collection.find({ email: { $type: 'string' } });
 ```
 
-**Array Operators:**
+### Array
 
 ```javascript
-async function arrayOperators() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
-
-    // $all
-    const allTags = await collection.find({
-      tags: { $all: ['premium', 'verified'] }
-    }).toArray();
-
-    // $elemMatch
-    const elemMatch = await collection.find({
-      scores: { $elemMatch: { $gte: 80, $lt: 90 } }
-    }).toArray();
-
-    // $size
-    const exactSize = await collection.find({
-      tags: { $size: 3 }
-    }).toArray();
-
-    console.log('Array query results:', allTags.length, elemMatch.length);
-
-  } finally {
-    await client.close();
-  }
-}
-
-arrayOperators().catch(console.error);
+collection.find({ tags: { $all: ['premium', 'verified'] } });
+collection.find({ scores: { $elemMatch: { $gte: 80, $lt: 90 } } });
+collection.find({ tags: { $size: 3 } });
 ```
 
 ## Advanced Patterns
 
-**Connection Pooling:**
+### Connection pool tuning
 
 ```javascript
-import { MongoClient } from 'mongodb';
-
-const uri = process.env.MONGODB_URI;
-
-const client = new MongoClient(uri, {
+const client = new MongoClient(process.env.MONGODB_URI, {
   maxPoolSize: 50,
   minPoolSize: 10,
-  maxIdleTimeMS: 30000,
-  waitQueueTimeoutMS: 5000
+  maxIdleTimeMS: 30_000,
+  waitQueueTimeoutMS: 5_000,
+});
+```
+
+### Database and collection management
+
+```javascript
+const adminDb = client.db().admin();
+const dbList = await adminDb.listDatabases();
+
+const database = client.db('sample_db');
+const collections = await database.listCollections().toArray();
+
+await database.createCollection('newCollection', {
+  validator: {
+    $jsonSchema: {
+      bsonType: 'object',
+      required: ['name', 'email'],
+      properties: {
+        name:  { bsonType: 'string' },
+        email: { bsonType: 'string', pattern: '^.+@.+$' },
+      },
+    },
+  },
 });
 
-let isConnected = false;
-
-async function getDatabase() {
-  if (!isConnected) {
-    await client.connect();
-    isConnected = true;
-  }
-  return client.db('sample_db');
-}
-
-export { getDatabase, client };
+// await database.collection('oldCollection').drop();
 ```
 
-**Database and Collection Management:**
+### Schema validation
 
 ```javascript
-async function databaseManagement() {
-  try {
-    await client.connect();
-
-    // List databases
-    const adminDb = client.db().admin();
-    const dbList = await adminDb.listDatabases();
-    console.log('Databases:', dbList.databases);
-
-    // List collections
-    const database = client.db('sample_db');
-    const collections = await database.listCollections().toArray();
-    console.log('Collections:', collections);
-
-    // Create collection with options
-    await database.createCollection('newCollection', {
-      validator: {
-        $jsonSchema: {
-          bsonType: 'object',
-          required: ['name', 'email'],
-          properties: {
-            name: {
-              bsonType: 'string',
-              description: 'must be a string and is required'
-            },
-            email: {
-              bsonType: 'string',
-              pattern: '^.+@.+$',
-              description: 'must be a valid email'
-            }
-          }
-        }
-      }
-    });
-
-    // Drop collection
-    // await database.collection('oldCollection').drop();
-
-  } finally {
-    await client.close();
-  }
-}
-
-databaseManagement().catch(console.error);
-```
-
-**Schema Validation:**
-
-```javascript
-async function addSchemaValidation() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-
-    await database.command({
-      collMod: 'users',
-      validator: {
-        $jsonSchema: {
-          bsonType: 'object',
-          required: ['name', 'email', 'age'],
-          properties: {
-            name: {
-              bsonType: 'string',
-              description: 'must be a string and is required'
-            },
-            email: {
-              bsonType: 'string',
-              pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
-              description: 'must be a valid email and is required'
-            },
-            age: {
-              bsonType: 'int',
-              minimum: 0,
-              maximum: 150,
-              description: 'must be an integer between 0 and 150'
-            },
-            status: {
-              enum: ['active', 'inactive', 'suspended'],
-              description: 'can only be one of the enum values'
-            }
-          }
-        }
+await client.db('sample_db').command({
+  collMod: 'users',
+  validator: {
+    $jsonSchema: {
+      bsonType: 'object',
+      required: ['name', 'email', 'age'],
+      properties: {
+        name:  { bsonType: 'string' },
+        email: { bsonType: 'string', pattern: '^[\\w.%+-]+@[\\w.-]+\\.[A-Za-z]{2,}$' },
+        age:   { bsonType: 'int', minimum: 0, maximum: 150 },
+        status: { enum: ['active', 'inactive', 'suspended'] },
       },
-      validationLevel: 'moderate',
-      validationAction: 'error'
-    });
-
-    console.log('Schema validation added');
-
-  } finally {
-    await client.close();
-  }
-}
-
-addSchemaValidation().catch(console.error);
+    },
+  },
+  validationLevel: 'moderate',
+  validationAction: 'error',
+});
 ```
 
-**Time Series Collections:**
+### Time series collections
 
 ```javascript
-async function createTimeSeriesCollection() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
+await client.db('sample_db').createCollection('sensor_data', {
+  timeseries: {
+    timeField: 'timestamp',
+    metaField: 'sensorId',
+    granularity: 'seconds',
+  },
+});
 
-    await database.createCollection('sensor_data', {
-      timeseries: {
-        timeField: 'timestamp',
-        metaField: 'sensorId',
-        granularity: 'seconds'
-      }
-    });
-
-    const collection = database.collection('sensor_data');
-
-    // Insert time series data
-    await collection.insertMany([
-      {
-        sensorId: 'sensor1',
-        timestamp: new Date('2024-01-01T00:00:00Z'),
-        temperature: 22.5,
-        humidity: 60
-      },
-      {
-        sensorId: 'sensor1',
-        timestamp: new Date('2024-01-01T00:01:00Z'),
-        temperature: 22.7,
-        humidity: 59
-      }
-    ]);
-
-    console.log('Time series data inserted');
-
-  } finally {
-    await client.close();
-  }
-}
-
-createTimeSeriesCollection().catch(console.error);
+await client.db('sample_db').collection('sensor_data').insertMany([
+  { sensorId: 'sensor1', timestamp: new Date('2026-05-29T00:00:00Z'), temperature: 22.5, humidity: 60 },
+  { sensorId: 'sensor1', timestamp: new Date('2026-05-29T00:01:00Z'), temperature: 22.7, humidity: 59 },
+]);
 ```
 
-**Read and Write Concerns:**
+### Read and write concerns
 
 ```javascript
-async function readWriteConcerns() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+await collection.insertOne(
+  { name: 'John', email: 'john@example.com' },
+  { writeConcern: { w: 'majority', j: true, wtimeout: 5000 } },
+);
 
-    // Write concern
-    const insertResult = await collection.insertOne(
-      { name: 'John', email: 'john@example.com' },
-      {
-        writeConcern: {
-          w: 'majority',
-          j: true,
-          wtimeout: 5000
-        }
-      }
-    );
-
-    // Read concern
-    const findResult = await collection.findOne(
-      { email: 'john@example.com' },
-      {
-        readConcern: { level: 'majority' }
-      }
-    );
-
-    console.log('Insert result:', insertResult);
-    console.log('Find result:', findResult);
-
-  } finally {
-    await client.close();
-  }
-}
-
-readWriteConcerns().catch(console.error);
+await collection.findOne(
+  { email: 'john@example.com' },
+  { readConcern: { level: 'majority' } },
+);
 ```
 
-**Count Documents:**
+### Counts and distinct
 
 ```javascript
-async function countExamples() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+await collection.countDocuments({});
+await collection.countDocuments({ status: 'active' });
+await collection.estimatedDocumentCount();   // fast, may be stale
 
-    // Count all documents
-    const totalCount = await collection.countDocuments({});
-    console.log('Total documents:', totalCount);
-
-    // Count with filter
-    const activeCount = await collection.countDocuments({ status: 'active' });
-    console.log('Active users:', activeCount);
-
-    // Estimated count (faster but less accurate)
-    const estimatedCount = await collection.estimatedDocumentCount();
-    console.log('Estimated count:', estimatedCount);
-
-  } finally {
-    await client.close();
-  }
-}
-
-countExamples().catch(console.error);
+await collection.distinct('city');
+await collection.distinct('city', { status: 'active' });
 ```
 
-**Distinct Values:**
+## Version Notes
 
-```javascript
-async function distinctValues() {
-  try {
-    await client.connect();
-    const database = client.db('sample_db');
-    const collection = database.collection('users');
+- `mongodb` npm `7.2.0` is the current `latest` dist-tag as of May 29, 2026.
+- v6 is still actively maintained at `6.21.0` for projects that haven't migrated.
+- The driver uses `mongodb+srv://` connection strings for Atlas SRV discovery.
+- The Stable API (`serverApi: { version: 'v1' }`) protects you from server-side behavior drift across MongoDB releases.
+- Atlas Vector Search requires a `vectorSearch` index defined in Atlas; the driver only sends the aggregation stage.
 
-    // Get distinct values
-    const cities = await collection.distinct('city');
-    console.log('Distinct cities:', cities);
+## Official Sources
 
-    // Get distinct values with filter
-    const activeCities = await collection.distinct('city', { status: 'active' });
-    console.log('Cities with active users:', activeCities);
-
-  } finally {
-    await client.close();
-  }
-}
-
-distinctValues().catch(console.error);
-```
+- Driver docs: https://www.mongodb.com/docs/drivers/node/current/
+- API reference: https://mongodb.github.io/node-mongodb-native/
+- GitHub: https://github.com/mongodb/node-mongodb-native
+- npm: https://www.npmjs.com/package/mongodb
+- Atlas Vector Search: https://www.mongodb.com/docs/atlas/atlas-vector-search/

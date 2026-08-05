@@ -1,11 +1,11 @@
 ---
 name: package
-description: "Pydantic 2.12.5 package guide for Python data validation, settings, and schema generation"
+description: "Pydantic 2.13.4 package guide for Python data validation, settings, and schema generation"
 metadata:
   languages: "python"
-  versions: "2.12.5"
-  revision: 1
-  updated-on: "2026-03-11"
+  versions: "2.13.4"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "pydantic,python,validation,typing,json-schema,settings"
 ---
@@ -26,19 +26,19 @@ metadata:
 ## Install
 
 ```bash
-pip install "pydantic==2.12.5"
+pip install "pydantic==2.13.4"
 ```
 
 If you use `uv`:
 
 ```bash
-uv add "pydantic==2.12.5"
+uv add "pydantic==2.13.4"
 ```
 
 If you need `EmailStr` and related email validation helpers:
 
 ```bash
-pip install "pydantic[email]==2.12.5"
+pip install "pydantic[email]==2.13.4"
 ```
 
 ## Core Model Pattern
@@ -223,6 +223,117 @@ Reach for:
 - `model_validator(mode="before")` to reshape raw input
 - `model_validator(mode="after")` for cross-field checks after parsing
 
+## Serializers
+
+Customize how fields are serialized with `@field_serializer` and `@model_serializer`:
+
+```python
+from datetime import datetime
+from pydantic import BaseModel, field_serializer, model_serializer
+
+class Event(BaseModel):
+    name: str
+    at: datetime
+
+    @field_serializer("at")
+    def serialize_at(self, value: datetime) -> str:
+        return value.isoformat()
+
+class Compact(BaseModel):
+    first: str
+    last: str
+
+    @model_serializer
+    def serialize(self) -> dict:
+        return {"name": f"{self.first} {self.last}"}
+```
+
+- `@field_serializer("field")` runs only when serializing that field.
+- `@model_serializer` replaces the entire `model_dump()` output.
+- Use `when_used="json"` (or `"always"`, `"unless-none"`, `"json-unless-none"`) to scope serializers to a serialization mode.
+
+## Computed Fields
+
+Use `@computed_field` for derived values you want in `model_dump()` and JSON Schema:
+
+```python
+from pydantic import BaseModel, computed_field
+
+class Rectangle(BaseModel):
+    width: float
+    height: float
+
+    @computed_field
+    @property
+    def area(self) -> float:
+        return self.width * self.height
+
+print(Rectangle(width=2, height=3).model_dump())
+# {'width': 2.0, 'height': 3.0, 'area': 6.0}
+```
+
+The decorator must be on top of `@property`. Computed fields are read-only and serialization-only; they are not validated as input.
+
+## RootModel
+
+Use `RootModel` when the model wraps a single root value such as a list or a dict, not a struct:
+
+```python
+from pydantic import RootModel
+
+class Tags(RootModel[list[str]]):
+    pass
+
+tags = Tags.model_validate(["python", "pydantic"])
+print(tags.root)             # ['python', 'pydantic']
+print(tags.model_dump())     # ['python', 'pydantic']
+```
+
+- Access the wrapped value through `.root`.
+- Use this instead of trying to subclass `list` or `dict` with Pydantic.
+
+## Discriminated Unions
+
+Use a `Field(discriminator=...)` to make union resolution explicit and fast:
+
+```python
+from typing import Annotated, Literal, Union
+from pydantic import BaseModel, Field
+
+class Cat(BaseModel):
+    kind: Literal["cat"]
+    purr_volume: int
+
+class Dog(BaseModel):
+    kind: Literal["dog"]
+    bark_volume: int
+
+Pet = Annotated[Union[Cat, Dog], Field(discriminator="kind")]
+
+class Owner(BaseModel):
+    pet: Pet
+
+Owner.model_validate({"pet": {"kind": "cat", "purr_volume": 7}})
+```
+
+- The discriminator field must be a `Literal` on every variant.
+- Validation fails fast with a clear error when `kind` does not match any variant.
+
+## TypeAdapter For Non-Model Types
+
+`TypeAdapter` validates and serializes arbitrary types without a `BaseModel`:
+
+```python
+from pydantic import TypeAdapter
+
+IntList = TypeAdapter(list[int])
+IntList.validate_python(["1", "2", "3"])     # [1, 2, 3]
+IntList.dump_json([1, 2, 3])                  # b'[1,2,3]'
+IntList.json_schema()                         # JSON Schema for list[int]
+```
+
+Reuse adapters; do not rebuild them per call. `TypeAdapter` also accepts `Annotated[...]` metadata so you can attach `Field(...)` constraints to scalar or container types.
+
 ## JSON Schema Generation
 
 Use JSON Schema output when integrating with OpenAPI generators, forms, or LLM tool schemas:
@@ -244,16 +355,17 @@ If you need schema for a non-model type, generate it from `TypeAdapter(...).json
 - For partial updates, prefer `model_copy(update=...)` over rebuilding ad hoc dictionaries.
 - Catch `ValidationError` at system boundaries and return structured errors instead of raw tracebacks.
 
-## Version-Sensitive Notes For 2.12.5
+## Version-Sensitive Notes For 2.13.4
 
-- `2.12.5` is the current stable release on PyPI as of `2026-03-11`.
-- The official docs root `https://docs.pydantic.dev/latest/` currently documents the v2.12 line.
-- PyPI also lists newer pre-release builds; do not assume those APIs are safe to target unless the project explicitly uses them.
+- `2.13.4` is the current stable release on PyPI as of `2026-05-29`. The package supports Python `>=3.9`.
+- The official docs root `https://docs.pydantic.dev/latest/` currently documents the v2.13 line.
+- `2.13.x` is a patch series on `2.13.0`; check the changelog when troubleshooting specific behavior differences vs `2.12`.
+- PyPI may list newer pre-release builds; do not assume those APIs are safe to target unless the project explicitly uses them.
 - If you are maintaining v1-era code, the migration guide documents the method renames and the `pydantic.v1` compatibility namespace.
 
 ## Recommended Agent Workflow
 
-1. Install the exact version used by the project or pin `2.12.5` when creating new examples.
+1. Install the exact version used by the project or pin `2.13.4` when creating new examples.
 2. Start with a `BaseModel` or `TypeAdapter`, not custom parsing code.
 3. Add `extra="forbid"` unless the payload is intentionally open-ended.
 4. Use `model_validate_json()` for raw JSON, `model_validate()` for Python objects, and `model_validate_strings()` for all-string maps.

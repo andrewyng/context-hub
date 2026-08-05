@@ -3,25 +3,25 @@ name: payments
 description: "Payment processing platform with comprehensive payment and billing features including Payment Intents, Subscriptions, Checkout, customer management, webhooks, and Connect for marketplaces"
 metadata:
   languages: "javascript"
-  versions: "19.1.0"
-  updated-on: "2025-10-28"
+  versions: "22.2.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "stripe,api,payments,billing"
 ---
-# Stripe API Coding Guide
+# Stripe Payments Coding Guide (Node.js)
 
 ## 1. Golden Rule
 
-**Always use the official Stripe SDK packages:**
-- Server-side: `stripe` (Node.js library for Stripe API)
-- Client-side: `@stripe/stripe-js` (ES module for browser)
-- React: `@stripe/react-stripe-js` (React components and hooks)
+Use the official Stripe SDK packages and let Stripe handle every sensitive piece of card data. Never send raw PAN/CVC to your server; collect it through Stripe.js / Elements and hand back PaymentMethod or PaymentIntent IDs.
 
-**Never use deprecated or unofficial libraries.** These are the only supported Stripe packages maintained by Stripe, Inc.
+- Server-side: `stripe` (Node.js library)
+- Client-side: `@stripe/stripe-js` (loader for Stripe.js)
+- React: `@stripe/react-stripe-js` (Elements, hooks)
 
-**Current SDK Version:** v19.1.0 (Node.js server library)
+**Current SDK Version:** `stripe` v22.2.0 (Node).
 
-**API Version:** Stripe uses date-based API versioning (e.g., 2025-02-24). Your account is automatically pinned to the API version from your first request. You can override this per-request or upgrade in the Stripe Dashboard.
+**API Version:** Stripe pins API versions by date. The current released version is `2026-05-27.dahlia`. Your account is pinned to the version of your first request; you can override per-request via `apiVersion` on the SDK constructor, or upgrade in the Dashboard. The SDK ships with a pinned default — keep that in sync with code paths that read webhook payloads.
 
 ## 2. Installation
 
@@ -39,7 +39,7 @@ yarn add stripe
 pnpm add stripe
 ```
 
-**Requirements:** Node.js 16+ (support for Node 16 is deprecated; use Node 18+ for production)
+**Requirements:** Node.js 18+ (Node 18 LTS is the minimum supported; Node 20 or 22 is recommended for production).
 
 ### Client-Side (Browser)
 
@@ -70,7 +70,7 @@ STRIPE_PUBLISHABLE_KEY=pk_test_51H...  # Safe for client-side use
 
 # Optional
 STRIPE_WEBHOOK_SECRET=whsec_...  # For webhook signature verification
-STRIPE_API_VERSION=2025-02-24  # Override default API version
+STRIPE_API_VERSION=2026-05-27.dahlia  # Override default API version
 ```
 
 **CRITICAL:** Never commit secret keys to version control. Use environment variables or secure secret management systems.
@@ -90,7 +90,7 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24',
+  apiVersion: '2026-05-27.dahlia',
 });
 ```
 
@@ -98,7 +98,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 ```javascript
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-02-24',
+  apiVersion: '2026-05-27.dahlia',
   maxNetworkRetries: 2,
   timeout: 80000, // 80 seconds
   telemetry: true,
@@ -130,7 +130,7 @@ const stripePromise = loadStripe(
   {
     locale: 'en',
     betas: ['some_beta_feature'],
-    apiVersion: '2025-02-24',
+    apiVersion: '2026-05-27.dahlia',
   }
 );
 ```
@@ -1426,7 +1426,7 @@ module.exports = {
     secretKey: process.env.STRIPE_SECRET_KEY,
     publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-    apiVersion: '2025-02-24',
+    apiVersion: '2026-05-27.dahlia',
   },
 
   // Validate required environment variables
@@ -1573,7 +1573,7 @@ async function createMultipleCustomers(customerData) {
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24',
+  apiVersion: '2026-05-27.dahlia',
 });
 
 // Full type inference

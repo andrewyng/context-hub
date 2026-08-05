@@ -3,11 +3,11 @@ name: package
 description: "PydanticAI framework for building typed Python agents with tools, structured output, message history, and multi-provider model support"
 metadata:
   languages: "python"
-  versions: "1.67.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "1.104.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
-  tags: "pydantic-ai,python,agents,llm,pydantic,tools,structured-output"
+  tags: "pydantic-ai,python,agents,llm,pydantic,tools,structured-output,streaming"
 ---
 
 # pydantic-ai Python Package Guide
@@ -19,22 +19,22 @@ Use `pydantic-ai` as an orchestration layer for typed agent workflows in Python.
 Install the main package when you want the default provider integrations:
 
 ```bash
-python -m pip install "pydantic-ai==1.67.0"
+python -m pip install "pydantic-ai==1.104.0"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "pydantic-ai==1.67.0"
-poetry add "pydantic-ai==1.67.0"
+uv add "pydantic-ai==1.104.0"
+poetry add "pydantic-ai==1.104.0"
 ```
 
 If you want a smaller install, use `pydantic-ai-slim` and add extras for the providers you actually use:
 
 ```bash
-python -m pip install "pydantic-ai-slim[openai]==1.67.0"
-python -m pip install "pydantic-ai-slim[anthropic]==1.67.0"
-python -m pip install "pydantic-ai-slim[logfire]==1.67.0"
+python -m pip install "pydantic-ai-slim[openai]==1.104.0"
+python -m pip install "pydantic-ai-slim[anthropic]==1.104.0"
+python -m pip install "pydantic-ai-slim[logfire]==1.104.0"
 ```
 
 The most common setup mistake is installing `pydantic-ai-slim` without the provider extra you need, then trying to use a model integration that is not installed.
@@ -199,6 +199,33 @@ print(second.output)
 
 The message history docs also cover serializing messages to JSON and restoring them later.
 
+### Stream model output
+
+Use `agent.run_stream()` for incremental text or structured deltas as the model produces them:
+
+```python
+import asyncio
+
+from pydantic_ai import Agent
+
+agent = Agent(
+    "openai:gpt-4o",
+    instructions="Answer concisely.",
+)
+
+
+async def main() -> None:
+    async with agent.run_stream("List three primary colors.") as result:
+        async for chunk in result.stream_text(delta=True):
+            print(chunk, end="", flush=True)
+        print()
+
+
+asyncio.run(main())
+```
+
+For lower-level access to model events (tool calls, partial outputs, run-graph nodes), use `agent.run_stream_events()` or `agent.iter()`. The streaming docs describe how to combine streamed text with validated structured output.
+
 ## Testing Agents
 
 Use the built-in test models instead of calling live providers in unit tests:
@@ -226,12 +253,13 @@ Use `FunctionModel` when you need deterministic behavior for tool execution or o
 - `run_sync()` blocks the current thread. In FastAPI or other async runtimes, use `await agent.run(...)` instead.
 - Provider credentials are separate from the framework itself. Installing the package does not configure `OPENAI_API_KEY` or any other provider secret.
 
-## Version Notes For 1.67.0
+## Version Notes For 1.104.0
 
-- This guide targets `pydantic-ai` `1.67.0`.
+- This guide targets `pydantic-ai` `1.104.0`.
+- PyPI metadata for `1.104.0` requires Python `>=3.10` and lists support through `3.14`.
 - The official version policy describes the `1.x` line as stable and avoids intentional breaking changes in minor releases.
-- Some ecosystem surfaces are documented separately and may have different stability notes than the core `Agent` APIs.
-- If you are migrating from older examples, prefer the current naming and result-handling patterns: `Agent`, `instructions`, `output_type`, `RunContext`, and `result.output`.
+- Some ecosystem surfaces (MCP integration, graph execution, Logfire evals) are documented separately and may have different stability notes than the core `Agent` APIs.
+- If you are migrating from older examples, prefer the current naming and result-handling patterns: `Agent`, `instructions`, `output_type`, `RunContext`, and `result.output`. Older `result_type` / `result.data` examples predate the rename and should not be copied.
 
 ## Official Sources
 

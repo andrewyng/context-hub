@@ -3,9 +3,9 @@ name: eslint
 description: "ESLint for JavaScript projects, including flat config setup, CLI usage, autofix, ignore patterns, and the Node.js API."
 metadata:
   languages: "javascript"
-  versions: "10.0.3"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "10.4.1"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "eslint,javascript,linting,node,cli,npm"
 ---
@@ -23,19 +23,27 @@ npm install --save-dev eslint
 npx eslint --version
 ```
 
-## Initialization and Config
+## Flat Config (`eslint.config.js`)
 
 The main setup step is creating a flat config file. If your project is not already using ESM, use `eslint.config.mjs`. If your package already sets `"type": "module"`, `eslint.config.js` works too.
 
+A flat config is an array of config objects. Each object can include `files`, `ignores`, `languageOptions`, `plugins`, `rules`, and `extends`.
+
 ```js
+import js from "@eslint/js";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
   {
-    ignores: ["dist/**", "coverage/**"],
+    ignores: ["dist/**", "coverage/**", "**/*.min.js"],
   },
   {
     files: ["**/*.js", "**/*.mjs", "**/*.cjs"],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+    },
     rules: {
       eqeqeq: "error",
       "no-console": "warn",
@@ -46,7 +54,68 @@ export default defineConfig([
 ]);
 ```
 
+Install the recommended JS config:
+
+```bash
+npm install --save-dev @eslint/js
+```
+
 ESLint reads `eslint.config.*` automatically when you run the CLI from the project root.
+
+### TypeScript setup
+
+For TypeScript, install `typescript-eslint` and its parser, then add a config block for `.ts` and `.tsx` files:
+
+```bash
+npm install --save-dev typescript-eslint
+```
+
+```js
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+import { defineConfig } from "eslint/config";
+
+export default defineConfig([
+  {
+    files: ["**/*.js", "**/*.mjs", "**/*.cjs"],
+    extends: [js.configs.recommended],
+  },
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    extends: [...tseslint.configs.recommended],
+  },
+]);
+```
+
+### Plugins
+
+Plugins are registered in the `plugins` map and referenced by name in `rules`. For example, with `eslint-plugin-import`:
+
+```js
+import importPlugin from "eslint-plugin-import";
+
+export default [
+  {
+    plugins: { import: importPlugin },
+    rules: {
+      "import/no-cycle": "error",
+      "import/order": "warn",
+    },
+  },
+];
+```
+
+Common community plugins worth knowing: `typescript-eslint`, `eslint-plugin-import`, `eslint-plugin-react`, `eslint-plugin-react-hooks`, `eslint-plugin-jsx-a11y`, `eslint-plugin-n` (Node), and `eslint-plugin-unicorn`.
+
+### Ignoring files
+
+Put ignore patterns in the flat config rather than a separate `.eslintignore` (no longer supported with flat config). A config object with only `ignores` applies globally:
+
+```js
+export default [
+  { ignores: ["dist/**", "build/**", "coverage/**"] },
+];
+```
 
 ## CLI Workflows
 
@@ -63,6 +132,8 @@ npx eslint . --fix
 # Use an explicit config path
 npx eslint . --config eslint.config.mjs
 ```
+
+`--fix` only rewrites violations whose rule provides a fixer; remaining errors are still reported.
 
 ESLint exits with a non-zero status when it finds errors, so the same command works in local scripts and CI.
 
@@ -124,7 +195,7 @@ Pass `filePath` when you call `lintText()` if your config uses `files` globs. Th
 
 ## Version-Sensitive Notes
 
-- This guide targets `eslint@10.0.3`.
+- This guide targets `eslint@10.4.1`.
 - Current maintainer docs describe the flat config system and the `defineConfig()` helper from `eslint/config` for JavaScript projects.
 - The `ESLint` class is the main programmatic entry point for linting files and strings from Node.js.
 

@@ -1,11 +1,11 @@
 ---
 name: package
-description: "LangChain package guide for Python with v1 agent patterns, model initialization, provider setup, and 1.2.11 notes"
+description: "LangChain package guide for Python with v1 agent patterns, model initialization, provider setup, and 1.3.2 notes"
 metadata:
   languages: "python"
-  versions: "1.2.11"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "1.3.2"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "langchain,python,agents,llm,rag,langgraph,langsmith"
 ---
@@ -25,26 +25,26 @@ Use `langchain` when Python code needs:
 
 ## Version-Sensitive Notes
 
-- This entry is pinned to the version used here `1.2.11`.
-- PyPI release history shows `1.2.11` was released on 2026-03-11 and `1.2.12` on 2026-03-12. The earlier pinned version is already one patch behind current upstream.
-- The docs site is a live v1 documentation site, not a patch-versioned archive. If an example behaves differently in `1.2.11`, check the LangChain release notes before assuming the docs exactly match that patch.
-- PyPI metadata for `1.2.11` requires Python `>=3.10,<4.0`.
+- This entry is pinned to the version used here `1.3.2`.
+- PyPI lists `1.3.2` as the current `langchain` release on 2026-05-29.
+- The docs site is a live v1 documentation site, not a patch-versioned archive. If an example behaves differently in `1.3.2`, check the LangChain release notes before assuming the docs exactly match that patch.
+- PyPI metadata for `1.3.2` requires Python `>=3.10,<4.0`.
 - In v1, many older pre-1.0 chains, agents, and memory helpers were moved into `langchain-classic`. Use `langchain-classic` only when maintaining legacy code. For new code, prefer the v1 `create_agent(...)` and LangGraph-based patterns.
-- LangChain's versioning policy says `langchain` and `langchain-core` share major and minor versions. Integration packages such as `langchain-openai`, `langchain-anthropic`, and `langchain-community` are separately versioned. Do not assume all companion packages should match `1.2.11`.
+- LangChain's versioning policy says `langchain` and `langchain-core` share major and minor versions. Integration packages such as `langchain-openai`, `langchain-anthropic`, and `langchain-community` are separately versioned. Do not assume all companion packages should match `1.3.2`.
 
 ## Install
 
 For reproducible behavior, pin `langchain` and install the provider integration you actually use:
 
 ```bash
-python -m pip install "langchain==1.2.11" "langchain-openai"
+python -m pip install "langchain==1.3.2" "langchain-openai"
 ```
 
 Other common integrations follow the same pattern:
 
 ```bash
-python -m pip install "langchain==1.2.11" "langchain-anthropic"
-python -m pip install "langchain==1.2.11" "langchain-community"
+python -m pip install "langchain==1.3.2" "langchain-anthropic"
+python -m pip install "langchain==1.3.2" "langchain-community"
 ```
 
 If you need production memory or checkpoint persistence, install the relevant LangGraph checkpoint package separately. The official install docs use packages such as `langgraph-checkpoint-postgres`.
@@ -159,8 +159,8 @@ Tracing is optional. Do not hard-code LangSmith credentials into application cod
 
 - Installing only `langchain` is not enough for real provider calls. Also install the provider package such as `langchain-openai`.
 - Many search results still show pre-v1 imports and abstractions such as `LLMChain`, older agent executors, or legacy memory classes. Treat those as migration material, not the default pattern for new code.
-- The docs site is current-state documentation. When you are pinned to `1.2.11`, verify behavior against PyPI release history and LangChain release notes if you hit a mismatch.
-- Companion packages are versioned independently. Avoid blanket pinning every `langchain-*` package to `1.2.11` unless that package actually uses that version line.
+- The docs site is current-state documentation. When you are pinned to `1.3.2`, verify behavior against PyPI release history and LangChain release notes if you hit a mismatch.
+- Companion packages are versioned independently. Avoid blanket pinning every `langchain-*` package to `1.3.2` unless that package actually uses that version line.
 - Agent code expects message-oriented state. If you pass the wrong input shape to `agent.invoke(...)`, failures are often schema or state errors rather than model errors.
 - LangSmith tracing is useful in development, but it can leak sensitive inputs if you enable it indiscriminately in production environments.
 

@@ -3,8 +3,9 @@ name: identity
 description: "Auth0 Python SDK for OAuth, OIDC, and identity management in server-side applications"
 metadata:
   languages: "python"
-  versions: "4.7.2"
-  updated-on: "2026-03-01"
+  versions: "5.6.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "auth0,identity,oauth,oidc,authentication"
 ---
@@ -22,8 +23,8 @@ Always use the official Auth0 Python SDK for server-side authentication and user
 
 - **Library Name:** Auth0 Python SDK
 - **PyPI Package:** `auth0-python`
-- **Current Version:** 4.13.0
-- **Minimum Python Version:** 3.7+
+- **Current Version:** 5.6.0
+- **Minimum Python Version:** 3.8+
 
 **Installation:**
 
@@ -64,7 +65,7 @@ pip install auth0-python
 For specific versions:
 
 ```bash
-pip install auth0-python==4.13.0
+pip install auth0-python==5.6.0
 ```
 
 ## Initialization
@@ -1187,6 +1188,64 @@ q = '(email:"*@example.com" OR email:"*@test.com") AND user_metadata.active:true
 | 409 | Conflict (e.g., user already exists) |
 | 429 | Too Many Requests (Rate Limited) |
 | 500 | Internal Server Error |
+
+## JWT and Token Verification
+
+The Auth0 Python SDK does not bundle a JWT verifier; use the companion `auth0-python` `authentication` module for `userinfo` lookups and `PyJWT` + `jwks-client` (built into `PyJWT >= 2.0`) for ID/access token validation.
+
+### Validate ID Token via UserInfo
+
+```python
+from auth0.authentication import Users
+
+users_client = Users(domain)
+profile = users_client.userinfo(access_token='Bearer-access-token')
+print(profile['sub'])
+```
+
+### Verify a JWT signature with PyJWT + JWKS
+
+```python
+import jwt
+from jwt import PyJWKClient
+import os
+
+domain = os.getenv('AUTH0_DOMAIN')
+audience = os.getenv('AUTH0_API_AUDIENCE')
+
+jwks_client = PyJWKClient(f'https://{domain}/.well-known/jwks.json')
+
+def verify_access_token(token: str) -> dict:
+    signing_key = jwks_client.get_signing_key_from_jwt(token).key
+    return jwt.decode(
+        token,
+        signing_key,
+        algorithms=['RS256'],
+        audience=audience,
+        issuer=f'https://{domain}/',
+    )
+```
+
+### Flask Bearer-Token Middleware
+
+```python
+from functools import wraps
+from flask import request, jsonify
+
+def require_auth(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'missing_token'}), 401
+        token = auth_header.split(' ', 1)[1]
+        try:
+            request.auth = verify_access_token(token)
+        except jwt.PyJWTError as exc:
+            return jsonify({'error': 'invalid_token', 'detail': str(exc)}), 401
+        return f(*args, **kwargs)
+    return wrapper
+```
 
 ## Useful Links
 

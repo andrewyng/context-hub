@@ -1,11 +1,11 @@
 ---
 name: community
-description: "langchain-community package guide for Python covering third-party integrations, loaders, vector stores, tools, and 0.4.1 version notes"
+description: "langchain-community package guide for Python covering third-party integrations, loaders, vector stores, tools, and 0.4.2 version notes"
 metadata:
   languages: "python"
-  versions: "0.4.1"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "0.4.2"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "langchain-community,langchain,python,integrations,document-loaders,vectorstores,tools"
 ---
@@ -20,11 +20,11 @@ Prefer dedicated integration packages when they exist. LangChain's provider docs
 
 ## Version-Sensitive Notes
 
-- This entry is pinned to the version used here `0.4.1`.
-- PyPI lists `0.4.1` as the current package version covered here and shows it was uploaded on October 27, 2025.
+- This entry is pinned to the version used here `0.4.2`.
+- PyPI lists `0.4.2` as the current package version covered here on 2026-05-29.
 - LangChain's Python release policy explicitly says `langchain-community` does not follow the same strict semantic versioning guarantees as `langchain` and `langchain-core`. Pin exact versions when you need reproducible behavior.
-- PyPI metadata for `0.4.1` requires Python `>=3.10,<4.0`.
-- PyPI metadata for `0.4.1` also shows the package depends on the `1.x` lines of `langchain-core` and `langchain-classic`. Do not mix this package with pre-`1.0` LangChain dependencies.
+- PyPI metadata for `0.4.2` requires Python `>=3.10,<4.0`.
+- PyPI metadata for `0.4.2` also shows the package depends on the `1.x` lines of `langchain-core` and `langchain-classic`. Do not mix this package with pre-`1.0` LangChain dependencies.
 - The current LangChain integration publishing guidance says new integrations should usually be standalone `langchain-*` packages instead of new additions to the monorepo. Treat `langchain-community` as the compatibility bucket for community or older shared integrations, not the first package to assume for every provider.
 - The PyPI project description still contains stale wording that says `langchain-community` is on version `0.0.x`; use the actual PyPI release metadata and current reference docs instead of that older description text.
 
@@ -33,14 +33,14 @@ Prefer dedicated integration packages when they exist. LangChain's provider docs
 Pin the package if your project depends on a known set of community integrations:
 
 ```bash
-python -m pip install "langchain-community==0.4.1"
+python -m pip install "langchain-community==0.4.2"
 ```
 
 Common alternatives:
 
 ```bash
-uv add "langchain-community==0.4.1"
-poetry add "langchain-community==0.4.1"
+uv add "langchain-community==0.4.2"
+poetry add "langchain-community==0.4.2"
 ```
 
 In practice you often install this package together with:
@@ -53,9 +53,9 @@ In practice you often install this package together with:
 Example installs:
 
 ```bash
-python -m pip install "langchain-community==0.4.1" "langchain-openai"
-python -m pip install "langchain-community==0.4.1" "faiss-cpu"
-python -m pip install "langchain-community==0.4.1" "duckduckgo-search"
+python -m pip install "langchain-community==0.4.2" "langchain-openai"
+python -m pip install "langchain-community==0.4.2" "faiss-cpu"
+python -m pip install "langchain-community==0.4.2" "duckduckgo-search"
 ```
 
 ## Setup And Configuration

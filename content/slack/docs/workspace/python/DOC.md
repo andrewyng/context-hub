@@ -3,8 +3,9 @@ name: workspace
 description: "Slack Python SDK for building Slack apps, bots, and workspace integrations"
 metadata:
   languages: "python"
-  versions: "3.37.0"
-  updated-on: "2026-03-01"
+  versions: "3.42.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "slack,bot,workspace,messaging,events-api"
 ---

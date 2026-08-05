@@ -1,11 +1,11 @@
 ---
 name: core
-description: "pydantic-core 2.42.0 package guide for low-level validation, parsing, and serialization in Python"
+description: "pydantic-core 2.47.0 package guide for low-level validation, parsing, and serialization in Python"
 metadata:
   languages: "python"
-  versions: "2.42.0"
-  revision: 2
-  updated-on: "2026-03-12"
+  versions: "2.47.0"
+  revision: 3
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "pydantic,python,validation,serialization,json,schema"
 ---
@@ -26,19 +26,19 @@ Prefer `pydantic` for normal application code. Reach for `pydantic-core` when yo
 ## Install
 
 ```bash
-pip install "pydantic-core==2.42.0"
+pip install "pydantic-core==2.47.0"
 ```
 
 If you use `uv`:
 
 ```bash
-uv add "pydantic-core==2.42.0"
+uv add "pydantic-core==2.47.0"
 ```
 
 If you use Poetry:
 
 ```bash
-poetry add "pydantic-core==2.42.0"
+poetry add "pydantic-core==2.47.0"
 ```
 
 Notes:
@@ -241,11 +241,12 @@ If your project needs environment-backed settings or secret loading, use `pydant
 - Forgetting that `to_json(...)` returns `bytes`, not `str`.
 - Writing large raw schema dictionaries by hand. Use `pydantic_core.core_schema` helpers for maintainable code.
 
-## Version-Sensitive Notes For `2.42.0`
+## Version-Sensitive Notes For `2.47.0`
 
-- PyPI lists `2.42.0` as the current package version and requires Python `>=3.9`.
+- PyPI lists `2.47.0` as the current package version as of `2026-05-29` and requires Python `>=3.10`.
 - The official API docs live under `docs.pydantic.dev/latest/...`; they are authoritative, but they are not a version-pinned docs snapshot.
 - The standalone `pydantic/pydantic-core` GitHub repository is archived and marked read-only. Active development moved into the main `pydantic` repository under `pydantic-core/`.
+- `pydantic-core` versions are pinned by the `pydantic` package; do not upgrade `pydantic-core` alone unless you are intentionally compatibility-testing a new core release.
 - If your application is pinned to an older `2.x` release, verify method signatures and flags against the installed wheel before copying examples from the latest docs.
 
 ## Official Sources

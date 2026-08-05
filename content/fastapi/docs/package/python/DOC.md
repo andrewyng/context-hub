@@ -3,9 +3,9 @@ name: package
 description: "FastAPI package guide for Python ASGI APIs, dependency injection, auth, and deployment"
 metadata:
   languages: "python"
-  versions: "0.135.1"
-  revision: 1
-  updated-on: "2026-03-11"
+  versions: "0.136.3"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "fastapi,python,asgi,api,openapi,web,async"
 ---
@@ -21,11 +21,11 @@ Use this doc when you need to:
 - build an HTTP API with typed request and response models
 - organize routes with dependencies and routers
 - configure auth, settings, uploads, CORS, and lifespan startup/shutdown
-- avoid version-specific regressions in the `0.129.x` to `0.135.x` range
+- avoid version-specific regressions in the `0.129.x` to `0.136.x` range
 
 ## Python And Install Requirements
 
-- FastAPI `0.135.1` requires Python `>=3.10`.
+- FastAPI `0.136.3` requires Python `>=3.10`.
 - PyPI publishes extras: `standard`, `standard-no-fastapi-cloud-cli`, and `all`.
 - `fastapi[standard]` is the easiest install for new apps because it brings in `uvicorn`, `fastapi-cli`, `httpx`, `jinja2`, and `python-multipart`.
 
@@ -34,7 +34,7 @@ Use this doc when you need to:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install "fastapi[standard]==0.135.1"
+pip install "fastapi[standard]==0.136.3"
 ```
 
 ### Minimal install
@@ -42,7 +42,7 @@ pip install "fastapi[standard]==0.135.1"
 Use this only if you intentionally manage the server and optional tooling yourself:
 
 ```bash
-pip install "fastapi==0.135.1"
+pip install "fastapi==0.136.3"
 pip install "uvicorn[standard]"
 ```
 
@@ -88,44 +88,56 @@ Default generated docs and schema endpoints:
 - ReDoc: `http://127.0.0.1:8000/redoc`
 - OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
 
-## Core Usage Pattern
+## Path Operations And Request Models
 
-FastAPI works best when you keep request validation, dependency injection, and routing explicit.
+FastAPI works best when you keep request validation, dependency injection, and routing explicit. Use Pydantic `BaseModel` for request bodies, and declare a `response_model` on the path operation when output should be filtered or documented.
 
 ```python
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Query
+from pydantic import BaseModel, Field
 
 app = FastAPI(title="Inventory API")
 router = APIRouter(prefix="/items", tags=["items"])
 
 class ItemIn(BaseModel):
-    name: str
-    price: float
+    name: str = Field(min_length=1, max_length=80)
+    price: float = Field(ge=0)
+    tags: list[str] = []
+
+class ItemOut(ItemIn):
+    id: int
 
 async def common_params(q: str | None = None, limit: int = 100):
     return {"q": q, "limit": limit}
 
-@router.get("/")
-async def list_items(params: Annotated[dict, Depends(common_params)]):
-    return {"filters": params, "items": []}
+@router.get("/", response_model=list[ItemOut])
+async def list_items(
+    params: Annotated[dict, Depends(common_params)],
+    page: Annotated[int, Query(ge=1)] = 1,
+):
+    return []
 
-@router.post("/", status_code=201)
+@router.get("/{item_id}", response_model=ItemOut)
+async def get_item(item_id: Annotated[int, Path(ge=1)]):
+    raise HTTPException(status_code=404, detail="not found")
+
+@router.post("/", status_code=201, response_model=ItemOut)
 async def create_item(item: ItemIn):
     if item.price < 0:
         raise HTTPException(status_code=400, detail="price must be non-negative")
-    return item
+    return {"id": 1, **item.model_dump()}
 
 app.include_router(router)
 ```
 
 Notes:
 
-- Prefer `Annotated[..., Depends(...)]` for new code.
-- Use Pydantic models for request bodies and response models.
+- Prefer `Annotated[..., Depends(...)]`, `Annotated[..., Query(...)]`, and `Annotated[..., Path(...)]` for new code; positional `= Query(...)` defaults are an older style.
+- Use Pydantic models for request bodies. Use `response_model=` when you want output filtering, schema documentation, or to hide internal fields.
 - Split larger apps with `APIRouter` and `app.include_router(...)`.
+- `response_model_exclude_unset=True` and `response_model_exclude_none=True` are useful when you want to omit unset fields from the response.
 
 ## Configuration And App Setup
 
@@ -237,6 +249,34 @@ Install `python-multipart` before using `File()` or `UploadFile`.
 pip install python-multipart
 ```
 
+```python
+from typing import Annotated
+
+from fastapi import FastAPI, File, Form, UploadFile
+
+app = FastAPI()
+
+@app.post("/upload")
+async def upload(
+    file: Annotated[UploadFile, File()],
+    description: Annotated[str, Form()] = "",
+):
+    contents = await file.read()
+    return {
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "size": len(contents),
+        "description": description,
+    }
+
+@app.post("/upload-many")
+async def upload_many(files: Annotated[list[UploadFile], File()]):
+    return [{"filename": f.filename} for f in files]
+```
+
+- `UploadFile` streams large files to disk and exposes `.file`, `.read()`, `.seek()`, and `.close()`.
+- `bytes` parameters with `File()` load the whole upload into memory; use `UploadFile` for anything that may be large.
+
 ### Background tasks
 
 Use `BackgroundTasks` for simple follow-up work tied to a request, not for durable job queues:
@@ -278,6 +318,30 @@ app = FastAPI(lifespan=lifespan)
 
 If you provide `lifespan`, the old startup/shutdown event handlers will not run.
 
+### WebSockets
+
+FastAPI exposes Starlette's WebSocket support directly. There is no separate package to install.
+
+```python
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+app = FastAPI()
+
+@app.websocket("/ws")
+async def ws_echo(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_text(f"echo: {data}")
+    except WebSocketDisconnect:
+        return
+```
+
+- WebSocket routes use `@app.websocket(...)`, not `@app.get(...)`.
+- `Depends(...)` works on WebSocket routes too, useful for auth checks.
+- Close codes are passed via `await websocket.close(code=1008)`.
+
 ## Testing
 
 If you installed plain `fastapi`, add `httpx` first:
@@ -316,9 +380,10 @@ For sync tests, keep test functions as normal `def`, not `async def`, unless you
 - Letting trailing-slash redirects surprise clients; set route shapes consistently or adjust `redirect_slashes`.
 - Assuming file/form support exists without `python-multipart`.
 
-## Version-Sensitive Notes For 0.135.1
+## Version-Sensitive Notes For 0.136.3
 
-- `0.135.1` is a small fix release; upstream notes mention a TaskGroup/yield async-exit-stack fix.
+- `0.136.3` is the current PyPI release as of `2026-05-29` and requires Python `>=3.10`.
+- `0.136.x` is a patch line on top of `0.136.0`; check the upstream release notes for the exact fixes when troubleshooting.
 - `0.135.0` added Server-Sent Events support.
 - `0.134.0` added streaming JSON Lines and binary data with `yield`.
 - `0.132.0` enabled strict JSON `Content-Type` checking by default. Clients that send JSON without a valid JSON content type now fail unless you explicitly disable it with `strict_content_type=False`.
@@ -338,5 +403,6 @@ For sync tests, keep test functions as normal `def`, not `async def`, unless you
 - FastAPI CORS: https://fastapi.tiangolo.com/tutorial/cors/
 - FastAPI lifespan events: https://fastapi.tiangolo.com/advanced/events/
 - FastAPI testing: https://fastapi.tiangolo.com/tutorial/testing/
+- FastAPI WebSockets: https://fastapi.tiangolo.com/advanced/websockets/
 - FastAPI release notes: https://fastapi.tiangolo.com/release-notes/
-- PyPI package page: https://pypi.org/project/fastapi/0.135.1/
+- PyPI package page: https://pypi.org/project/fastapi/0.136.3/

@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - 'content/**'
+      - 'package.json'
+      - 'cli/package.json'
+      - 'cli/src/lib/help.js'
+      - 'scripts/prepare-cdn-build.mjs'
 
   # Allow manual trigger
   workflow_dispatch:
@@ -28,13 +32,20 @@ jobs:
       - name: Validate content
         run: node cli/bin/chub build content/ --validate-only
 
-      # Build registry + search index + content tree
-      - name: Build content
-        run: node cli/bin/chub build content/ -o dist/ --base-url https://cdn.aichub.org/v1
+      # Build registry + search index + exact-version help tree
+      - name: Build CDN bundle
+        run: npm run prepare:cdn
 
-      # Sync to S3
-      - name: Deploy to S3
-        run: aws s3 sync dist/ s3://${{ secrets.CDN_BUCKET_NAME }}/v1/ --delete
+      # Sync registry/content tree while preserving historical help versions.
+      - name: Deploy registry and content to S3
+        run: aws s3 sync dist/ s3://${{ secrets.CDN_BUCKET_NAME }}/v1/ --delete --exclude "help/*"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy versioned help to S3
+        run: aws s3 sync dist/help/ s3://${{ secrets.CDN_BUCKET_NAME }}/v1/help/
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

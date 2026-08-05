@@ -3,8 +3,9 @@ name: workers
 description: "Cloudflare Workers SDK for building edge functions with KV and R2 storage in JavaScript/TypeScript"
 metadata:
   languages: "javascript"
-  versions: "5.2.0"
-  updated-on: "2026-03-01"
+  versions: "6.3.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "cloudflare,workers,edge,kv,r2"
 ---

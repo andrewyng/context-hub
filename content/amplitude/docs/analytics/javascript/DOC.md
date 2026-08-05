@@ -3,8 +3,9 @@ name: analytics
 description: "Amplitude Analytics JavaScript SDK for browser-based event tracking and product analytics"
 metadata:
   languages: "javascript"
-  versions: "2.30.1"
-  updated-on: "2026-03-02"
+  versions: "2.42.5"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "amplitude,analytics,events,tracking,product"
 ---
@@ -13,7 +14,7 @@ metadata:
 
 ## Golden Rule
 
-**ALWAYS** use `@amplitude/analytics-browser` version 2.30.1 or newer for browser-based JavaScript applications.
+**ALWAYS** use `@amplitude/analytics-browser` version 2.42.5 or newer for browser-based JavaScript applications.
 
 **DO NOT** use the deprecated `amplitude-js` package. It is no longer maintained and lacks modern features.
 

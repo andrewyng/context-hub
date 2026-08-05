@@ -3,9 +3,9 @@ name: package
 description: "uv package guide for Python projects using Astral's package, project, tool, and Python management workflows"
 metadata:
   languages: "python"
-  versions: "0.10.9"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "0.11.17"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "uv,python,packaging,virtualenv,dependency-management,cli"
 ---
@@ -25,7 +25,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 ```bash
-python -m pip install "uv==0.10.9"
+python -m pip install "uv==0.11.17"
 ```
 
 Common alternatives:
@@ -173,11 +173,21 @@ When using private indexes, verify both pieces separately:
 - `managed = false` disables uv's project environment management for that project. Use it only when another workflow is intentionally responsible for the environment.
 - Private package indexes need both index configuration and credentials. One without the other leads to misleading resolution failures.
 
-## Version-Sensitive Notes For 0.10.9
+## Version-Sensitive Notes For 0.11.17
 
-- `uv` follows a release policy that is not strict Semantic Versioning. Minor releases may still include breaking changes, so read the changelog and migration notes before assuming any `0.x` upgrade is trivial.
+- `uv` follows a release policy that is not strict Semantic Versioning. Minor releases may still include breaking changes, so read the changelog and migration notes before assuming any `0.x` upgrade is trivial. The jump from the `0.10.x` line to `0.11.x` falls into this category.
 - Preview functionality is opt-in. If a workflow depends on features such as `native-auth`, make the preview requirement explicit in automation and onboarding docs.
-- As of March 12, 2026, PyPI and the maintainer docs agree on `uv 0.10.9`.
+- As of May 29, 2026, PyPI and the maintainer docs agree on `uv 0.11.17`.
+- The `0.11.x` line tightened entry-point validation: scripts can no longer use names like `python3`, and entry points cannot escape the configured scripts directory. If a tool install used to install a shim named `python3`, it will now fail.
+- Git references embedded in URLs must now be percent-encoded. If you previously fed raw branch or tag names with special characters into `uv add` or `uv pip install` for a Git dependency, those URLs now need to be encoded.
+- `uv add` and `uv pip install` gained `--no-editable` and `--no-editable-package` flags to suppress editable installs even when a project or workspace member would otherwise be installed as editable.
+- `uv python pin` accepts `--python-downloads-json-url` for using a custom Python version index instead of the default Astral-hosted manifest.
+- `uv sync` and related commands now treat `--no-dev` as overriding `UV_DEV=1` instead of the other way around. Configurations that intentionally set `UV_DEV=1` and then add `--no-dev` to a single command will now see the flag win.
+- `uv lock` skips direct-URL freshness checks when running offline, which makes `--offline` more usable for re-syncing existing lockfiles.
+- Python discovery picks up versioned executables when `requires-python` pins a specific version, which improves first-run behavior on systems where only `python3.12` (not `python`) is on `PATH`.
+- New environment variables include `UV_NO_SYSTEM_CONFIG`, `UV_PYTHON_NO_REGISTRY`, `UV_NO_PROJECT`, and `UV_PYTHON_SEARCH_PATH`. These help when you need to opt out of system-wide configuration or registry lookups in CI.
+- A preview `uv audit` command emits structured JSON for security vulnerabilities, intended for CI integration.
+- `uv workspace list` is now visible in `--help` and `uv workspace metadata` reports module owners.
 
 ## Official Sources
 

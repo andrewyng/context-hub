@@ -4,7 +4,8 @@ description: "SendGrid Node.js library for sending transactional and marketing e
 metadata:
   languages: "javascript"
   versions: "8.1.6"
-  updated-on: "2026-03-01"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "sendgrid,email,transactional,templates,delivery"
 ---

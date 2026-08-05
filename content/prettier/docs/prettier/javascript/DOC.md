@@ -3,9 +3,9 @@ name: prettier
 description: "Prettier 3 guide for JavaScript projects, including CLI usage, config files, ignore rules, and the async Node API."
 metadata:
   languages: "javascript"
-  versions: "3.8.1"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "3.8.3"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "javascript,prettier,formatting,code-style,cli"
 ---
@@ -49,10 +49,19 @@ Create `.prettierrc.json` in your project root:
 {
   "semi": true,
   "singleQuote": true,
+  "tabWidth": 2,
   "trailingComma": "all",
   "printWidth": 100
 }
 ```
+
+Common options:
+
+- `semi`: print semicolons at the end of statements (default `true`).
+- `singleQuote`: use `'` instead of `"` for strings (default `false`).
+- `tabWidth`: number of spaces per indent level (default `2`).
+- `trailingComma`: `"all"`, `"es5"`, or `"none"` (default `"all"`).
+- `printWidth`: line length the printer will wrap at (default `80`).
 
 Prettier resolves config from the file path you format. It can also read `.editorconfig` unless you disable that behavior with `--no-editorconfig` in the CLI or `editorconfig: false` in the API.
 
@@ -75,11 +84,15 @@ node_modules
 npx prettier . --write
 ```
 
+`--write` edits matching files in place; use it for local formatting commands and pre-commit hooks.
+
 ### Check formatting in CI
 
 ```bash
 npx prettier . --check
 ```
+
+`--check` does not modify files. It logs files that are not formatted and exits non-zero, which is what you want in CI.
 
 ### List only files that need formatting
 
@@ -195,6 +208,20 @@ async function formatIfSupported(filePath) {
 - The CLI ignores `node_modules` by default. Use `--with-node-modules` only when you explicitly want to format files there.
 - If you are writing an editor or long-running tool that watches config files, call `await prettier.clearConfigCache()` after config changes.
 
+### Using Prettier with ESLint
+
+Install `eslint-config-prettier` and add it to your ESLint config to turn off ESLint rules that conflict with Prettier formatting:
+
+```bash
+npm install -D eslint-config-prettier
+```
+
+Run ESLint for code-quality rules and Prettier for formatting; let `eslint-config-prettier` disable the overlapping ESLint stylistic rules so the two tools do not fight each other.
+
+### Format on save in your editor
+
+Install the Prettier extension for your editor (for example "Prettier - Code formatter" in VS Code), set Prettier as the default formatter, and enable format-on-save. The editor will then run Prettier with the project's `.prettierrc` config every time you save a file.
+
 ## Important Pitfalls
 
 - Do not treat the Node API as synchronous in Prettier 3; the core methods shown here return promises.
@@ -205,7 +232,7 @@ async function formatIfSupported(filePath) {
 
 ## Version Notes
 
-- This guide targets `prettier` `3.8.1`.
+- This guide targets `prettier` `3.8.3`.
 - The API examples here follow the async Prettier 3 API shape documented for the current 3.x line.
 
 ## Official Sources

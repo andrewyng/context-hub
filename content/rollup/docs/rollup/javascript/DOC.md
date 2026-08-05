@@ -3,9 +3,9 @@ name: rollup
 description: "JavaScript guide for installing Rollup 4, authoring a minimal config, using the CLI and JavaScript API, and handling watch mode and library externals."
 metadata:
   languages: "javascript"
-  versions: "4.59.0"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "4.60.4"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "rollup,bundler,build,javascript,cli,node-api"
 ---
@@ -19,7 +19,7 @@ There is no authentication step and no required package-specific environment var
 ## Prerequisites
 
 - Node.js. Use a current Node LTS for modern ESM-based build tooling.
-- `rollup@4.59.0`
+- `rollup@4.60.4`
 - Optional plugins such as TypeScript, CommonJS, or Node resolution plugins when your project needs them
 
 ## Install
@@ -50,7 +50,7 @@ Add scripts in `package.json`:
 }
 ```
 
-Create `rollup.config.mjs`:
+Create `rollup.config.mjs` (or `rollup.config.js` when the package is ESM):
 
 ```javascript
 import { defineConfig } from "rollup";
@@ -66,6 +66,22 @@ export default defineConfig({
   },
 });
 ```
+
+Key config fields:
+
+- `input`: a string, array, or `{ [name]: path }` map of entry points.
+- `output`: a single output object or an array of them. Each output has `file` (single bundle) or `dir` (multi-chunk), plus `format`, `sourcemap`, and optional `name` for browser globals.
+- `external`: package names or a function that returns `true` for imports that must remain external.
+- `plugins`: array of Rollup plugins, applied in order.
+
+### Output formats
+
+`output.format` controls the module system of the generated bundle:
+
+- `es` (also `esm`): standard ES modules.
+- `cjs`: CommonJS for Node.js consumers.
+- `umd`: UMD bundle for browsers and module loaders, requires `output.name`.
+- `iife`: self-executing function for direct `<script>` use, requires `output.name`.
 
 Create a matching entry file:
 
@@ -239,6 +255,74 @@ export default defineConfig({
 
 For UMD and IIFE browser builds that expose exports, set `output.name` or pass `--name` on the CLI.
 
+## Common plugins
+
+Rollup ships only the core bundler. Add plugins for ecosystem features:
+
+```bash
+npm install --save-dev @rollup/plugin-node-resolve @rollup/plugin-commonjs @rollup/plugin-terser @rollup/plugin-typescript
+```
+
+```javascript
+import { defineConfig } from "rollup";
+import resolve from "@rollup/plugin-node-resolve";
+import commonjs from "@rollup/plugin-commonjs";
+import terser from "@rollup/plugin-terser";
+import typescript from "@rollup/plugin-typescript";
+
+export default defineConfig({
+  input: "src/index.ts",
+  output: {
+    dir: "dist",
+    format: "es",
+    sourcemap: true,
+  },
+  plugins: [
+    resolve(),
+    commonjs(),
+    typescript(),
+    terser(),
+  ],
+});
+```
+
+- `@rollup/plugin-node-resolve`: locate modules in `node_modules` using Node resolution.
+- `@rollup/plugin-commonjs`: convert CommonJS dependencies into ES modules so Rollup can bundle them.
+- `@rollup/plugin-typescript`: compile TypeScript through the TypeScript compiler.
+- `@rollup/plugin-terser`: minify the output.
+
+## Tree-shaking
+
+Rollup performs tree-shaking by default for ES module input. It can drop exports that are never imported, dead branches, and modules with no side effects. To make tree-shaking effective:
+
+- Author and consume code as ES modules.
+- Set `"sideEffects": false` in `package.json` for library code without runtime side effects, or list the specific files that do.
+- Avoid CommonJS interop on the hot path; if you must include CJS dependencies, isolate them through `@rollup/plugin-commonjs`.
+
+## Code splitting and multiple chunks
+
+When Rollup needs to emit more than one chunk (multiple entry points or dynamic `import()`), use `output.dir` instead of `output.file`.
+
+```javascript
+import { defineConfig } from "rollup";
+
+export default defineConfig({
+  input: {
+    home: "src/home.js",
+    admin: "src/admin.js",
+  },
+  output: {
+    dir: "dist",
+    format: "es",
+    entryFileNames: "[name].js",
+    chunkFileNames: "chunks/[name]-[hash].js",
+    sourcemap: true,
+  },
+});
+```
+
+Dynamic `import("./feature.js")` calls inside any entry point are turned into separate chunks automatically. Use `manualChunks` on `output` for fine-grained control over how shared modules group together.
+
 ## Important pitfalls
 
 - Use `output.file` for a single bundle and `output.dir` when Rollup needs to emit multiple chunks.
@@ -250,6 +334,6 @@ For UMD and IIFE browser builds that expose exports, set `output.name` or pass `
 
 ## Version notes
 
-- This guide targets `rollup@4.59.0`.
+- This guide targets `rollup@4.60.4`.
 - The package exports `defineConfig`, `rollup`, and `watch` from `rollup`.
 - The package also exports `rollup/loadConfigFile`, `rollup/getLogFilter`, and `rollup/parseAst` as subpaths for tooling integrations.

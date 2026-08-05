@@ -3,9 +3,9 @@ name: package
 description: "redis-py package guide for Python projects using Redis sync, asyncio, TLS, Sentinel, and cluster clients"
 metadata:
   languages: "python"
-  versions: "7.3.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "8.0.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "redis,python,cache,key-value,pubsub,asyncio,cluster"
 ---
@@ -14,29 +14,29 @@ metadata:
 
 ## Golden Rule
 
-Use the official `redis` package (`redis-py`) for both synchronous and asynchronous Redis access. As of March 12, 2026, PyPI lists `redis 7.3.0`, requires Python `>=3.10`, and points to `https://redis.readthedocs.io/en/stable/` as the official docs root. The docs URL (`https://redis-py.readthedocs.io/en/stable/`) is stale and should not be used.
+Use the official `redis` package (`redis-py`) for both synchronous and asynchronous Redis access. As of May 29, 2026, PyPI lists `redis 8.0.0`, requires Python `>=3.10`, and points to `https://redis.readthedocs.io/en/stable/` as the official docs root. The older `redis-py.readthedocs.io` URL is stale.
 
 ## Install
 
 Pin the package version your project expects:
 
 ```bash
-python -m pip install "redis==7.3.0"
+python -m pip install "redis==8.0.0"
 ```
 
 Useful extras:
 
 ```bash
-python -m pip install "redis[hiredis]==7.3.0"
-python -m pip install "redis[ocsp]==7.3.0"
-python -m pip install "redis[otel]==7.3.0"
+python -m pip install "redis[hiredis]==8.0.0"
+python -m pip install "redis[ocsp]==8.0.0"
+python -m pip install "redis[otel]==8.0.0"
 ```
 
 - `hiredis`: faster response parser
 - `ocsp`: OCSP validation for TLS connections
 - `otel`: OpenTelemetry instrumentation helpers
 
-If your runtime is still on Python 3.9, `redis 7.3.0` will not install. PyPI notes that `redis 7.0.1` was the last version supporting Python 3.9.
+If your runtime is still on Python 3.9, `redis 8.0.0` will not install. PyPI metadata for `8.0.0` requires Python `>=3.10`; pin to the 7.x line if you need Python 3.9 support.
 
 ## Initialize A Client
 
@@ -291,9 +291,10 @@ Use hash tags like `{42}` when multi-key operations must land in the same slot.
 
 ## Version-Sensitive Notes
 
-- `redis 7.3.0` is the current PyPI release as of March 12, 2026.
+- `redis 8.0.0` is the current PyPI release as of May 29, 2026.
 - The official docs root is `https://redis.readthedocs.io/en/stable/`; the older `redis-py.readthedocs.io` URL is stale.
-- PyPI metadata for `7.3.0` requires Python `>=3.10`. That is the first constraint to check before suggesting an upgrade.
+- PyPI metadata for `8.0.0` requires Python `>=3.10`. That is the first constraint to check before suggesting an upgrade.
+- The 7.x line (most recently `7.3.0`) is the last branch supporting Python 3.9; older releases such as `7.0.1` are also documented as 3.9-compatible if you must stay on the 7.0 line.
 - `redis-py` continues to unify sync, asyncio, Sentinel, and Cluster support in one package, so older package splits from blog posts are usually wrong.
 - If you use RediSearch helpers (`ft()` APIs), check the current query dialect behavior in the upstream docs instead of relying on older examples.
 

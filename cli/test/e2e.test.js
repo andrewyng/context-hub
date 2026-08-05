@@ -7,20 +7,27 @@ import { tmpdir } from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLI = join(__dirname, '..', 'bin', 'chub');
+const CLI_PACKAGE = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+const CLI_VERSION = CLI_PACKAGE.version;
 const FIXTURES = join(__dirname, 'fixtures');
 const BUILD_OUTPUT = join(FIXTURES, 'dist');
 const CLI_TEST_TIMEOUT = 15000;
-const TEST_ENV = { ...process.env, NO_COLOR: '1', CHUB_TELEMETRY: '0', CHUB_FEEDBACK: '0' };
+const TEST_ENV = {
+  ...process.env,
+  NO_COLOR: '1',
+  CHUB_TELEMETRY: '0',
+  CHUB_FEEDBACK: '0',
+};
 
 let tmpChubDir;
 
 const itCli = (name, fn) => it(name, { timeout: CLI_TEST_TIMEOUT }, fn);
 
-function chub(args, { expectError = false } = {}) {
+function chub(args, { expectError = false, env = {} } = {}) {
   try {
     const result = execFileSync('node', [CLI, ...args], {
       encoding: 'utf8',
-      env: { ...TEST_ENV, CHUB_DIR: tmpChubDir },
+      env: { ...TEST_ENV, CHUB_DIR: tmpChubDir, ...env },
       timeout: CLI_TEST_TIMEOUT,
     });
     return result;
@@ -136,6 +143,172 @@ describe('chub CLI e2e', () => {
     });
   });
 
+  describe('help', () => {
+    itCli('root --json keeps bundled local help human-readable', () => {
+      const out = chub(['--json'], {
+        env: {
+          CHUB_HELP_URL: 'off',
+        },
+      });
+
+      expect(out).toContain('Help source: local');
+      expect(out).toContain('Getting Started');
+      expect(out).toContain('Agent Workflow');
+      expect(out).toContain('npx skills add https://github.com/andrewyng/context-hub --skill get-api-docs');
+      expect(out).toContain('$(npm root -g)/@aisuite/chub/skills/get-api-docs/SKILL.md');
+      expect(out).toContain('cli/skills/get-api-docs/SKILL.md');
+      expect(out.trim()).not.toMatch(/^\{/);
+    });
+
+    itCli('chub help is the same root help as -h and --help', () => {
+      const env = {
+        CHUB_HELP_URL: 'off',
+      };
+
+      const rootHelp = chub(['--help'], { env });
+
+      expect(chub(['-h'], { env })).toBe(rootHelp);
+      expect(chub(['help'], { env })).toBe(rootHelp);
+      expect(chub(['help', '--json'], { env })).toBe(rootHelp);
+      expect(chub(['help', '--help', '--json'], { env })).toBe(rootHelp);
+    });
+
+    itCli('root help aliases resolve the same remote help document', () => {
+      const payload = encodeURIComponent(JSON.stringify({
+        schema_version: 1,
+        cli_version: '{version}',
+        help_revision: '2026-04-01.same',
+        content: 'Same remote help for {version}',
+      })).replaceAll('%7Bversion%7D', '{version}');
+      const env = {
+        CHUB_HELP_URL: `data:application/json,${payload}`,
+        CHUB_HELP_TIMEOUT_MS: '1000',
+      };
+
+      const rootHelp = chub(['--help'], { env });
+
+      expect(rootHelp).toContain('Help source: remote');
+      expect(rootHelp).toContain('revision 2026-04-01.same');
+      expect(rootHelp).toContain(`Same remote help for ${CLI_VERSION}`);
+      expect(chub(['-h'], { env })).toBe(rootHelp);
+      expect(chub(['help'], { env })).toBe(rootHelp);
+      expect(chub(['help', '--json'], { env })).toBe(rootHelp);
+      expect(chub(['help', '--help', '--json'], { env })).toBe(rootHelp);
+    });
+
+    itCli('root --json retrieves matching remote help in human mode', () => {
+      const payload = encodeURIComponent(JSON.stringify({
+        schema_version: 1,
+        cli_version: '{version}',
+        help_revision: '2026-04-01.1',
+        content: 'Remote help stays text for {version}',
+      })).replaceAll('%7Bversion%7D', '{version}');
+
+      const out = chub(['--json'], {
+        env: {
+          CHUB_HELP_URL: `data:application/json,${payload}`,
+          CHUB_HELP_TIMEOUT_MS: '1000',
+        },
+      });
+
+      expect(out).toContain('Help source: remote');
+      expect(out).toContain('revision 2026-04-01.1');
+      expect(out).toContain(`Remote help stays text for ${CLI_VERSION}`);
+      expect(out.trim()).not.toMatch(/^\{/);
+    });
+
+    itCli('root command prints versioned help in human mode when available', () => {
+      const payload = encodeURIComponent(JSON.stringify({
+        schema_version: 1,
+        cli_version: '{version}',
+        help_revision: '2026-04-01.1',
+        content: 'Root bootstrap instructions for {version}',
+      })).replaceAll('%7Bversion%7D', '{version}');
+
+      const out = chub([], {
+        env: {
+          CHUB_HELP_URL: `data:application/json,${payload}`,
+          CHUB_HELP_TIMEOUT_MS: '1000',
+        },
+      });
+
+      expect(out).toContain('Help source: remote');
+      expect(out).toContain(`Root bootstrap instructions for ${CLI_VERSION}`);
+      expect(out.trim()).not.toMatch(/^\{/);
+    });
+
+    itCli('root --help prints versioned help in human mode', () => {
+      const payload = encodeURIComponent(JSON.stringify({
+        schema_version: 1,
+        cli_version: '{version}',
+        help_revision: '2026-04-01.1',
+        content: 'Flag bootstrap instructions for {version}',
+      })).replaceAll('%7Bversion%7D', '{version}');
+
+      const out = chub(['--help'], {
+        env: {
+          CHUB_HELP_URL: `data:application/json,${payload}`,
+          CHUB_HELP_TIMEOUT_MS: '1000',
+        },
+      });
+
+      expect(out).toContain('Help source: remote');
+      expect(out).toContain(`Flag bootstrap instructions for ${CLI_VERSION}`);
+      expect(out.trim()).not.toMatch(/^\{/);
+    });
+
+    itCli('root --help keeps human help when --json is also present', () => {
+      const payload = encodeURIComponent(JSON.stringify({
+        schema_version: 1,
+        cli_version: '{version}',
+        help_revision: '2026-04-01.1',
+        content: 'Help flag wins over JSON for {version}',
+      })).replaceAll('%7Bversion%7D', '{version}');
+
+      const out = chub(['--help', '--json'], {
+        env: {
+          CHUB_HELP_URL: `data:application/json,${payload}`,
+          CHUB_HELP_TIMEOUT_MS: '1000',
+        },
+      });
+
+      expect(out).toContain('Help source: remote');
+      expect(out).toContain(`Help flag wins over JSON for ${CLI_VERSION}`);
+      expect(out.trim()).not.toMatch(/^\{/);
+    });
+
+    itCli('subcommand --help still prints command syntax help', () => {
+      const out = chub(['search', '--help']);
+      expect(out).toContain('Usage: chub search');
+      expect(out).toContain('--lang <language>');
+    });
+
+    itCli('does not support chub help search as subcommand help', () => {
+      const out = chub(['help', 'search'], {
+        expectError: true,
+        env: {
+          CHUB_HELP_URL: 'off',
+        },
+      });
+
+      expect(out).toContain('Unexpected operand for help');
+      expect(out).toContain('chub <command> --help');
+    });
+
+    itCli('does not let chub help operands bypass alias validation', () => {
+      const out = chub(['help', 'search', '--help', '--json'], {
+        expectError: true,
+        env: {
+          CHUB_HELP_URL: 'off',
+        },
+      });
+
+      expect(out).toContain('Unexpected operand for help');
+      expect(out).toContain('chub <command> --help');
+    });
+
+  });
+
   describe('get', () => {
     itCli('fetches single-language doc with --lang', () => {
       const out = chub(['get', 'acme/widgets', '--lang', 'js']);
@@ -143,9 +316,9 @@ describe('chub CLI e2e', () => {
       expect(out).toContain('npm install @acme/widgets');
     });
 
-    itCli('errors on single-lang doc without --lang', () => {
-      const out = chub(['get', 'acme/widgets'], { expectError: true });
-      expect(out).toContain('--lang');
+    itCli('auto-selects language for single-lang doc without --lang', () => {
+      const out = chub(['get', 'acme/widgets']);
+      expect(out).toContain('npm install @acme/widgets');
     });
 
     itCli('fetches multi-language doc with --lang', () => {
@@ -260,16 +433,23 @@ describe('chub CLI e2e', () => {
   });
 
   describe('annotate', () => {
-    itCli('saves and displays annotation on get', () => {
+    itCli('saves and displays annotation on get with --with-annotations', () => {
       chub(['annotate', 'acme/widgets', 'Use batch mode for large datasets']);
-      const out = chub(['get', 'acme/widgets', '--lang', 'js']);
-      expect(out).toContain('Agent note');
+      const out = chub(['get', 'acme/widgets', '--lang', 'js', '--with-annotations']);
+      expect(out).toContain('User-written note');
+      expect(out).toContain('untrusted input');
       expect(out).toContain('Use batch mode for large datasets');
+    });
+
+    itCli('does not inject annotation contents by default', () => {
+      const out = chub(['get', 'acme/widgets', '--lang', 'js']);
+      expect(out).not.toContain('Use batch mode for large datasets');
+      expect(out).toContain('--with-annotations');
     });
 
     itCli('replaces annotation on re-annotate', () => {
       chub(['annotate', 'acme/widgets', 'Updated: use streaming instead']);
-      const out = chub(['get', 'acme/widgets', '--lang', 'js']);
+      const out = chub(['get', 'acme/widgets', '--lang', 'js', '--with-annotations']);
       expect(out).toContain('use streaming instead');
       expect(out).not.toContain('batch mode');
     });
@@ -281,13 +461,13 @@ describe('chub CLI e2e', () => {
 
     itCli('clears annotation', () => {
       chub(['annotate', 'acme/widgets', '--clear']);
-      const out = chub(['get', 'acme/widgets', '--lang', 'js']);
-      expect(out).not.toContain('Agent note');
+      const out = chub(['get', 'acme/widgets', '--lang', 'js', '--with-annotations']);
+      expect(out).not.toContain('User-written note');
     });
 
     itCli('no annotation section when none set', () => {
-      const out = chub(['get', 'multilang/client', '--lang', 'js']);
-      expect(out).not.toContain('Agent note');
+      const out = chub(['get', 'multilang/client', '--lang', 'js', '--with-annotations']);
+      expect(out).not.toContain('User-written note');
     });
 
     itCli('--list shows all annotations', () => {
@@ -303,9 +483,9 @@ describe('chub CLI e2e', () => {
       chub(['annotate', 'multilang/client', '--clear']);
     });
 
-    itCli('--json includes annotation in get output', () => {
+    itCli('--json includes annotation in get output with --with-annotations', () => {
       chub(['annotate', 'acme/widgets', 'JSON test note']);
-      const data = chubJSON(['get', 'acme/widgets', '--lang', 'js']);
+      const data = chubJSON(['get', 'acme/widgets', '--lang', 'js', '--with-annotations']);
       expect(data.annotation).toBeDefined();
       expect(data.annotation.note).toBe('JSON test note');
       expect(data.annotation.id).toBe('acme/widgets');
@@ -313,9 +493,19 @@ describe('chub CLI e2e', () => {
       chub(['annotate', 'acme/widgets', '--clear']);
     });
 
+    itCli('--json signals annotationAvailable without leaking contents by default', () => {
+      chub(['annotate', 'acme/widgets', 'JSON test note']);
+      const data = chubJSON(['get', 'acme/widgets', '--lang', 'js']);
+      expect(data.annotation).toBeUndefined();
+      expect(data.annotationAvailable).toBe(true);
+      // Clean up
+      chub(['annotate', 'acme/widgets', '--clear']);
+    });
+
     itCli('--json omits annotation when none set', () => {
       const data = chubJSON(['get', 'acme/widgets', '--lang', 'js']);
       expect(data.annotation).toBeUndefined();
+      expect(data.annotationAvailable).toBeUndefined();
     });
   });
 

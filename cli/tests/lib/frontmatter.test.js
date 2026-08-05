@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseFrontmatter } from '../../src/lib/frontmatter.js';
+import { parseFrontmatter, FrontmatterParseError } from '../../src/lib/frontmatter.js';
 
 describe('parseFrontmatter', () => {
   it('parses valid frontmatter with attributes and body', () => {
@@ -76,5 +76,40 @@ Immediate body.`;
 
     expect(result.attributes.name).toBe('test');
     expect(result.body).toBe('Immediate body.');
+  });
+
+  it('throws FrontmatterParseError with file-relative line/col on malformed YAML', () => {
+    // Reproduces issue #238: an unquoted colon inside a value is parsed as a
+    // nested mapping and the underlying yaml package throws.
+    const content = `---
+name: bad
+description: Unquoted colon: breaks parsing
+---
+body`;
+
+    let caught;
+    try {
+      parseFrontmatter(content);
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(FrontmatterParseError);
+    // `description:` is line 3 of the file (line 1 is `---`, line 2 is `name:`).
+    expect(caught.line).toBe(3);
+    expect(caught.col).toBeGreaterThan(0);
+    expect(caught.message).toMatch(/mapping/i);
+    expect(caught.cause).toBeDefined();
+  });
+
+  it('does not throw on YAML edge cases that are valid', () => {
+    // Sanity check: a quoted value containing a colon parses cleanly.
+    const content = `---
+name: good
+description: "Quoted colon: works"
+---
+body`;
+
+    expect(() => parseFrontmatter(content)).not.toThrow();
   });
 });

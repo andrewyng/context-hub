@@ -4,8 +4,8 @@ description: "Express 5 web framework for Node.js applications, APIs, routers, m
 metadata:
   languages: "javascript"
   versions: "5.2.1"
-  revision: 1
-  updated-on: "2026-03-13"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "express,nodejs,web,framework,http,routing,middleware"
 ---

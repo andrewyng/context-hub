@@ -3,8 +3,9 @@ name: analytics
 description: "Amplitude Analytics Python SDK for server-side event tracking and product analytics"
 metadata:
   languages: "python"
-  versions: "1.2.0"
-  updated-on: "2026-03-02"
+  versions: "1.2.3"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "amplitude,analytics,events,tracking,product"
 ---
@@ -13,7 +14,7 @@ metadata:
 
 ## Golden Rule
 
-**ALWAYS** use `amplitude-analytics` version 1.2.0 or newer for Python server-side instrumentation.
+**ALWAYS** use `amplitude-analytics` version 1.2.3 or newer for Python server-side instrumentation.
 
 This is the official Amplitude backend Python SDK maintained by Amplitude Inc.
 
@@ -27,7 +28,7 @@ This is the official Amplitude backend Python SDK maintained by Amplitude Inc.
 pip install amplitude-analytics
 ```
 ```bash
-pip install amplitude-analytics==1.2.0
+pip install amplitude-analytics==1.2.3
 ```
 
 ---

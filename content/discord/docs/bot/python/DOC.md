@@ -3,8 +3,9 @@ name: bot
 description: "Discord.py SDK for building Discord bots with slash commands and gateway events in Python"
 metadata:
   languages: "python"
-  versions: "2.6.4"
-  updated-on: "2026-03-01"
+  versions: "2.7.1"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "discord,bot,slash-commands,gateway,sdk"
 ---
@@ -22,7 +23,7 @@ Always use the discord.py library to interact with the Discord API, which is the
 
 - **Library Name:** discord.py
 - **PyPI Package:** `discord.py`
-- **Current Version:** 2.6.4
+- **Current Version:** 2.7.1
 - **Legacy Libraries:** discord.py v1.x is outdated and not recommended
 
 **Installation:**

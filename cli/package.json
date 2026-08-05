@@ -1,6 +1,6 @@
 {
   "name": "@aisuite/chub",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "CLI for Context Hub - search and retrieve LLM-optimized docs and skills",
   "type": "module",
   "bin": {

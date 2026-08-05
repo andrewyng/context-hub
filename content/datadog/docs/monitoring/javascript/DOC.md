@@ -3,8 +3,9 @@ name: monitoring
 description: "Official Datadog API client for JavaScript/TypeScript to submit metrics, manage monitors, and interact with Datadog observability features."
 metadata:
   languages: "javascript"
-  versions: "1.46.0"
-  updated-on: "2026-03-01"
+  versions: "1.58.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "datadog,monitoring,metrics,observability,apm"
 ---
@@ -13,7 +14,7 @@ metadata:
 
 ## Golden Rule
 
-**ALWAYS use `@datadog/datadog-api-client` version 1.46.0 or later.**
+**ALWAYS use `@datadog/datadog-api-client` version 1.58.0 or later.**
 
 This is the official Datadog API client for JavaScript and TypeScript. Do NOT use:
 - `datadog-client` (unofficial/deprecated)

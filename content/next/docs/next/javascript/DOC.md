@@ -1,11 +1,11 @@
 ---
 name: next
-description: "Next.js 16 JavaScript guide for App Router apps, including installation, project structure, client components, route handlers, environment variables, images, and production builds"
+description: "Next.js 16 JavaScript guide for App Router apps, covering installation, server and client components, server actions, route handlers, streaming, metadata, middleware, image/font/script, and production builds"
 metadata:
   languages: "javascript"
-  versions: "16.1.6"
-  revision: 1
-  updated-on: "2026-03-13"
+  versions: "16.2.6"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "next,nextjs,javascript,react,app-router,ssr"
 ---
@@ -14,7 +14,7 @@ metadata:
 
 ## Golden Rule
 
-For new work in `next@16.1.6`, use the App Router:
+For new work in `next@16.2.6`, use the App Router:
 
 - put routes under `app/`
 - treat components as Server Components by default
@@ -36,7 +36,7 @@ npm run dev
 To add Next.js to an existing project, install the framework with React:
 
 ```bash
-npm install next@16.1.6 react react-dom
+npm install next@16.2.6 react react-dom
 ```
 
 Add the standard scripts to `package.json`:
@@ -132,6 +132,80 @@ export default function HomePage() {
 ```
 
 Use `'use client'` only where needed. Adding it too high in the tree turns more of your component graph into client-side code than necessary.
+
+## Server Actions
+
+Use Server Actions for form submissions and mutations that run on the server. Mark a function with `'use server'` and pass it to a form's `action` prop or invoke it from a Client Component.
+
+`app/actions.js`:
+
+```js
+'use server';
+
+import { revalidatePath } from 'next/cache';
+
+export async function createPost(formData) {
+  const title = formData.get('title');
+
+  // persist somewhere…
+  await Promise.resolve({ title });
+
+  revalidatePath('/posts');
+}
+```
+
+`app/posts/new/page.js`:
+
+```js
+import { createPost } from '../../actions';
+
+export default function NewPostPage() {
+  return (
+    <form action={createPost}>
+      <input name="title" required />
+      <button type="submit">Create</button>
+    </form>
+  );
+}
+```
+
+Server Actions can also be called from Client Components, and they integrate with React's `useActionState` for pending and error states.
+
+## Streaming With Suspense
+
+The App Router streams rendered HTML. Wrap slow data with `Suspense` to send a fallback first and stream the rest as it resolves.
+
+```js
+import { Suspense } from 'react';
+
+async function SlowFeed() {
+  const response = await fetch('https://example.com/api/feed', {
+    next: { revalidate: 30 },
+  });
+  const items = await response.json();
+
+  return (
+    <ul>
+      {items.map((item) => (
+        <li key={item.id}>{item.title}</li>
+      ))}
+    </ul>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <main>
+      <h1>Dashboard</h1>
+      <Suspense fallback={<p>Loading feed…</p>}>
+        <SlowFeed />
+      </Suspense>
+    </main>
+  );
+}
+```
+
+You can also place a `loading.js` next to a `page.js`. The App Router uses it as the Suspense fallback for that segment automatically.
 
 ## Environment Variables
 
@@ -235,6 +309,48 @@ export default function SettingsPage() {
 }
 ```
 
+For dynamic metadata, export `generateMetadata`:
+
+```js
+export async function generateMetadata({ params }) {
+  const post = await fetch(`https://example.com/api/posts/${params.id}`).then(
+    (response) => response.json(),
+  );
+
+  return {
+    title: post.title,
+    description: post.excerpt,
+  };
+}
+```
+
+## Middleware
+
+Put a `middleware.js` file at the project root to run code before a request completes. Use it for redirects, rewrites, authentication, and request/response headers.
+
+`middleware.js`:
+
+```js
+import { NextResponse } from 'next/server';
+
+export function middleware(request) {
+  const session = request.cookies.get('session');
+
+  if (!session && request.nextUrl.pathname.startsWith('/dashboard')) {
+    const loginUrl = new URL('/login', request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*'],
+};
+```
+
+Middleware runs on the Edge runtime. Keep it small and avoid Node-only APIs.
+
 ## Images
 
 Use `next/image` for optimized images. If you load remote images, allow their hosts in `next.config.mjs`.
@@ -276,6 +392,53 @@ export default function Avatar() {
 
 If you forget to configure the remote host, remote image rendering fails at runtime.
 
+## Fonts
+
+Use `next/font` to load fonts at build time with no extra network round trips and automatic CSS variable wiring.
+
+`app/layout.js`:
+
+```js
+import { Inter } from 'next/font/google';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+});
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" className={inter.className}>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+For local fonts, import from `next/font/local` and point at a font file under your project.
+
+## Scripts
+
+Use `next/script` to load third-party scripts with a loading strategy instead of dropping raw `<script>` tags into your tree.
+
+```js
+import Script from 'next/script';
+
+export default function AnalyticsLayout({ children }) {
+  return (
+    <>
+      {children}
+      <Script
+        src="https://example.com/analytics.js"
+        strategy="afterInteractive"
+      />
+    </>
+  );
+}
+```
+
+Common strategies: `beforeInteractive`, `afterInteractive` (default), and `lazyOnload`.
+
 ## Production Build And Standalone Output
 
 Create a production build:
@@ -314,7 +477,7 @@ npm run build
 
 ## Version-Sensitive Notes
 
-- This guide targets `next@16.1.6`.
+- This guide targets `next@16.2.6`.
 - The examples here use the App Router and file conventions from the current official Next.js docs.
 - If you maintain an older Pages Router app under `pages/`, follow that router's conventions consistently instead of mixing patterns across routers.
 

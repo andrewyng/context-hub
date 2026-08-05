@@ -3,9 +3,9 @@ name: package
 description: "langgraph package guide for Python graphs, persistence, streaming, and local agent development"
 metadata:
   languages: "python"
-  versions: "1.1.0"
-  revision: 1
-  updated-on: "2026-03-11"
+  versions: "1.2.2"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "langgraph,langchain,agents,graphs,workflow,streaming,persistence"
 ---
@@ -103,14 +103,14 @@ import operator
 from typing import Annotated
 from typing_extensions import TypedDict
 from langchain.chat_models import init_chat_model
-from langchain.messages import AnyMessage, SystemMessage
+from langchain_core.messages import AnyMessage, SystemMessage
 from langgraph.graph import StateGraph, START, END
 
 class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], operator.add]
     llm_calls: int
 
-model = init_chat_model("gpt-4.1", temperature=0)
+model = init_chat_model("openai:gpt-4.1", temperature=0)
 
 def llm_call(state: AgentState) -> dict:
     response = model.invoke(
@@ -279,9 +279,10 @@ Use `langgraph dev` for fast local development. Official platform docs describe 
 
 ## Version-Sensitive Notes
 
-- The target version for this session is `1.1.0`.
+- The target version for this session is `1.2.2`.
+- PyPI lists `1.2.2` as the current `langgraph` release on 2026-05-29.
 - The official docs site is now rooted at `docs.langchain.com`, and the API reference is at `reference.langchain.com`; the previous `langchain-ai.github.io` URL is an older docs location.
-- Official reference pages still display package labels such as `v1.0.9` and `v1.0.10` on some modules. Treat the docs as a floating v1.x reference and verify your installed package version when debugging behavior differences.
+- Official reference pages still display per-module package labels on some modules. Treat the docs as a floating v1.x reference and verify your installed package version when debugging behavior differences.
 - The official v1 release notes state that LangGraph's `create_react_agent` prebuilt is deprecated in favor of LangChain's `create_agent`.
 - If you copy pre-v1 examples from blogs or archived docs, re-check imports and prebuilt APIs against the current reference before using them unchanged.
 

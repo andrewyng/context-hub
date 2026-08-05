@@ -3,9 +3,9 @@ name: core
 description: "langchain-core package guide for Python covering runnables, prompt templates, messages, tools, config, and tracing handoff points"
 metadata:
   languages: "python"
-  versions: "1.2.18"
-  revision: 1
-  updated-on: "2026-03-11"
+  versions: "1.4.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "langchain-core,langchain,python,llm,runnables,prompts,tools,langsmith"
 ---
@@ -37,8 +37,8 @@ Common imports:
 
 - Package: `langchain-core`
 - Ecosystem: `pypi`
-- Target version version: `1.2.18`
-- PyPI latest on 2026-03-11: `1.2.18`
+- Target version: `1.4.0`
+- PyPI latest on 2026-05-29: `1.4.0`
 - Requires Python: `>=3.10,<4.0`
 - Registry URL: `https://pypi.org/project/langchain-core/`
 - Canonical API reference root used for this entry: `https://reference.langchain.com/python/langchain_core/`
@@ -53,13 +53,13 @@ Version note:
 Pin the version used here when you need reproducible behavior:
 
 ```bash
-python -m pip install "langchain-core==1.2.18"
+python -m pip install "langchain-core==1.4.0"
 ```
 
 If you are building an actual application, you will usually install at least one provider integration too:
 
 ```bash
-python -m pip install "langchain-core==1.2.18" "langchain-openai"
+python -m pip install "langchain-core==1.4.0" "langchain-openai"
 ```
 
 ## Recommended Setup
@@ -244,11 +244,11 @@ This is optional. Pure `langchain-core` composition does not require LangSmith.
 - `ChatPromptTemplate.invoke(...)` returns a prompt value with message objects, not a plain string. Downstream code must accept prompt values or messages.
 - `RunnableLambda` is convenient for normal Python logic, but the official reference notes it is best for code that does not need token-by-token streaming support.
 - Tool schemas are only as good as the underlying function signature and docstring. Untyped or poorly described callables produce weaker tool metadata.
-- Older LangChain examples on the web may still target pre-`1.0` imports or the older docs hostname. Prefer the current `reference.langchain.com` pages for `1.2.18`.
+- Older LangChain examples on the web may still target pre-`1.0` imports or the older docs hostname. Prefer the current `reference.langchain.com` pages for `1.4.0`.
 
 ## Version-Sensitive Notes
 
-- This entry is pinned to `1.2.18`, and that version matches the current PyPI latest on 2026-03-11.
+- This entry is pinned to `1.4.0`, and that version matches the current PyPI latest on 2026-05-29.
 - LangChain's install docs emphasize a package split: keep `langchain-core` for abstractions and add integrations separately.
 - When copying examples, check whether the snippet depends only on `langchain-core` or also on `langchain`, `langgraph`, LangSmith, or a provider package. Many official examples span more than one package.
 

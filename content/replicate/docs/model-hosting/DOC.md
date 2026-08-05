@@ -3,8 +3,9 @@ name: model-hosting
 description: "Replicate JavaScript SDK coding guide for running ML models via the official Replicate npm package"
 metadata:
   languages: "javascript"
-  versions: "1.3.1"
-  updated-on: "2026-03-02"
+  versions: "1.4.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "replicate,model-hosting,ml,inference,ai"
 ---
@@ -179,6 +180,8 @@ for await (const event of replicate.stream(
   process.stdout.write(event.toString());
 }
 ```
+
+**Note (1.4.0):** When a streamed model emits file outputs, `event.data` defaults to a `FileOutput` instance you can write directly to disk. Pass `useFileOutput: false` in the stream options if you would rather receive plain HTTP URLs or data URLs as in earlier 1.x releases.
 
 **Advanced Streaming with Event Handling:**
 ```javascript

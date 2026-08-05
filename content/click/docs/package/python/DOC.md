@@ -3,9 +3,9 @@ name: package
 description: "Click package guide for Python CLI applications and command groups"
 metadata:
   languages: "python"
-  versions: "8.3.1"
-  revision: 1
-  updated-on: "2026-03-11"
+  versions: "8.4.1"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "click,python,cli,command-line,pallets"
 ---
@@ -21,7 +21,7 @@ Click's own docs recommend packaging commands with `pyproject.toml` entry points
 ## Installation
 
 ```bash
-pip install click==8.3.1
+pip install click==8.4.1
 ```
 
 For a new project, prefer declaring it in `pyproject.toml`:
@@ -32,7 +32,7 @@ name = "my-cli"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
-  "click==8.3.1",
+  "click==8.4.1",
 ]
 
 [project.scripts]
@@ -107,8 +107,33 @@ Common decorators:
 - `@click.option("--count", default=1, type=int)` for named options.
 - `@click.option("--flag/--no-flag", default=False)` for explicit boolean toggles.
 - `multiple=True` returns a tuple. Do not use a string default there; it will be treated as a list of characters.
+- `nargs=2` (or any fixed `int`) collects a fixed number of values into a tuple, for example `@click.option("--pos", nargs=2, type=int)`.
+- `nargs=-1` on a `@click.argument(...)` accepts a variable number of trailing positional values.
 
 If you use `flag_value`, prefer an explicit default value instead of `default=True` so the callback receives the exact value you expect.
+
+### Parameter types
+
+Use Click's built-in `ParamType` classes for parsing and validation:
+
+- `click.INT`, `click.FLOAT`, `click.BOOL`, `click.STRING` for primitives.
+- `click.Choice(["json", "text", "yaml"], case_sensitive=False)` for restricted values.
+- `click.IntRange(0, 100, clamp=True)` and `click.FloatRange(...)` for ranges.
+- `click.Path(exists=True, file_okay=True, dir_okay=False, readable=True)` for filesystem paths.
+- `click.File("r", encoding="utf-8")` to open a file (use `-` for stdin or stdout).
+- `click.DateTime(formats=["%Y-%m-%d"])` for parsed timestamps.
+- `click.UUID` for UUID strings.
+
+```python
+import click
+
+@click.command()
+@click.option("--mode", type=click.Choice(["fast", "safe"]), default="safe")
+@click.option("--log", type=click.File("w", encoding="utf-8"))
+@click.argument("paths", nargs=-1, type=click.Path(exists=True))
+def cli(mode: str, log, paths: tuple[str, ...]) -> None:
+    click.echo(f"{mode} {len(paths)} paths", file=log)
+```
 
 ### Config and secrets
 
@@ -136,22 +161,24 @@ def cli(region: str) -> None:
 
 With subcommands, Click expands the name, so an option like `--host` on subcommand `run-server` becomes `APP_RUN_SERVER_HOST`.
 
-### Prompts
+### Prompts and confirmation
 
 Use prompts when a value can come from the CLI but should fall back to interactive input:
 
 ```python
 @click.command()
 @click.option("--username", prompt=True)
-def cli(username: str) -> None:
+@click.option("--password", prompt=True, hide_input=True, confirmation_prompt=True)
+def cli(username: str, password: str) -> None:
     click.echo(f"hello {username}")
 ```
 
 Useful prompt helpers:
 
 - `prompt=True` or `prompt="Custom label"` on options.
-- `click.prompt("Value", type=int)` for manual prompting.
-- `click.confirm("Continue?", abort=True)` for destructive actions.
+- `hide_input=True` for secret values; pair with `confirmation_prompt=True` when setting a new secret.
+- `click.prompt("Value", type=int, default=10)` for manual prompting.
+- `click.confirm("Continue?", abort=True)` for destructive actions; `abort=True` raises `click.Abort` on no.
 
 Avoid combining `prompt` with `multiple=True`; the docs recommend prompting manually inside the function instead.
 
@@ -199,14 +226,14 @@ If you need custom completion for a parameter type, implement `shell_complete()`
 - For `multiple=True`, defaults must be a list or tuple, not a string.
 - For env-driven boolean flags, only the configured `envvar` is recognized. A paired option like `--flag/--no-flag` does not create a separate `NO_FLAG` environment variable automatically.
 
-## Version-Sensitive Notes For 8.3.1
+## Version-Sensitive Notes For 8.4.1
 
-- `8.3.1` is the current PyPI release as of 2026-03-11, and the stable docs track the `8.3.x` line.
-- Click `8.2.0` dropped Python `3.7`, `3.8`, and `3.9`. If you support older interpreters, you need an older Click line.
+- `8.4.1` is the current PyPI release as of 2026-05-29, published 2026-05-22 as a patch over `8.4.0` (2026-05-17). The `8.3.x` line ended at `8.3.3` on 2026-04-22.
+- Click `8.2.0` dropped Python `3.7`, `3.8`, and `3.9`. The `8.4.x` line continues to require `Python >=3.10`.
 - Click `8.2.0` deprecated `click.__version__`; use `importlib.metadata.version("click")` or feature detection instead.
 - Click `8.2.0` deprecated the old parser internals (`click.parser`, `OptionParser`, related parser hooks). Avoid new code that depends on them.
 - Click `8.3.0` changed flag handling so `default` is preserved as-is. If your CLI depends on `flag_value` behavior, test boolean and enum-like flags explicitly when upgrading from `8.1.x` or early `8.2.x`.
-- Click `8.3.1` is a follow-up patch release for the `8.3.0` line. Re-test prompt flows, flag defaults, and callback-default behavior if you are upgrading from `8.1.x` or `8.2.x`.
+- When upgrading from `8.3.x` to `8.4.x`, re-test prompt flows, parameter callbacks, and help formatting; minor behavior changes have shipped across the `8.3.x` and `8.4.x` patch releases.
 
 ## Official Sources
 

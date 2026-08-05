@@ -60,7 +60,14 @@ cli/
     index.js            # CLI setup (Commander)
     commands/           # Command implementations
     lib/                # Core utilities
-  tests/                # Vitest tests
+  tests/                # Unit tests (Vitest)
+    commands/           # Command unit tests
+    lib/                # Library unit tests
+    mcp/                # MCP-related unit tests
+  test/                 # E2E/integration tests
+    e2e.test.js         # End-to-end CLI tests
+    fixtures/           # Test fixtures
+    lib/                # Test utilities
 content/                # Public content registry source
 docs/                   # Design docs
 ```

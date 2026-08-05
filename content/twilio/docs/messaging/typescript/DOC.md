@@ -3,8 +3,9 @@ name: messaging
 description: "Cloud communications platform for SMS, voice, video, and WhatsApp messaging with programmable APIs"
 metadata:
   languages: "typescript"
-  versions: "5.10.3"
-  updated-on: "2025-09-25"
+  versions: "6.0.2"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "twilio,sdk,sms,voice,communications"
 ---
@@ -23,7 +24,7 @@ Always use the official Twilio Node.js library, which is the standard library fo
 
 **Library Name:** Twilio Node.js Helper Library
 **NPM Package:** `twilio`
-**Supported Node.js Versions:** Node.js 18, 20, 22 (LTS)
+**Supported Node.js Versions:** Node.js 20, 22 (LTS) and later (v6.x of the library requires Node.js >= 20)
 
 **Installation:**
 - **Correct:** `npm install twilio` or `yarn add twilio`
@@ -653,13 +654,11 @@ This guide covers the core functionality of the Twilio Node.js library. The libr
 
 # twilio-node
 
-This library supports the following Node.js implementations:
+This library (v6.x) supports the following Node.js implementations:
 
-- Node.js 14
-- Node.js 16
-- Node.js 18
 - Node.js 20
 - Node.js lts(22)
+- Node.js 24
 
 TypeScript is supported for TypeScript version 2.9 and above.
 

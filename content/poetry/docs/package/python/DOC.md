@@ -3,9 +3,9 @@ name: package
 description: "Poetry package guide for Python dependency management, virtual environments, packaging, and publishing"
 metadata:
   languages: "python"
-  versions: "2.3.2"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "2.4.1"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "poetry,python,packaging,dependencies,virtualenv,pyproject,publishing"
 ---
@@ -14,7 +14,7 @@ metadata:
 
 ## Golden Rule
 
-Use Poetry as the project tool that owns `pyproject.toml`, the lock file, and the virtual environment workflow. For Poetry `2.3.2`, prefer the modern `[project]` section for your main package metadata and runtime dependencies, use `poetry sync` when you need the environment to exactly match `poetry.lock`, and keep Poetry-specific settings under `[tool.poetry]`.
+Use Poetry as the project tool that owns `pyproject.toml`, the lock file, and the virtual environment workflow. For Poetry `2.4.1`, prefer the modern `[project]` section for your main package metadata and runtime dependencies, use `poetry sync` when you need the environment to exactly match `poetry.lock`, and keep Poetry-specific settings under `[tool.poetry]`.
 
 Do not add `poetry` as an application dependency with `poetry add poetry`. Install the CLI separately, then use it to manage your project.
 
@@ -23,14 +23,14 @@ Do not add `poetry` as an application dependency with `poetry add poetry`. Insta
 The most practical installation for local development is `pipx` so Poetry stays isolated from the project it manages:
 
 ```bash
-pipx install "poetry==2.3.2"
+pipx install "poetry==2.4.1"
 poetry --version
 ```
 
 Official installer alternative:
 
 ```bash
-curl -sSL https://install.python-poetry.org | POETRY_VERSION=2.3.2 python3 -
+curl -sSL https://install.python-poetry.org | POETRY_VERSION=2.4.1 python3 -
 poetry --version
 ```
 
@@ -267,18 +267,23 @@ poetry publish --build --repository internal-pub
 - `poetry env activate` prints shell-specific activation code. For scripts, CI, and agents, `poetry run ...` is usually more reliable.
 - `poetry check` should be part of the edit loop whenever an agent writes `pyproject.toml`.
 
-## Version-Sensitive Notes For 2.3.2
+## Version-Sensitive Notes For 2.4.1
 
-- PyPI lists `2.3.2` as the current Poetry release. The version used here matches live upstream as of March 12, 2026.
-- Poetry `2.3.x` requires Python `>=3.10,<4.0`. Some older docs snippets still mention Python 3.9, but the `2.3.0` release history and PyPI metadata are the authoritative signals for this series.
+- PyPI lists `2.4.1` as the current Poetry release. The version used here matches live upstream as of May 29, 2026.
+- Poetry `2.4.x` requires Python `>=3.10,<4.0`. Some older docs snippets still mention Python 3.9, but the `2.4.0` release history and PyPI metadata are the authoritative signals for this series.
 - Poetry 2.x prefers `[project]` metadata and runtime dependencies. Older blog posts often use only `[tool.poetry.dependencies]`; that is no longer the best default for new work.
-- The CLI docs mark `export` as provided by the Export Poetry Plugin, and the `2.3.0` release history notes that Poetry no longer depends on `poetry-plugin-export` by default. If `poetry export` is missing, install the plugin explicitly:
+- The CLI docs mark `export` as provided by the Export Poetry Plugin, and Poetry no longer depends on `poetry-plugin-export` by default. If `poetry export` is missing, install the plugin explicitly:
 
 ```bash
 poetry self add poetry-plugin-export
 ```
 
-- The `2.3.0` release history also notes the installer default `installer.re-resolve = false` behavior. If you compare behavior with much older Poetry examples, dependency resolution details may not match exactly.
+- Poetry `2.4.0` made `installer.re-resolve = false` the default. If you compare behavior with much older Poetry examples, dependency resolution details may not match exactly.
+- Poetry `2.4.0` added a `solver.min-release-age` setting, which lets the solver filter out package releases that are newer than the configured age during resolution. Per-package and per-index exclusions are supported, which is useful when you want to avoid brand-new releases without fully pinning versions.
+- Poetry `2.4.0` made `poetry update <package>` raise an error when the argument is not a declared dependency, instead of silently ignoring it. `poetry update <package>` can also operate on transitive dependencies; `2.4.1` fixed a regression in that path. If you previously relied on the silent no-op, expect a hard error now.
+- Poetry `2.4.0` normalizes dependency group names. If you used inconsistent casing, the normalized form is what now appears in resolution and lock output.
+- Poetry `2.4.0` added support for build constraints on dependencies, dynamic version determination via the build-backend for published artifacts, and editable installs of project plugins. PEP 735 dependency groups now contribute to the lock file hash.
+- Poetry `2.4.1` is a bug-fix release: it resolves a performance regression in the wheel installer and relaxes the `installer` lower bound so `installer==0.7.0` is acceptable again.
 
 ## Official Source URLs
 

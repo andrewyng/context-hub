@@ -24,6 +24,9 @@ describe('loadConfig', () => {
     expect(config).toHaveProperty('refresh_interval');
     expect(config).toHaveProperty('output_format');
     expect(config).toHaveProperty('source');
+    expect(config).toHaveProperty('telemetry_url');
+    expect(config).toHaveProperty('help_url');
+    expect(config).toHaveProperty('help_timeout_ms');
   });
 
   it('has sensible default values', () => {
@@ -33,6 +36,9 @@ describe('loadConfig', () => {
     expect(config.refresh_interval).toBe(21600);
     expect(config.output_format).toBe('human');
     expect(config.source).toBe('official,maintainer,community');
+    expect(config.telemetry_url).toBe('https://api.aichub.org/v1');
+    expect(config.help_url).toBe('https://cdn.aichub.org/v1/help/{version}.json');
+    expect(config.help_timeout_ms).toBe(2000);
   });
 
   it('sources is a non-empty array', () => {

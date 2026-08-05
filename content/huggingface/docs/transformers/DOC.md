@@ -3,8 +3,9 @@ name: transformers
 description: "Transformers.js coding guidelines for running ML models in the browser or Node.js"
 metadata:
   languages: "javascript"
-  versions: "3.7.6"
-  updated-on: "2026-03-02"
+  versions: "4.2.0"
+  revision: 1
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "huggingface,transformers,ml,inference,models"
 ---
@@ -24,12 +25,12 @@ Always use the official Transformers.js package `@huggingface/transformers` for 
 
 - **Library Name:** Transformers.js
 - **NPM Package:** `@huggingface/transformers`
-- **Current Version:** 3.5.2
+- **Current Version:** 4.2.0
 
 **Installation:**
 
 - **Correct:** `npm i @huggingface/transformers`
-- **Browser CDN:** `https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2`
+- **Browser CDN:** `https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0`
 
 **Main APIs and Usage:**
 
@@ -51,7 +52,7 @@ npm i @huggingface/transformers
 **CDN Installation:**
 ```html
 <script type="module">
-    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.4';
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0';
 </script>
 ```
 
@@ -445,6 +446,14 @@ To use custom models, convert them to ONNX format:
 
 The conversion script supports quantization:
 
+## Version-Sensitive Notes For 4.2.0
+
+- `@huggingface/transformers` `4.x` introduced a new WebGPU runtime rewritten in C++ while keeping the high-level API (`pipeline`, `AutoModel*`, etc.) backward-compatible with `3.x` code.
+- WebGPU is now usable from Node.js, Bun, and Deno in addition to browsers.
+- New `env` knobs in 4.x include `env.useWasmCache` for offline-capable apps, `env.logLevel` to control logging, and `env.fetch` to plug in a custom fetch (useful for authenticated model access).
+- A `ModelRegistry` API gives explicit visibility into pipeline assets when you need to introspect or pre-cache them.
+- Expanded model coverage in the `4.x` line includes newer architectures such as Gemma family, DeepSeek-v3-class models, Mamba-style state-space models, and MoE variants.
+
 ## Useful Links
 
 - Documentation: https://huggingface.co/docs/transformers.js
@@ -477,7 +486,7 @@ npm i @huggingface/transformers
 Alternatively, you can use it in vanilla JS, without any bundler, by using a CDN or static hosting. For example, using [ES Modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules), you can import the library with:
 ```html
 <script type="module">
-    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2';
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0';
 </script>
 ```
 ```

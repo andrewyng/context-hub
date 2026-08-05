@@ -4,8 +4,8 @@ description: "Datadog Python package for DogStatsD metrics, ThreadStats, and leg
 metadata:
   languages: "python"
   versions: "0.52.1"
-  revision: 1
-  updated-on: "2026-03-12"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "datadog,monitoring,metrics,dogstatsd,observability"
 ---

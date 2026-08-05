@@ -3,9 +3,9 @@ name: package
 description: "Mistral AI Python SDK for chat completions, embeddings, files, OCR, and related platform APIs"
 metadata:
   languages: "python"
-  versions: "2.0.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "2.4.8"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "mistral,mistralai,llm,chat,embeddings,ocr,agents"
 ---
@@ -14,7 +14,7 @@ metadata:
 
 ## Golden Rule
 
-For `mistralai==2.0.0`, use the current official v2 SDK patterns and check the migration guide before copying older code.
+For `mistralai==2.4.8`, use the current official v2 SDK patterns and check the migration guide before copying older code.
 
 - New code can follow the official README import style: `from mistralai import Mistral`
 - If you are migrating v1 code, replace `MistralClient` with `Mistral`
@@ -23,15 +23,15 @@ For `mistralai==2.0.0`, use the current official v2 SDK patterns and check the m
 ## Installation
 
 ```bash
-pip install mistralai==2.0.0
+pip install mistralai==2.4.8
 ```
 
 ```bash
-uv add mistralai==2.0.0
+uv add mistralai==2.4.8
 ```
 
 ```bash
-poetry add mistralai==2.0.0
+poetry add mistralai==2.4.8
 ```
 
 Optional extras exposed by the package metadata:
@@ -135,6 +135,47 @@ print(len(vectors), len(vectors[0]))
 
 The response is model-backed data, so use attribute access like `response.data` and `item.embedding`.
 
+### Tool / Function Calling
+
+Pass JSON-schema tool definitions and inspect `tool_calls` on the assistant message.
+
+```python
+import os
+
+from mistralai import Mistral
+
+client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather for a city.",
+            "parameters": {
+                "type": "object",
+                "properties": {"city": {"type": "string"}},
+                "required": ["city"],
+            },
+        },
+    }
+]
+
+response = client.chat.complete(
+    model="mistral-small-latest",
+    messages=[{"role": "user", "content": "What is the weather in Berkeley?"}],
+    tools=tools,
+    tool_choice="auto",
+)
+
+message = response.choices[0].message
+if message.tool_calls:
+    for call in message.tool_calls:
+        print(call.function.name, call.function.arguments)
+```
+
+The `arguments` field is a JSON string; parse it before invoking your function. To complete a tool round trip, append a `{"role": "tool", "tool_call_id": call.id, "name": ..., "content": ...}` message and call `chat.complete` again.
+
 ### File Upload And OCR
 
 OCR requires an upload step first.
@@ -208,14 +249,14 @@ If your project uses a non-default provider, check the migration guide before ad
 ## Common Pitfalls
 
 - Mixing v1 and v2 examples. `MistralClient`, `ChatMessage`, and dict-style response handling are migration clues that you are looking at older code.
-- Assuming the SDK version pins a model version. SDK version `2.0.0` and model aliases like `mistral-small-latest` are separate concerns.
+- Assuming the SDK version pins a model version. SDK version `2.4.8` and model aliases like `mistral-small-latest` are separate concerns.
 - Treating streamed events like final responses. Build the output from deltas.
 - Forgetting the file upload step for OCR and other file-based workflows.
 - Copying third-party snippets that use unofficial import paths or outdated async helpers.
 
 ## Recommended Agent Workflow
 
-1. Install `mistralai==2.0.0` and confirm Python `>=3.9`.
+1. Install `mistralai==2.4.8` and confirm Python `>=3.10` (current SDK line dropped 3.9 support).
 2. Set `MISTRAL_API_KEY` and create a single shared `Mistral` client.
 3. Start with `chat.complete` or `chat.stream` for normal LLM calls.
 4. Add `embeddings.create`, `files.upload`, or `ocr.process` only when the task actually needs them.

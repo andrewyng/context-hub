@@ -4,8 +4,8 @@ description: "Replicate Python SDK guide for running models, streaming output, a
 metadata:
   languages: "python"
   versions: "1.0.7"
-  revision: 1
-  updated-on: "2026-03-12"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "replicate,python,ml,inference,ai,predictions"
 ---

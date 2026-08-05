@@ -492,6 +492,8 @@ export function resolveDocPath(entry, language, version) {
   let langObj = null;
   if (lang) {
     langObj = entry.languages.find((l) => l.language === lang);
+  } else if (entry.languages.length === 1) {
+    langObj = entry.languages[0];
   } else {
     return {
       needsLanguage: true,

@@ -3,9 +3,9 @@ name: package
 description: "Playwright Python package guide for browser automation, end-to-end testing, and authenticated browser flows"
 metadata:
   languages: "python"
-  versions: "1.58.0"
-  revision: 1
-  updated-on: "2026-03-12"
+  versions: "1.60.0"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "playwright,python,browser,testing,e2e,automation"
 ---
@@ -21,7 +21,7 @@ Use the official `playwright` Python package, install the browser binaries after
 Pin the package version your project expects:
 
 ```bash
-python -m pip install "playwright==1.58.0"
+python -m pip install "playwright==1.60.0"
 ```
 
 Install browser binaries after the package install:
@@ -36,8 +36,8 @@ Common variants:
 python -m playwright install chromium
 python -m playwright install chromium firefox webkit
 python -m playwright install --with-deps chromium
-uv add "playwright==1.58.0"
-poetry add "playwright==1.58.0"
+uv add "playwright==1.60.0"
+poetry add "playwright==1.60.0"
 ```
 
 Notes:
@@ -118,9 +118,51 @@ Playwright's locator API auto-waits for actionability. Prefer:
 - `page.get_by_role(...)`
 - `page.get_by_label(...)`
 - `page.get_by_text(...)`
+- `page.get_by_placeholder(...)`
 - `page.get_by_test_id(...)`
+- `page.locator(...)` for CSS or chained queries when no semantic locator fits
+
+```python
+page.get_by_role("button", name="Sign in").click()
+page.get_by_label("Email").fill("user@example.com")
+page.get_by_test_id("user-menu").click()
+page.locator("main").get_by_role("listitem").first.click()
+```
 
 Avoid writing code that depends on `time.sleep(...)` or fragile selectors when a semantic locator exists.
+
+### Web-first assertions with `expect`
+
+Playwright ships an `expect` helper that auto-retries until the assertion passes or the timeout elapses. Import it from the matching API module:
+
+```python
+from playwright.sync_api import expect, sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch()
+    page = browser.new_page()
+    page.goto("https://playwright.dev/")
+
+    docs_link = page.get_by_role("link", name="Docs")
+    expect(docs_link).to_be_visible()
+    expect(docs_link).to_have_attribute("href", "/docs/intro")
+    expect(page).to_have_title("Fast and reliable end-to-end testing for modern web apps | Playwright")
+    expect(page).to_have_url("https://playwright.dev/")
+```
+
+Common assertions: `to_be_visible`, `to_be_hidden`, `to_be_enabled`, `to_be_checked`, `to_have_text`, `to_contain_text`, `to_have_value`, `to_have_count`, `to_have_attribute`, `to_have_url`, `to_have_title`.
+
+For the async API, import `expect` from `playwright.async_api` and `await` each call:
+
+```python
+from playwright.async_api import expect, async_playwright
+
+async with async_playwright() as p:
+    browser = await p.chromium.launch()
+    page = await browser.new_page()
+    await page.goto("https://playwright.dev/")
+    await expect(page.get_by_role("link", name="Docs")).to_be_visible()
+```
 
 ### Bootstrap selectors with codegen when needed
 
@@ -138,12 +180,31 @@ Install the plugin separately:
 python -m pip install pytest-playwright
 ```
 
+The plugin provides ready-made fixtures: `browser`, `context`, `page`, `browser_name`, `browser_type`, `browser_channel`, `playwright`, plus `browser_context_args` and `browser_type_launch_args` for project-level overrides.
+
 Minimal pytest usage:
 
 ```python
-def test_homepage(page):
+from playwright.sync_api import Page, expect
+
+def test_homepage(page: Page):
     page.goto("https://playwright.dev/")
-    assert page.get_by_role("link", name="Docs").is_visible()
+    expect(page.get_by_role("link", name="Docs")).to_be_visible()
+```
+
+Override context defaults at the project level in `conftest.py`:
+
+```python
+import pytest
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args):
+    return {
+        **browser_context_args,
+        "base_url": "https://example.com",
+        "locale": "en-US",
+        "viewport": {"width": 1440, "height": 900},
+    }
 ```
 
 Common CLI flags:
@@ -152,6 +213,11 @@ Common CLI flags:
 pytest --browser chromium
 pytest --browser firefox --headed
 pytest --device "iPhone 13"
+pytest --tracing retain-on-failure
+pytest --screenshot only-on-failure
+pytest --video retain-on-failure
+pytest --output test-results
+pytest --slowmo 250
 ```
 
 Important plugin behavior:
@@ -246,11 +312,11 @@ Do not call sync Playwright APIs inside an `asyncio` event loop, and do not forg
 
 ### 3. Using brittle selectors
 
-In `1.58`, the deprecated React and Vue locator engines (`_react=`, `_vue=`) and the `:light` CSS extension were removed. Prefer accessibility-first locators and test IDs.
+The deprecated React and Vue locator engines (`_react=`, `_vue=`) and the `:light` CSS extension were removed in `1.58` and remain gone in `1.60`. Prefer accessibility-first locators and test IDs.
 
 ### 4. Assuming old launch options still exist
 
-The `devtools` launch option was removed in `1.58`. Pass Chromium args directly when you need equivalent behavior.
+The `devtools` launch option was removed in `1.58` and is not coming back. Pass Chromium args directly when you need equivalent behavior.
 
 ### 5. Leaking state between tests
 
@@ -260,12 +326,13 @@ A `browser` can host many contexts. Reusing one context across unrelated tests u
 
 Storage-state files and screenshots can contain secrets, account data, or internal URLs. Keep them out of version control unless they are sanitized fixtures created for testing only.
 
-## Version-Sensitive Notes For 1.58.0
+## Version-Sensitive Notes For 1.60.0
 
-- `1.58.0` removed `_react`, `_vue`, `:light`, and the `devtools` launch option.
-- The same release dropped macOS 13 support for WebKit.
+- The `1.58` removals of `_react`, `_vue`, `:light`, and the `devtools` launch option still apply through `1.60`.
+- macOS 13 is no longer a supported target for WebKit.
 - If you are copying older community snippets, expect selector and launch-option drift around these removed features.
-- Auth-state reuse got more robust in recent Playwright releases because `storage_state(indexed_db=True)` can now capture IndexedDB-backed auth state; use it when cookie-only snapshots are not enough.
+- `storage_state(indexed_db=True)` captures IndexedDB-backed auth state; use it when cookie-only snapshots are not enough.
+- Re-run `python -m playwright install` after upgrading to `1.60.0`; the bundled browser binaries change between minor releases.
 
 ## Official Source URLs
 

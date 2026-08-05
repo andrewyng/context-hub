@@ -1,11 +1,11 @@
 ---
 name: package
-description: "SQLAlchemy package guide for Python 2.0.48, covering engine setup, ORM/Core usage, transactions, and asyncio"
+description: "SQLAlchemy package guide for Python 2.0.50, covering engine setup, ORM/Core usage, transactions, and asyncio"
 metadata:
   languages: "python"
-  versions: "2.0.48"
-  revision: 1
-  updated-on: "2026-03-11"
+  versions: "2.0.50"
+  revision: 2
+  updated-on: "2026-05-29"
   source: maintainer
   tags: "sqlalchemy,orm,sql,database,python,asyncio"
 ---
@@ -20,14 +20,14 @@ metadata:
 - ORM for mapped classes and unit-of-work persistence
 - `select()` plus `Session.execute()` / `Session.scalars()` instead of legacy `Query`-first patterns
 
-This guide is for SQLAlchemy `2.0.48`, using the official 2.0 docs at `https://docs.sqlalchemy.org/en/20/`.
+This guide is for SQLAlchemy `2.0.50`, using the official 2.0 docs at `https://docs.sqlalchemy.org/en/20/`.
 
 ## Install
 
 Install the package itself:
 
 ```bash
-pip install SQLAlchemy==2.0.48
+pip install SQLAlchemy==2.0.50
 ```
 
 SQLAlchemy also needs a DBAPI driver for the database you actually use. Common choices:
@@ -41,8 +41,8 @@ pip install aiosqlite
 PyPI also exposes extras for several backends and async support, for example:
 
 ```bash
-pip install "SQLAlchemy[asyncio]==2.0.48"
-pip install "SQLAlchemy[postgresql-asyncpg]==2.0.48"
+pip install "SQLAlchemy[asyncio]==2.0.50"
+pip install "SQLAlchemy[postgresql-asyncpg]==2.0.50"
 ```
 
 Notes:
@@ -181,7 +181,29 @@ For prototypes and tests, create tables directly:
 Base.metadata.create_all(engine)
 ```
 
-For production schema evolution, use migrations instead of relying on repeated `create_all()` calls.
+For production schema evolution, use migrations instead of relying on repeated `create_all()` calls. The standard tool is Alembic, maintained by the SQLAlchemy authors:
+
+```bash
+pip install alembic
+alembic init alembic
+```
+
+Wire Alembic's `env.py` to your `Base.metadata` so it can autogenerate migrations:
+
+```python
+# alembic/env.py
+from myapp.db import Base
+target_metadata = Base.metadata
+```
+
+Then generate and apply migrations:
+
+```bash
+alembic revision --autogenerate -m "add user_account table"
+alembic upgrade head
+```
+
+Autogenerate detects new columns, indexes, and constraints, but always review the generated script before applying it.
 
 ## Sessions and Transactions
 
@@ -410,14 +432,15 @@ Async ORM code fails when attribute access tries to emit implicit IO. Solve this
 - setting `lazy="raise"` where appropriate
 - using `AsyncAttrs.awaitable_attrs` when you intentionally want awaitable attribute access
 
-## Version-Sensitive Notes for 2.0.48
+## Version-Sensitive Notes for 2.0.50
 
-- The docs root `https://docs.sqlalchemy.org/en/20/` is the correct stable series for `2.0.48`.
-- PyPI shows `2.0.48` as the latest stable release on `2026-03-11`, released on `2026-03-02`.
-- PyPI also lists `2.1.0b1` as a prerelease. Do not mix 2.1 beta examples into a project pinned to `2.0.48`.
+- The docs root `https://docs.sqlalchemy.org/en/20/` is the correct stable series for `2.0.50`.
+- PyPI shows `2.0.50` as the latest stable release on `2026-05-29`.
+- PyPI may also list `2.1.x` prereleases. Do not mix 2.1 beta examples into a project pinned to `2.0.50`.
 - `create_engine(..., future=True)` is a legacy 1.4 transition flag. In 2.0 it stays at the default and should not be added to new examples.
-- Async `AsyncAttrs.awaitable_attrs` was added in `2.0.13`; it is available in `2.0.48`.
+- Async `AsyncAttrs.awaitable_attrs` was added in `2.0.13`; it is available in `2.0.50`.
 - SQLAlchemy 2.0 removed legacy autocommit and connectionless patterns. Use explicit transactions with `Session.begin()` / `engine.begin()` and execute statements via `Session` or `Connection`.
+- The 1.x `session.query(...)` API still exists in 2.0 for compatibility, but the recommended pattern for new code is `session.execute(select(...))`, `session.scalars(select(...))`, and `session.scalar(select(...))`.
 
 ## Minimal Working Patterns
 
@@ -468,4 +491,5 @@ with engine.begin() as conn:
 - ORM quick start: `https://docs.sqlalchemy.org/en/20/orm/quickstart.html`
 - AsyncIO extension: `https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html`
 - 2.0 migration guide: `https://docs.sqlalchemy.org/en/20/changelog/migration_20.html`
+- Alembic migrations: `https://alembic.sqlalchemy.org/en/latest/`
 - PyPI package page: `https://pypi.org/project/SQLAlchemy/`

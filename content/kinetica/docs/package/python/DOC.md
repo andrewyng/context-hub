@@ -3,9 +3,9 @@ name: package
 description: "Kinetica Python API package guide for connecting to Kinetica database and working with tables, distributed I/O, vector search, table monitors, DB-API 2.0, SQL, and DataFrame APIs"
 metadata:
   languages: "python"
-  versions: "7.2.3.7"
+  versions: "7.2.3.10"
   revision: 1
-  updated-on: "2026-03-22"
+  updated-on: "2026-08-10"
   source: maintainer
   tags: "kinetica,gpudb,python,database,analytics,sql,vector search,pandas,distributed I/O,table-monitor,dbapi"
 ---
@@ -473,10 +473,13 @@ db.set_client_logger_level(logging.DEBUG)
 - DataFrame methods (`sql_to_df`, `df_to_table`, etc.) require the `[dataframe]`
   extra to be installed (`pandas`, `tqdm`, `typeguard`).
 
-## Version-Sensitive Notes For 7.2.3.7
+## Version-Sensitive Notes For 7.2.3.10
 
-- `7.2.3.7` is the current release as of March 11, 2026.
-- Python 3.8 through 3.14 are supported. Python 3.14 support was added in this release.
+- `7.2.3.10` is the current release as of August 10, 2026.
+- Updated handling of connections to down/restarting server; fixed bug in auto-selecting primary cluster.
+- Since `7.2.3.9`, passing of API/DBAPI name & version in HTTP headers.
+- Since `7.2.3.8`, option to change number of auto-retries of failed requests exists; connection manager clean-up.
+- Since `7.2.3.7`, Python 3.8 through 3.14 are supported. Python 3.14 support was added in this release.
 - Since `7.2.3.6`, the default HA failover mode is `SEQUENTIAL` instead of `RANDOM`.
 - Since `7.2.3.4`, the DBAPI supports the full range of `GPUdb.Options` connection options.
 - Since `7.2.3.3`, the DBAPI supports `default_schema` and custom `http_headers`.
@@ -485,9 +488,9 @@ db.set_client_logger_level(logging.DEBUG)
 ## Official Sources
 
 - Kinetica website: `https://www.kinetica.com/`
-- Documentation: `https://docs.kinetica.com/latest/`
-- Python API docs: `https://docs.kinetica.com/latest/api/python/`
-- Python tutorial: `https://docs.kinetica.com/latest/guides/python_guide/`
+- Documentation: `https://docs.kinetica.com/`
+- Python API docs: `https://docs.kinetica.com/content/api/python/`
+- Python tutorial: `https://docs.kinetica.com/content/guides/python_guide/`
 - PyPI package page: `https://pypi.org/project/gpudb/`
 - GitHub issues: `https://github.com/kineticadb/kinetica-api-python/issues`
 - Community Slack: `https://join.slack.com/t/kinetica-community/shared_invite/zt-1bt9x3mvr-uMKrXlSDXfy3oU~sKi84qg`

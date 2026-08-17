@@ -1,6 +1,6 @@
 ---
 name: document-extraction
-description: "Parses documents into structured Markdown, extracts fields with JSON schemas, classifies pages, and splits mixed document batches using LandingAI's Agentic Document Extraction (ADE) REST APIs, with official Python and TypeScript libraries. Builds document pipelines: batch and async processing for large files, classify-then-extract routing, RAG chunking and embeddings, multi-page table stitching, bounding box visualization, cropping, and word-level highlighting. Use when processing PDFs, images, scans, invoices, forms, or bank statements, when migrating between ADE API versions, or when the user mentions ADE, parsing, extraction, classification, document splitting, table of contents generation, grounding, bounding boxes, blocks, chunks, or ranges."
+description: "Parses documents into structured Markdown, extracts fields with JSON schemas, classifies pages, and splits mixed document batches using LandingAI's Agentic Document Extraction (ADE) REST APIs, with official Python and TypeScript libraries. Builds document pipelines: batch and async processing for large files, classify-then-extract routing, RAG chunking and embeddings, multi-page table stitching, bounding box visualization, cropping, and word-level highlighting. Use when processing PDFs, images, scans, Office documents (Word, PowerPoint), invoices, forms, or bank statements, when migrating between ADE API versions, or when the user mentions ADE, parsing, extraction, classification, document splitting, table of contents generation, grounding, bounding boxes, blocks, chunks, or ranges."
 ---
 
 # Document Extraction (ADE)
@@ -31,7 +31,7 @@ Every linked docs page can be fetched as raw Markdown by appending `.md` to its 
 **Use the v2 APIs by default.** Route to v1 only when one of these applies:
 
 - The user has existing code calling the `/v1/ade/*` endpoints (or v1 library methods `client.parse()` / `client.extract()`) and has not asked to migrate.
-- The document is not a PDF or an image (Word, PowerPoint, spreadsheets, and other formats need v1 Parse).
+- The document is a spreadsheet (XLSX, CSV) or a legacy binary Office file (DOC, PPT); only v1 Parse accepts those. v2 Parse accepts PDFs, images, and modern Office documents (DOCX, PPTX, ODT, RTF).
 - The file is password-protected (v2 rejects it with HTTP 422; v1 accepts a `password` parameter).
 - The pipeline needs confidence scores, custom figure prompts, or v1-style page splits (`split=page`).
 - The pipeline feeds Parse output into the v1 Section or v1 Split APIs, which require the v1 Parse response shape.
@@ -76,9 +76,9 @@ When writing scripts, use the user's language and environment. Never install pac
 
 ## Core Flow: Parse, Then Extract (v2)
 
-Parse converts a PDF or image into Markdown plus structure. Extract pulls schema-defined fields from that Markdown. Keep the trailing `<!-- doc_id=... -->` comment when saving Markdown; v2 Extract reads it to link the extraction back to its parse job.
+Parse converts a document into Markdown plus structure. Extract pulls schema-defined fields from that Markdown. Keep the trailing `<!-- doc_id=... -->` comment when saving Markdown; v2 Extract reads it to link the extraction back to its parse job.
 
-**Step 1: Parse.** Sync parse accepts PDFs and images only, up to 50 MiB; for the current page limits, see https://docs.landing.ai/dpt3/rate-limits. Models: `dpt-3-pro-latest` or a dated snapshot.
+**Step 1: Parse.** Sync parse accepts PDFs, images, and Office documents (DOCX, PPTX, ODT, RTF), up to 50 MiB; for the current page limits, see https://docs.landing.ai/dpt3/rate-limits. Office files are converted to PDF before parsing; the conversion can change layout and page count, and page-based limits and credits apply to the converted PDF's page count (https://docs.landing.ai/dpt3/file-types). Models: `dpt-3-pro-latest` or a dated snapshot.
 
 ```bash
 mkdir -p output
@@ -247,7 +247,7 @@ if (done.status === "completed") {
 }
 ```
 
-Extract Jobs works the same way against `https://api.ade.landing.ai/v2/extract/jobs` with the sync Extract fields (`client.v2.extract_jobs` in Python, `client.v2.extractJobs` in TypeScript). Both create endpoints accept `output_save_url` (a presigned URL where the result is delivered instead of the poll response; recommended with zero data retention). The library's `save_to` / `saveTo` parameter is sync-only: the job `create` methods do not accept it, so save the fetched job result yourself or use `output_save_url`. Guides: [parse-async](https://docs.landing.ai/dpt3/parse-async), [extract-async](https://docs.landing.ai/dpt3/extract-async). API reference: [parse jobs](https://docs.landing.ai/api-reference/parse/ade-parse-jobs), [extract jobs](https://docs.landing.ai/api-reference/extract/ade-extract-jobs).
+Extract Jobs works the same way against `https://api.ade.landing.ai/v2/extract/jobs` with the sync Extract fields (`client.v2.extract_jobs` in Python, `client.v2.extractJobs` in TypeScript). Both create endpoints accept `output_save_url` (a presigned URL where the result is delivered instead of the poll response; recommended with zero data retention). The URL must stay valid until the job completes, not just at submission: an expired or soon-expiring URL is rejected at creation with HTTP 422 and no credits consumed, so sign it with a validity that outlives the job. The library's `save_to` / `saveTo` parameter is sync-only: the job `create` methods do not accept it, so save the fetched job result yourself or use `output_save_url`. Guides: [parse-async](https://docs.landing.ai/dpt3/parse-async), [extract-async](https://docs.landing.ai/dpt3/extract-async). API reference: [parse jobs](https://docs.landing.ai/api-reference/parse/ade-parse-jobs), [extract jobs](https://docs.landing.ai/api-reference/extract/ade-extract-jobs).
 
 ## v1 APIs Without a v2 Equivalent
 
@@ -306,7 +306,7 @@ A next-generation **Split v2 API is in Preview** (select partners; accepts Markd
 
 ### v1 Parse and Extract (Superseded)
 
-Still required for Office formats and spreadsheets, password-protected files, confidence scores, custom figure prompts, and Section/Split pipelines. Same auth; host `api.va.landing.ai`; parse model `dpt-2-latest`; v1 responses use a flat `chunks` list with 0-indexed pages and `left/top/right/bottom` boxes. Guides: [v1 Parse](https://docs.landing.ai/ade/parse), [v1 Extract](https://docs.landing.ai/ade/ade-extract), [v1 Parse Jobs](https://docs.landing.ai/ade/ade-parse-async), [v1 Extract Jobs](https://docs.landing.ai/ade/ade-extract-async), [password-protected files](https://docs.landing.ai/ade/ade-parse-password), [custom figure prompts](https://docs.landing.ai/ade/ade-parse-custom-prompts), [chunk types](https://docs.landing.ai/ade/ade-chunk-types), [v1 JSON response](https://docs.landing.ai/ade/ade-json-response). File format support per version: [v2 file types](https://docs.landing.ai/dpt3/file-types), [v1 file types](https://docs.landing.ai/ade/ade-file-types).
+Still required for spreadsheets (XLSX, CSV), legacy binary Office files (DOC, PPT), password-protected files, confidence scores, custom figure prompts, and Section/Split pipelines. Same auth; host `api.va.landing.ai`; parse model `dpt-2-latest`; v1 responses use a flat `chunks` list with 0-indexed pages and `left/top/right/bottom` boxes. Guides: [v1 Parse](https://docs.landing.ai/ade/parse), [v1 Extract](https://docs.landing.ai/ade/ade-extract), [v1 Parse Jobs](https://docs.landing.ai/ade/ade-parse-async), [v1 Extract Jobs](https://docs.landing.ai/ade/ade-extract-async), [password-protected files](https://docs.landing.ai/ade/ade-parse-password), [custom figure prompts](https://docs.landing.ai/ade/ade-parse-custom-prompts), [chunk types](https://docs.landing.ai/ade/ade-chunk-types), [v1 JSON response](https://docs.landing.ai/ade/ade-json-response). File format support per version: [v2 file types](https://docs.landing.ai/dpt3/file-types), [v1 file types](https://docs.landing.ai/ade/ade-file-types).
 
 ## Workflow Rules
 

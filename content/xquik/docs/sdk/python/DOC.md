@@ -3,9 +3,9 @@ name: sdk
 description: "Xquik Python SDK for X/Twitter post search, user profiles, timelines, followers, trends, webhooks, and posting"
 metadata:
   languages: "python"
-  versions: "0.11.0"
+  versions: "0.11.2"
   revision: 1
-  updated-on: "2026-08-19"
+  updated-on: "2026-08-22"
   source: maintainer
   tags: "xquik,x-twitter,twitter-api,twitter-scraper,tweet-search,user-profiles,followers,trends,webhooks,sdk"
 ---
@@ -22,7 +22,7 @@ Xquik is an independent third-party service. Not affiliated with X Corp.
 ## Install
 
 ```bash
-python -m pip install x_twitter_scraper==0.11.0
+python -m pip install x_twitter_scraper==0.11.2
 ```
 
 ## Create a Client

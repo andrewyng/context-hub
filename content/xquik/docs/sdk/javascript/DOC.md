@@ -3,9 +3,9 @@ name: sdk
 description: "Xquik TypeScript SDK for X/Twitter post search, user profiles, timelines, followers, trends, webhooks, and posting"
 metadata:
   languages: "javascript"
-  versions: "0.12.1"
+  versions: "0.12.4"
   revision: 1
-  updated-on: "2026-08-19"
+  updated-on: "2026-08-22"
   source: maintainer
   tags: "xquik,x-twitter,twitter-api,twitter-scraper,tweet-search,user-profiles,followers,trends,webhooks,sdk"
 ---
@@ -21,7 +21,7 @@ Xquik is an independent third-party service. Not affiliated with X Corp.
 ## Install
 
 ```bash
-npm install x-twitter-scraper@0.12.1
+npm install x-twitter-scraper@0.12.4
 ```
 
 ## Create a Client

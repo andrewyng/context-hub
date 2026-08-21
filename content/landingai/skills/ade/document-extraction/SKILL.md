@@ -119,7 +119,7 @@ const parseResponse = await client.v2.parse({
 fs.writeFileSync("output/parse-output.md", parseResponse.markdown);
 ```
 
-Useful `options` (multipart field with a JSON value): `{"pages": [1, 3]}` (1-indexed page selection), `{"blocks": {"table": {"format": "markdown"}}}` (pipe-syntax tables instead of HTML). Full contract: [Parse API reference](https://docs.landing.ai/api-reference/parse/ade-parse), https://docs.landing.ai/dpt3/parse-input.
+Useful `options` (multipart field with a JSON value): `{"pages": [1, 3]}` (1-indexed page selection; any page beyond the document's last page rejects the whole request with HTTP 422, and on Parse Jobs fails the job after it starts), `{"blocks": {"table": {"format": "markdown"}}}` (pipe-syntax tables instead of HTML). Full contract: [Parse API reference](https://docs.landing.ai/api-reference/parse/ade-parse), https://docs.landing.ai/dpt3/parse-input.
 
 **Step 2: Extract.** The schema is a JSON Schema object; descriptions guide the extraction, so treat them as prompts.
 
@@ -188,7 +188,7 @@ Markdown format details (page breaks, `<figure>` elements, attestation labels, t
 - `extraction_metadata`: mirrors `extraction` with each leaf replaced by `{"value": ..., "ranges": [...]}`. Each range indexes into the input Markdown; a synthesized value has `null` ranges. To get a field's bounding box, find the parse block whose `grounding.range` contains the field's range, then use that block's `grounding.box`.
 - `metadata.doc_id`: the originating parse job, when the input Markdown carried the `doc_id` comment.
 
-**Partial results (HTTP 206):** Parse sets `metadata.failed_pages` and per-page `status`; Extract sets `schema_violation_error` and `warnings`. Data is still returned and credits are consumed. **Errors:** every v2 error body has a stable snake_case `code` and a human-readable `message`; branch on `code`, never on message text. Credits are consumed only on 200/206; error responses are free, and async jobs bill only when they complete. Per-endpoint error tables: [parse-troubleshoot](https://docs.landing.ai/dpt3/parse-troubleshoot), [extract-troubleshoot](https://docs.landing.ai/dpt3/extract-troubleshoot).
+**Partial results (HTTP 206):** Parse sets `metadata.failed_pages` and per-page `status`; Extract sets `schema_violation_error` and `warnings`. Data is still returned and credits are consumed. **Errors:** every v2 error body has a stable `code` and a human-readable `message`; branch on `code`, never on message text. Credits are consumed only on 200/206; error responses are free, and async jobs bill only when they complete. Per-endpoint error tables: [parse-troubleshoot](https://docs.landing.ai/dpt3/parse-troubleshoot), [extract-troubleshoot](https://docs.landing.ai/dpt3/extract-troubleshoot).
 
 ## Async Jobs (v2)
 

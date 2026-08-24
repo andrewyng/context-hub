@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# One live run per branch; superseded runs cancelled so a push queue cannot
+# stall the gates on the shared runner (fleet-wide discipline).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -21,3 +27,59 @@ jobs:
       - run: cd cli && npm test
       - run: node cli/bin/chub build content/ --validate-only
       - run: cd cli && npm audit --audit-level=high
+  semgrep:
+    # Consumes the canonical no-hand-built-orchestration ruleset from
+    # Nishfleet/siterep-public by PINNED raw URL (exact commit SHA) plus
+    # p/default for defense-in-depth. Per-repo copies of the ruleset are
+    # forbidden — one canonical source, every repo consumes it by pin.
+    # Fails only on ERROR/HIGH findings; lower-severity p/default noise is
+    # reported but does not block.
+    name: semgrep
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install semgrep (pinned)
+        run: |
+          set -euo pipefail
+          python3 -m pip install --upgrade pip
+          # Pinned to an exact release (published 2026-07-28, >7 days old).
+          # Bump deliberately; do not use `latest` or a floating range.
+          pip install semgrep==1.172.0
+      - name: Semgrep scan (canonical orchestration gate + p/default)
+        run: |
+          set -uo pipefail
+          CANONICAL_SHA="4738f06365012bc9f1f54c5981cedf9ddd3fa1eb"
+          CANONICAL_URL="https://raw.githubusercontent.com/Nishfleet/siterep-public/${CANONICAL_SHA}/.semgrep/no-hand-built-orchestration.yml"
+          semgrep --config "${CANONICAL_URL}" \
+                  --config p/default \
+                  --quiet --metrics=off --json > semgrep-results.json
+          jq -r '.results[] | "::" + (.extra.severity | ascii_downcase) + "::" + .path + ":" + (.start.line|tostring) + " [" + .check_id + "] " + (.extra.message | gsub("\n";" "))' semgrep-results.json 2>/dev/null || true
+          if jq -e '[.results[] | select(.extra.severity | ascii_downcase | IN("error","high"))] | length > 0' semgrep-results.json >/dev/null 2>&1; then
+            echo "::error::Semgrep found ERROR/HIGH-severity findings (listed above)."
+            exit 1
+          fi
+          echo "::notice::Semgrep clean (no ERROR/HIGH findings)."
+  actionlint:
+    # Lint job config is wiring, not a ruleset — duplicated per repo is
+    # acceptable. SHA-pinned action, uses:-only.
+    name: actionlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run actionlint
+        uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2.2.0
+        with:
+          shellcheck: false
+          pyflakes: false

@@ -76,17 +76,24 @@ When writing scripts, use the user's language and environment. Never install pac
 
 ## Core Flow: Parse, Then Extract (v2)
 
-Parse converts a document into Markdown plus structure. Extract pulls schema-defined fields from that Markdown. Keep the trailing `<!-- doc_id=... -->` comment when saving Markdown; v2 Extract reads it to link the extraction back to its parse job.
+Parse converts a document into Markdown plus structure. Extract pulls schema-defined fields from that Markdown. **Run both as jobs on the `standard` service tier**: create the job, then call `wait()` (or poll `GET .../jobs/{job_id}`) for the finished job. Standard jobs cost half the credits of `priority`; see Processing Modes below for when to leave this default. Keep the trailing `<!-- doc_id=... -->` comment when saving Markdown; v2 Extract reads it to link the extraction back to its parse job.
 
-**Step 1: Parse.** Sync parse accepts PDFs, images, and Office documents (DOCX, PPTX, ODT, RTF), up to 50 MiB; for the current page limits, see https://docs.landing.ai/dpt3/rate-limits. Office files are converted to PDF before parsing; the conversion can change layout and page count, and page-based limits and credits apply to the converted PDF's page count (https://docs.landing.ai/dpt3/file-types). Models: `dpt-3-pro-latest` (default, highest quality) or `dpt-3-verity` (preview: lower latency and credits, for digitally created text documents only; renamed from `dpt-3-fast`, whose values still work). DPT-3 Verity does not read scans, handwriting, or non-Latin scripts, outputs plain Markdown without heading or bold formatting, and adds per-word confidence scores. Comparison and snapshot values: https://docs.landing.ai/dpt3/parse-models.
+**Step 1: Parse.** Jobs accept PDFs, images, and Office documents (DOCX, PPTX, ODT, RTF), up to 1 GiB for PDFs and 50 MiB for images; for the current page limits, see https://docs.landing.ai/dpt3/rate-limits. Office files are converted to PDF before parsing; the conversion can change layout and page count, and page-based limits and credits apply to the converted PDF's page count (https://docs.landing.ai/dpt3/file-types). Models: `dpt-3-pro-latest` (default, highest quality) or `dpt-3-verity` (preview: lower latency and credits, for digitally created text documents only; renamed from `dpt-3-fast`, whose values still work). DPT-3 Verity does not read scans, handwriting, or non-Latin scripts, outputs plain Markdown without heading or bold formatting, and adds per-word confidence scores. Comparison and snapshot values: https://docs.landing.ai/dpt3/parse-models.
 
 ```bash
 mkdir -p output
-curl -X POST 'https://api.ade.landing.ai/v2/parse' \
+curl -X POST 'https://api.ade.landing.ai/v2/parse/jobs' \
   -H 'Authorization: Bearer YOUR_API_KEY' \
   -F 'document=@document.pdf' \
   -F 'model=dpt-3-pro-latest' \
-  | tee output/parse-response.json | jq -r '.markdown' > output/parse-output.md
+  -F 'service_tier=standard'
+
+# The create response is {"job_id": "...", "status": "pending", ...}.
+# Repeat this request with that job_id until status is completed or failed.
+# A completed job carries the parse response under result; save result.markdown
+# from this file as output/parse-output.md for Step 2 (the library examples do this).
+curl 'https://api.ade.landing.ai/v2/parse/jobs/JOB_ID' \
+  -H 'Authorization: Bearer YOUR_API_KEY' -o output/parse-response.json
 ```
 
 ```python
@@ -96,12 +103,16 @@ from landingai_ade import LandingAIADE
 client = LandingAIADE()
 Path("output").mkdir(exist_ok=True)
 
-parse_response = client.v2.parse(
+job = client.v2.parse_jobs.create(
     document=Path("document.pdf"),
     model="dpt-3-pro-latest",
-    save_to="output/",
+    service_tier="standard",
 )
-Path("output/parse-output.md").write_text(parse_response.markdown, encoding="utf-8")
+# wait() polls until the job finishes. raise_on_failure turns a failed job into
+# JobFailedError instead of returning a job whose result is None.
+done = client.v2.parse_jobs.wait(job.job_id, timeout=3600, raise_on_failure=True)
+Path("output/parse-response.json").write_text(done.result.model_dump_json(indent=2), encoding="utf-8")
+Path("output/parse-output.md").write_text(done.result.markdown, encoding="utf-8")
 ```
 
 ```typescript
@@ -111,23 +122,42 @@ import LandingAIADE from "landingai-ade";
 const client = new LandingAIADE();
 fs.mkdirSync("output", { recursive: true });
 
-const parseResponse = await client.v2.parse({
+const job = await client.v2.parseJobs.create({
   document: fs.createReadStream("document.pdf"),
   model: "dpt-3-pro-latest",
-  saveTo: "output/",
+  service_tier: "standard",
 });
-fs.writeFileSync("output/parse-output.md", parseResponse.markdown);
+// wait() polls until the job finishes. raiseOnFailure turns a failed job into
+// JobFailedError instead of returning a job whose result is null.
+const done = await client.v2.parseJobs.wait(job.job_id, { timeout: 3_600_000, raiseOnFailure: true });
+const parsed = done.result as LandingAIADE.V2ParseResponse;
+if (!parsed.markdown) {
+  throw new Error(`Job ${job.job_id} returned no Markdown (status: ${done.status}).`);
+}
+fs.writeFileSync("output/parse-response.json", JSON.stringify(parsed, null, 2));
+fs.writeFileSync("output/parse-output.md", parsed.markdown);
 ```
 
-Useful `options` (multipart field with a JSON value): `{"pages": [1, 3]}` (1-indexed page selection; any page beyond the document's last page rejects the whole request with HTTP 422, and on Parse Jobs fails the job after it starts), `{"blocks": {"table": {"format": "markdown"}}}` (pipe-syntax tables instead of HTML). Full contract: [Parse API reference](https://docs.landing.ai/api-reference/parse/ade-parse), https://docs.landing.ai/dpt3/parse-input.
+Three things to get right with jobs:
+
+- **The output is nested under `result`.** A finished job is `{job_id, status, result, ...}`. When `status` is `completed`, the parse response (`markdown`, `structure`, `metadata`) is `result`, so read `done.result.markdown`, not `done.markdown`. When `status` is `failed`, `result` is null and `error` carries a `code` and `message`; the library `wait()` calls above turn that into `JobFailedError`.
+- **`wait()` has a 10-minute default timeout** (`timeout=600` seconds in Python, `timeout: 600000` milliseconds in TypeScript). When it expires, `wait()` raises `JobWaitTimeoutError` but the job keeps running server-side. Pass a longer `timeout` for large documents on `standard`, as above, or catch the error and resume with `parse_jobs.get(job_id)` / `parseJobs.get(jobId)`.
+- **Save the full response, not only the Markdown.** Job `create` methods do not accept `save_to` / `saveTo`; write `result` to disk yourself as shown, or pass `output_save_url` (see Processing Modes below). The saved JSON carries `structure` and grounding, which every cropping, table, and RAG workflow below needs.
+
+Useful `options` (multipart field with a JSON value): `{"pages": [1, 3]}` (1-indexed page selection; any page beyond the document's last page rejects the whole request with HTTP 422, or fails the job after it starts), `{"blocks": {"table": {"format": "markdown"}}}` (pipe-syntax tables instead of HTML). Full contract: [Parse API reference](https://docs.landing.ai/api-reference/parse/ade-parse), https://docs.landing.ai/dpt3/parse-input.
 
 **Step 2: Extract.** The schema is a JSON Schema object; descriptions guide the extraction, so treat them as prompts. The optional `model` field pins an extraction model snapshot (`extract-latest` is the default; pin a dated snapshot in production, because a new default snapshot can change extraction results).
 
 ```bash
-curl -X POST 'https://api.ade.landing.ai/v2/extract' \
+curl -X POST 'https://api.ade.landing.ai/v2/extract/jobs' \
   -H 'Authorization: Bearer YOUR_API_KEY' \
   -F 'markdown=@output/parse-output.md' \
-  -F 'schema={"type":"object","properties":{"invoice_number":{"type":"string","description":"Invoice number"},"total_amount":{"type":"number","description":"Total amount in USD"}}}'
+  -F 'schema={"type":"object","properties":{"invoice_number":{"type":"string","description":"Invoice number"},"total_amount":{"type":"number","description":"Total amount in USD"}}}' \
+  -F 'service_tier=standard'
+
+# Repeat with the returned job_id until status is completed or failed.
+curl 'https://api.ade.landing.ai/v2/extract/jobs/JOB_ID' \
+  -H 'Authorization: Bearer YOUR_API_KEY' -o output/extract-response.json
 ```
 
 ```python
@@ -136,7 +166,7 @@ from landingai_ade import LandingAIADE
 
 client = LandingAIADE()
 
-extract_response = client.v2.extract(
+job = client.v2.extract_jobs.create(
     markdown=Path("output/parse-output.md").read_text(encoding="utf-8"),
     schema={
         "type": "object",
@@ -145,8 +175,11 @@ extract_response = client.v2.extract(
             "total_amount": {"type": "number", "description": "Total amount in USD"},
         },
     },
+    service_tier="standard",
 )
-print(extract_response.extraction)
+done = client.v2.extract_jobs.wait(job.job_id, timeout=3600, raise_on_failure=True)
+Path("output/extract-response.json").write_text(done.result.model_dump_json(indent=2), encoding="utf-8")
+print(done.result.extraction)
 ```
 
 ```typescript
@@ -155,7 +188,7 @@ import LandingAIADE from "landingai-ade";
 
 const client = new LandingAIADE();
 
-const extractResponse = await client.v2.extract({
+const job = await client.v2.extractJobs.create({
   markdown: fs.readFileSync("output/parse-output.md", "utf8"),
   schema: {
     type: "object",
@@ -164,15 +197,19 @@ const extractResponse = await client.v2.extract({
       total_amount: { type: "number", description: "Total amount in USD" },
     },
   },
+  service_tier: "standard",
 });
-console.log(extractResponse.extraction);
+const done = await client.v2.extractJobs.wait(job.job_id, { timeout: 3_600_000, raiseOnFailure: true });
+const extracted = done.result as LandingAIADE.V2ExtractResult;
+fs.writeFileSync("output/extract-response.json", JSON.stringify(extracted, null, 2));
+console.log(extracted.extraction);
 ```
 
 The libraries also accept a Pydantic class (Python) or Zod schema (TypeScript) directly on `schema`. Full contract: [Extract API reference](https://docs.landing.ai/api-reference/extract/ade-extract), https://docs.landing.ai/dpt3/extract-input.
 
 ## Reading v2 Responses
 
-**Parse** returns three top-level fields (https://docs.landing.ai/dpt3/parse-response):
+**Parse** returns three top-level fields (https://docs.landing.ai/dpt3/parse-response); on a finished job they sit under `result`:
 
 - `markdown`: the whole document in reading order. Every `range` in the response indexes into this string using Unicode code point offsets.
 - `structure`: a `document` node whose children are pages; each page's children are blocks (`text`, `table`, `table_cell`, `figure`, `marginalia`, `attestation`, `logo`, `card`, `scan_code`). Tables nest their cells. Block ids (`text-0`, `table_cell-3`) are unique per response but not stable across re-parses.
@@ -190,64 +227,23 @@ Markdown format details (page breaks, `<figure>` elements, attestation labels, t
 
 **Partial results (HTTP 206):** Parse sets `metadata.failed_pages` and per-page `status`; Extract sets `schema_violation_error` and `warnings`. Data is still returned and credits are consumed. **Errors:** every v2 error body has a stable `code` and a human-readable `message`; branch on `code`, never on message text. Credits are consumed only on 200/206; error responses are free, and async jobs bill only when they complete. Per-endpoint error tables: [parse-troubleshoot](https://docs.landing.ai/dpt3/parse-troubleshoot), [extract-troubleshoot](https://docs.landing.ai/dpt3/extract-troubleshoot).
 
-## Async Jobs (v2)
+## Processing Modes and Service Tiers (v2)
 
-Use the jobs APIs for large files (PDFs up to 1 GiB / 6,000 pages), long extractions, or cheaper batch processing. Create returns a `job_id`; poll GET until `status` is `completed` or `failed`. Instead of polling, you can register a webhook endpoint (in the Playground settings; there is no management API) to receive signed `parse.succeeded`, `parse.failed`, `extract.succeeded`, and `extract.failed` events when jobs finish: https://docs.landing.ai/dpt3/webhooks.
-
-Pick the processing mode and service tier by who is waiting (sync requests always run at `priority`):
+Every v2 request runs on a service tier, `standard` or `priority`. Jobs default to `standard` and accept `service_tier` to switch. The sync endpoints (`POST /v2/parse`, `POST /v2/extract`; `client.v2.parse` / `client.v2.extract` in the libraries) always run at `priority`, return the result inline, accept `save_to` / `saveTo`, and reject `service_tier` and `output_save_url`.
 
 | Mode | Best for | Result | Turnaround | Credits |
 |------|----------|--------|-----------|---------|
-| Sync | Interactive work: a person or agent is waiting on the result | Inline in the response | Seconds to minutes | Full rate |
+| Jobs, `service_tier=standard` (default) | Work with no one waiting: automated pipelines, background agent steps, scheduled ingestion, the largest documents | Poll, or `output_save_url` | Minutes to hours | Half the `priority` rate |
 | Jobs, `service_tier=priority` | Time-sensitive work sync can't handle: larger documents, or not holding a connection open | Poll, or `output_save_url` | Seconds to minutes | Full rate |
-| Jobs, `service_tier=standard` (default) | Work with no one waiting: automated pipelines, background agent steps, scheduled ingestion | Poll, or `output_save_url` | Minutes to hours | Half the `priority` rate |
+| Sync | Interactive work: a person is waiting on this one result | Inline in the response | Seconds to minutes | Full rate |
 
-Turnaround times are estimates. Run large documents and batches at `standard`; rate limits depend on the pricing plan and differ by mode and tier, so check https://docs.landing.ai/dpt3/sync-async and https://docs.landing.ai/dpt3/rate-limits for current values rather than assuming them.
+When you write a script or pipeline for a user, stay on `standard` jobs unless the user asks for faster turnaround; a script the user runs later is not interactive work. When they do ask, switch to `priority` jobs, which keep the batch and large-file handling. Use sync only for a single small document whose result the user needs in the same call, and pass `save_to` / `saveTo` so the full response lands on disk.
 
-```bash
-curl -X POST 'https://api.ade.landing.ai/v2/parse/jobs' \
-  -H 'Authorization: Bearer YOUR_API_KEY' \
-  -F 'document=@large-document.pdf' \
-  -F 'model=dpt-3-pro-latest'
+Sync requests and `priority` jobs share one per-minute page limit. A single document with more pages than that limit returns HTTP 429 on every attempt; retrying never helps, so submit it as a `standard` job, which takes up to 6,000 pages. Turnaround times are estimates, and rate limits depend on the pricing plan, so check https://docs.landing.ai/dpt3/sync-async and https://docs.landing.ai/dpt3/rate-limits for current values rather than assuming them.
 
-curl 'https://api.ade.landing.ai/v2/parse/jobs/JOB_ID' \
-  -H 'Authorization: Bearer YOUR_API_KEY'
-```
+Instead of polling, you can register a webhook endpoint (in the Playground settings; there is no management API) to receive signed `parse.succeeded`, `parse.failed`, `extract.succeeded`, and `extract.failed` events when jobs finish: https://docs.landing.ai/dpt3/webhooks.
 
-Both libraries wrap the polling with a `wait()` helper:
-
-```python
-from pathlib import Path
-from landingai_ade import LandingAIADE
-
-client = LandingAIADE()
-
-job = client.v2.parse_jobs.create(
-    document=Path("large-document.pdf"),
-    model="dpt-3-pro-latest",
-)
-done = client.v2.parse_jobs.wait(job.job_id)
-if done.status == "completed":
-    print(done.result.markdown[:500])
-```
-
-```typescript
-import fs from "fs";
-import LandingAIADE, { type V2ParseResponse } from "landingai-ade";
-
-const client = new LandingAIADE();
-
-const job = await client.v2.parseJobs.create({
-  document: fs.createReadStream("large-document.pdf"),
-  model: "dpt-3-pro-latest",
-});
-const done = await client.v2.parseJobs.wait(job.job_id);
-if (done.status === "completed") {
-  console.log((done.result as V2ParseResponse).markdown.slice(0, 500));
-}
-```
-
-Extract Jobs works the same way against `https://api.ade.landing.ai/v2/extract/jobs` with the sync Extract fields (`client.v2.extract_jobs` in Python, `client.v2.extractJobs` in TypeScript). Both create endpoints accept `output_save_url` (a presigned URL where the result is delivered instead of the poll response; recommended with zero data retention). The URL must stay valid until the job completes, not just at submission: an expired or soon-expiring URL is rejected at creation with HTTP 422 and no credits consumed, so sign it with a validity that outlives the job. Under Zero Data Retention (https://docs.landing.ai/ade/zdr), a v2 job result is deleted as soon as you fetch it, and a never-fetched result is deleted 24 to 48 hours after the job completes; persist the first completed poll response immediately, because polling again returns HTTP 410 (`result_expired`). With `output_save_url`, the result is delivered to your storage, then deleted immediately. The library's `save_to` / `saveTo` parameter is sync-only: the job `create` methods do not accept it, so save the fetched job result yourself or use `output_save_url`. Guides: [parse-async](https://docs.landing.ai/dpt3/parse-async), [extract-async](https://docs.landing.ai/dpt3/extract-async). API reference: [parse jobs](https://docs.landing.ai/api-reference/parse/ade-parse-jobs), [extract jobs](https://docs.landing.ai/api-reference/extract/ade-extract-jobs).
+Both job create endpoints accept `output_save_url` (a presigned URL where the result is delivered instead of the poll response; recommended with zero data retention). The URL must stay valid until the job completes, not just at submission: an expired or soon-expiring URL is rejected at creation with HTTP 422 and no credits consumed, so sign it with a validity that outlives the job. Under Zero Data Retention (https://docs.landing.ai/ade/zdr), a v2 job result is deleted as soon as you fetch it, and a never-fetched result is deleted 24 to 48 hours after the job completes; persist the first completed poll response immediately (as Core Flow does), because polling again returns HTTP 410 (`result_expired`). With `output_save_url`, the result is delivered to your storage, then deleted immediately. Guides: [parse-async](https://docs.landing.ai/dpt3/parse-async), [extract-async](https://docs.landing.ai/dpt3/extract-async). API reference: [parse jobs](https://docs.landing.ai/api-reference/parse/ade-parse-jobs), [extract jobs](https://docs.landing.ai/api-reference/extract/ade-extract-jobs).
 
 ## v1 APIs Without a v2 Equivalent
 
@@ -368,9 +364,9 @@ Embed `text`, `table`, and `card` blocks; exclude `marginalia` (running headers,
 
 ### Batch Processing and Scale
 
-- Prefer the jobs APIs at the `standard` tier for batches: half the credits, no client-side rate pressure.
-- For client-side parallelism over sync endpoints, keep concurrency modest (single digits) and retry 429/5xx with exponential backoff. Limits: https://docs.landing.ai/dpt3/rate-limits.
-- A sync request that times out (HTTP 504) means the document is too large for sync; resubmit it to the jobs API rather than retrying.
+- Batches run as `standard` jobs. Create every job first, record the `job_id`s, then wait on each; a create-then-wait loop per document serializes the batch on its slowest job.
+- If you do fan out over sync endpoints, keep concurrency modest (single digits) and retry 429/5xx with exponential backoff, except a 429 on one oversized document, which no retry clears (see Processing Modes). Limits: https://docs.landing.ai/dpt3/rate-limits.
+- A sync request that times out (HTTP 504) means the document is too large for sync; resubmit it as a job rather than retrying.
 - Save every parse response to disk as you go; a re-run should never re-parse documents that already succeeded.
 
 ## Links

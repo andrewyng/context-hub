@@ -1,993 +1,407 @@
 ---
 name: document-extraction
-description: Use this skill for intelligent document processing and content extraction using LandingAI's Agentic Document Extraction (ADE). Trigger when users need to (1) Parse documents (PDFs, images, spreadsheets, presentations) into structured Markdown with layout understanding, (2) Extract specific structured data from documents using schemas (invoice fields, form data, table data, etc.), (3) Classify and separate multi-document batches by type (invoices vs receipts, statements vs forms, etc.), (4) Process large documents asynchronously (up to 1GB/1000 pages), (5) Get visual grounding (bounding boxes, page numbers) for extracted content — use when users mention bounding boxes, word locations, grounding, highlighting extracted content, or showing where data appears in a document. Use this skill when the task involves understanding document content for a set of documents. In particular this skill can help you write code that run on sets of documents. This will increase speed, and reduce the cost of loading the documents on the Agent context window because you can use a single script to extract the information needed.
+description: "Parses documents into structured Markdown, extracts fields with JSON schemas, classifies pages, and splits mixed document batches using LandingAI's Agentic Document Extraction (ADE) REST APIs, with official Python and TypeScript libraries. Builds document pipelines: batch and async processing for large files, classify-then-extract routing, RAG chunking and embeddings, multi-page table stitching, bounding box visualization, cropping, and word-level highlighting. Use when processing PDFs, images, scans, Office documents (Word, PowerPoint), invoices, forms, or bank statements, when migrating between ADE API versions, or when the user mentions ADE, parsing, extraction, classification, document splitting, table of contents generation, grounding, bounding boxes, blocks, chunks, ranges, or word confidence scores."
 ---
 
 # Document Extraction (ADE)
 
 ## Overview
 
-LandingAI's Agentic Document Extraction (ADE) is a document processing SaaS that parses, extracts, and classifies documents without requiring templates or training. It provides three main capabilities:
+LandingAI's Agentic Document Extraction (ADE) is a document processing service that parses, extracts, and classifies documents without templates or training. The REST APIs are the primary interface. Official libraries wrap them for Python (`landingai-ade` on PyPI) and TypeScript (`landingai-ade` on npm).
 
-1. **Parse**: Convert documents into structured Markdown with hierarchical JSON representation
-2. **Extract**: Pull specific structured data using JSON schemas or Pydantic models
-3. **Split**: Classify and separate multi-document batches by type
+ADE has two API generations. The **v2 APIs** (powered by DPT-3) are the current generation for parsing and extraction. Several capabilities exist only as **v1 APIs** and remain fully supported.
 
-**Key Benefits:**
-- No ML training or templates required
-- Layout-agnostic parsing (works with any document structure)
-- Supports 20+ file formats (PDF, images, spreadsheets, presentations)
-- Precise visual grounding (bounding boxes, page numbers)
-- Multiple models optimized for different document types
+| API | Version | Endpoint | Guide |
+|-----|---------|----------|-------|
+| Parse | v2 | `POST https://api.ade.landing.ai/v2/parse` | https://docs.landing.ai/dpt3/parse |
+| Parse Jobs | v2 | `POST/GET https://api.ade.landing.ai/v2/parse/jobs` | https://docs.landing.ai/dpt3/parse-async |
+| Extract | v2 | `POST https://api.ade.landing.ai/v2/extract` | https://docs.landing.ai/dpt3/extract |
+| Extract Jobs | v2 | `POST/GET https://api.ade.landing.ai/v2/extract/jobs` | https://docs.landing.ai/dpt3/extract-async |
+| Classify | v1 | `POST https://api.va.landing.ai/v1/ade/classify` | https://docs.landing.ai/ade/ade-classify |
+| Section | v1 | `POST https://api.va.landing.ai/v1/ade/section` | https://docs.landing.ai/ade/ade-section |
+| Build Extract Schema | v1 | `POST https://api.va.landing.ai/v1/ade/extract/build-schema` | https://docs.landing.ai/ade/ade-extract-schema-api |
+| Split | v1 | `POST https://api.va.landing.ai/v1/ade/split` | https://docs.landing.ai/ade/ade-split |
+| Parse (superseded) | v1 | `POST https://api.va.landing.ai/v1/ade/parse` | https://docs.landing.ai/ade/parse |
+| Extract (superseded) | v1 | `POST https://api.va.landing.ai/v1/ade/extract` | https://docs.landing.ai/ade/ade-extract |
 
-## Quick Start
+Every linked docs page can be fetched as raw Markdown by appending `.md` to its URL (for example, `https://docs.landing.ai/dpt3/parse.md`). A page index lives at https://docs.landing.ai/llms.txt. Full request and response contracts are in the API reference (linked per endpoint below).
 
-### 1. Installation
+## Which API Version? {#which-api-version}
 
-Never install packages globally without user approval. Always check for a local Python environment first.
+**Use the v2 APIs by default.** Route to v1 only when one of these applies:
 
-```
-1. .venv/bin/python       — uv-managed (this project)
-2. venv/bin/python        — standard Python venv
-3. uv run python          — if pyproject.toml exists
-4. poetry run python      — if poetry.lock exists
-5. python3                — system fallback; warn the user
-```
-Use the local environment to install: `landingai-ade`, `python-dotenv`
+- The user has existing code calling the `/v1/ade/*` endpoints (or v1 library methods `client.parse()` / `client.extract()`) and has not asked to migrate.
+- The document is a spreadsheet (XLSX, CSV) or a legacy binary Office file (DOC, PPT); only v1 Parse accepts those. v2 Parse accepts PDFs, images, and modern Office documents (DOCX, PPTX, ODT, RTF).
+- The file is password-protected (v2 rejects it with HTTP 422; v1 accepts a `password` parameter).
+- The pipeline needs custom figure prompts or v1-style page splits (`split=page`).
+- The pipeline feeds Parse output into the v1 Section or v1 Split APIs, which require the v1 Parse response shape.
 
-### 2. API Key Setup
+To move an existing v1 pipeline to v2, follow https://docs.landing.ai/dpt3/migration-guide.
 
-The user may have already setup a `.env` file in the same directory as the `document-extraction` skill with the API key. You MUST check this path first (ls -la .*/skills/document-extraction/.env). Also try checking on the same directory as this SKILL.md file.
+**Do not mix versions within one pipeline**, except as this matrix allows:
 
-If not, provide instructions to create one. The script below will search for `.env` in common locations and load it.
+| Markdown produced by | v2 Extract | v1 Extract | v1 Section | v1 Split |
+|---|---|---|---|---|
+| Parse v2 | Yes (preferred; reads the embedded `doc_id`) | **No** | **No** | No (use v1 Parse for Split pipelines) |
+| Parse v1 | Yes (works, but no `doc_id` link) | Yes | Yes | Yes |
+
+The v1 Classify API takes the raw document, not Parse output, so it composes with either version.
+
+## API Drift: Your Prior Knowledge May Be Stale
+
+If you have seen ADE code before, it was probably v1. These v1 idioms cause silent wrong-output bugs in v2 code:
+
+| Stale (v1) pattern | Current (v2) |
+|---|---|
+| `chunks` list in the response | `structure` tree of pages and blocks; slice `markdown` with each block's `grounding.range` |
+| 0-indexed page numbers | Pages are **1-indexed** in v2: `grounding.page`, `metadata.failed_pages`, `options.pages` |
+| Box keys `left/top/right/bottom` | Renamed `xmin/ymin/xmax/ymax` (still normalized 0 to 1) |
+| `model=dpt-2-latest` | `model=dpt-3-pro-latest` (pin a dated snapshot such as `dpt-3-pro-20260710` in production) |
+| `confidence`, `low_confidence_spans` | Removed in v2. The DPT-3 Verity model (preview; formerly DPT-3 Fast) returns a different signal: per-word `confidence` on `atomic_grounding` entries only, never on block, table, or page groundings |
+
+For the full v1-to-v2 request and response mapping, see https://docs.landing.ai/dpt3/migration-guide.
+
+## Setup
+
+### API Key
+
+All endpoints authenticate with the same header: `Authorization: Bearer YOUR_API_KEY`. Get a key at https://va.landing.ai/settings/api-key and set it as the `VISION_AGENT_API_KEY` environment variable (both libraries read it automatically). Before asking the user for a key, check for an existing `.env` file in the working directory and in this skill's own directory (`skills/document-extraction/.env`); a `.env-sample` template sits next to this file. Keys are region-specific; for EU endpoints and data residency see https://docs.landing.ai/dpt3/eu.
+
+### Libraries (optional)
+
+- **Python:** `pip install landingai-ade` (v1.17.0 or later covers everything in this skill). Guide: https://docs.landing.ai/dpt3/ade-python
+- **TypeScript:** `npm install landingai-ade` (v2.12.0 or later covers everything in this skill). Guide: https://docs.landing.ai/dpt3/ade-typescript
+
+When writing scripts, use the user's language and environment. Never install packages globally; use the project's virtualenv or package.json.
+
+## Core Flow: Parse, Then Extract (v2)
+
+Parse converts a document into Markdown plus structure. Extract pulls schema-defined fields from that Markdown. **Run both as jobs on the `standard` service tier**: create the job, then call `wait()` (or poll `GET .../jobs/{job_id}`) for the finished job. Standard jobs cost half the credits of `priority`; see Processing Modes below for when to leave this default. Keep the trailing `<!-- doc_id=... -->` comment when saving Markdown; v2 Extract reads it to link the extraction back to its parse job.
+
+**Step 1: Parse.** Jobs accept PDFs, images, and Office documents (DOCX, PPTX, ODT, RTF), up to 1 GiB for PDFs and 50 MiB for images; for the current page limits, see https://docs.landing.ai/dpt3/rate-limits. Office files are converted to PDF before parsing; the conversion can change layout and page count, and page-based limits and credits apply to the converted PDF's page count (https://docs.landing.ai/dpt3/file-types). Models: `dpt-3-pro-latest` (default, highest quality) or `dpt-3-verity` (preview: lower latency and credits, for digitally created text documents only; renamed from `dpt-3-fast`, whose values still work). DPT-3 Verity does not read scans, handwriting, or non-Latin scripts, outputs plain Markdown without heading or bold formatting, and adds per-word confidence scores. Comparison and snapshot values: https://docs.landing.ai/dpt3/parse-models.
 
 ```bash
-.venv/bin/python - << 'EOF'
-import os
-from pathlib import Path
-from dotenv import load_dotenv
+mkdir -p output
+curl -X POST 'https://api.ade.landing.ai/v2/parse/jobs' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -F 'document=@document.pdf' \
+  -F 'model=dpt-3-pro-latest' \
+  -F 'service_tier=standard'
 
-# Load API key: prefer existing env var, then .env file lookup
-if os.environ.get("VISION_AGENT_API_KEY"):
-    print("API key found in existing environment variable")
-else:
-    def _find_env():
-        for d in [Path.cwd().resolve(), *Path.cwd().resolve().parents]:
-            for candidate in [
-                # ADD the directory where the document-extraction skill is located
-                d / '.env',
-                d / 'document-extraction/.env',
-                d / 'skills/document-extraction/.env',
-            ]:
-                if candidate.is_file():
-                    return candidate
-        return None
-    env = _find_env()
-    if env:
-        load_dotenv(env)
-        print(f"API key loaded from: {env}")
-    else:
-        print("Warning: VISION_AGENT_API_KEY not set and no .env found")
-EOF
+# The create response is {"job_id": "...", "status": "pending", ...}.
+# Repeat this request with that job_id until status is completed or failed.
+# A completed job carries the parse response under result; save result.markdown
+# from this file as output/parse-output.md for Step 2 (the library examples do this).
+curl 'https://api.ade.landing.ai/v2/parse/jobs/JOB_ID' \
+  -H 'Authorization: Bearer YOUR_API_KEY' -o output/parse-response.json
 ```
 
-If not key is found instruct the user to get an API key from [https://va.landing.ai/settings/api-key](https://va.landing.ai/settings/api-key)
+```python
+from pathlib import Path
+from landingai_ade import LandingAIADE
 
-Copy `.env-sample` to `.env` and add your API key:
+client = LandingAIADE()
+Path("output").mkdir(exist_ok=True)
+
+job = client.v2.parse_jobs.create(
+    document=Path("document.pdf"),
+    model="dpt-3-pro-latest",
+    service_tier="standard",
+)
+# wait() polls until the job finishes. raise_on_failure turns a failed job into
+# JobFailedError instead of returning a job whose result is None.
+done = client.v2.parse_jobs.wait(job.job_id, timeout=3600, raise_on_failure=True)
+Path("output/parse-response.json").write_text(done.result.model_dump_json(indent=2), encoding="utf-8")
+Path("output/parse-output.md").write_text(done.result.markdown, encoding="utf-8")
+```
+
+```typescript
+import fs from "fs";
+import LandingAIADE from "landingai-ade";
+
+const client = new LandingAIADE();
+fs.mkdirSync("output", { recursive: true });
+
+const job = await client.v2.parseJobs.create({
+  document: fs.createReadStream("document.pdf"),
+  model: "dpt-3-pro-latest",
+  service_tier: "standard",
+});
+// wait() polls until the job finishes. raiseOnFailure turns a failed job into
+// JobFailedError instead of returning a job whose result is null.
+const done = await client.v2.parseJobs.wait(job.job_id, { timeout: 3_600_000, raiseOnFailure: true });
+const parsed = done.result as LandingAIADE.V2ParseResponse;
+if (!parsed.markdown) {
+  throw new Error(`Job ${job.job_id} returned no Markdown (status: ${done.status}).`);
+}
+fs.writeFileSync("output/parse-response.json", JSON.stringify(parsed, null, 2));
+fs.writeFileSync("output/parse-output.md", parsed.markdown);
+```
+
+Three things to get right with jobs:
+
+- **The output is nested under `result`.** A finished job is `{job_id, status, result, ...}`. When `status` is `completed`, the parse response (`markdown`, `structure`, `metadata`) is `result`, so read `done.result.markdown`, not `done.markdown`. When `status` is `failed`, `result` is null and `error` carries a `code` and `message`; the library `wait()` calls above turn that into `JobFailedError`.
+- **`wait()` has a 10-minute default timeout** (`timeout=600` seconds in Python, `timeout: 600000` milliseconds in TypeScript). When it expires, `wait()` raises `JobWaitTimeoutError` but the job keeps running server-side. Pass a longer `timeout` for large documents on `standard`, as above, or catch the error and resume with `parse_jobs.get(job_id)` / `parseJobs.get(jobId)`.
+- **Save the full response, not only the Markdown.** Job `create` methods do not accept `save_to` / `saveTo`; write `result` to disk yourself as shown, or pass `output_save_url` (see Processing Modes below). The saved JSON carries `structure` and grounding, which every cropping, table, and RAG workflow below needs.
+
+Useful `options` (multipart field with a JSON value): `{"pages": [1, 3]}` (1-indexed page selection; any page beyond the document's last page rejects the whole request with HTTP 422, or fails the job after it starts), `{"blocks": {"table": {"format": "markdown"}}}` (pipe-syntax tables instead of HTML). Full contract: [Parse API reference](https://docs.landing.ai/api-reference/parse/ade-parse), https://docs.landing.ai/dpt3/parse-input.
+
+**Step 2: Extract.** The schema is a JSON Schema object; descriptions guide the extraction, so treat them as prompts. The optional `model` field pins an extraction model snapshot (`extract-latest` is the default; pin a dated snapshot in production, because a new default snapshot can change extraction results).
 
 ```bash
-cp .env-sample .env
+curl -X POST 'https://api.ade.landing.ai/v2/extract/jobs' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -F 'markdown=@output/parse-output.md' \
+  -F 'schema={"type":"object","properties":{"invoice_number":{"type":"string","description":"Invoice number"},"total_amount":{"type":"number","description":"Total amount in USD"}}}' \
+  -F 'service_tier=standard'
+
+# Repeat with the returned job_id until status is completed or failed.
+curl 'https://api.ade.landing.ai/v2/extract/jobs/JOB_ID' \
+  -H 'Authorization: Bearer YOUR_API_KEY' -o output/extract-response.json
 ```
-
-Edit `.env` and add your key:
-```
-VISION_AGENT_API_KEY=your_actual_api_key_here
-```
-
-**Note:** The `.env` file is gitignored for security. Advanced users can also set the environment variable directly: `export VISION_AGENT_API_KEY=<your-key>`
-
-**EU Endpoint:** If using the EU endpoint, set `environment="eu"` when initializing the client.
-
-### 3. Basic Parse Example
 
 ```python
-from dotenv import load_dotenv
-load_dotenv()  # Load API key from .env
-
-from landingai_ade import LandingAIADE
 from pathlib import Path
+from landingai_ade import LandingAIADE
 
 client = LandingAIADE()
 
-# Parse a document
-response = client.parse(
-    document=Path("document.pdf"),
-    model="dpt-2-latest"
-)
-
-# Access results
-print(f"Pages: {response.metadata.page_count}")
-print(f"Chunks: {len(response.chunks)}")
-print("\nMarkdown output:")
-print(response.markdown[:500])  # First 500 chars
-
-# Save Markdown for extraction
-with open("output.md", "w", encoding="utf-8") as f:
-    f.write(response.markdown)
-```
-
-### 4. Basic Extract Example
-
-```python
-from dotenv import load_dotenv
-load_dotenv()
-
-from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
-from pydantic import BaseModel, Field
-from pathlib import Path
-
-# Define extraction schema using Pydantic
-class Invoice(BaseModel):
-    invoice_number: str = Field(description="Invoice number")
-    invoice_date: str = Field(description="Invoice date")
-    total_amount: float = Field(description="Total amount in USD")
-    vendor_name: str = Field(description="Vendor name")
-
-# Convert to JSON schema
-schema = pydantic_to_json_schema(Invoice)
-
-client = LandingAIADE()
-
-# Extract from parsed markdown
-response = client.extract(
-    schema=schema,
-    markdown=Path("output.md"),  # From parse step
-    model="extract-latest"
-)
-
-# Access extracted data
-print(response.extraction)
-# Output: {'invoice_number': 'INV-12345', 'invoice_date': '2024-01-15', ...}
-
-# Check extraction metadata (traceability)
-print(response.extraction_metadata)
-```
-
-## Document Parsing
-
-### Parse Local Files
-
-```python
-from dotenv import load_dotenv
-load_dotenv()
-
-from landingai_ade import LandingAIADE
-from pathlib import Path
-
-client = LandingAIADE()
-
-response = client.parse(
-    document=Path("/path/to/document.pdf"),
-    model="dpt-2-latest"
-)
-
-# Work with chunks
-for chunk in response.chunks:
-    print(f"Type: {chunk.type}, Page: {chunk.grounding.page}")
-    print(f"Content: {chunk.markdown[:100]}...")
-```
-
-### Parse Remote URLs
-
-```python
-response = client.parse(
-    document_url="https://example.com/document.pdf",
-    model="dpt-2-latest"
-)
-```
-
-### Parse Spreadsheets
-
-Spreadsheets (CSV, XLSX) return a **different response type** than documents. Key differences:
-
-| Field | Documents (`ParseResponse`) | Spreadsheets (`SpreadsheetParseResponse`) |
-|---|---|---|
-| `metadata.page_count` | ✓ | ✗ (uses `sheet_count`, `total_rows`, `total_cells`, `total_chunks`, `total_images`) |
-| `splits[].pages` | ✓ | ✗ (uses `sheets` — array of sheet indices) |
-| `grounding` (top-level) | ✓ | ✗ (not present for spreadsheets) |
-| Chunk grounding | Always present | Optional (null for table chunks, present for embedded image chunks) |
-
-```python
-response = client.parse(
-    document=Path("data.xlsx"),
-    model="dpt-2-latest"
-)
-
-# Spreadsheet metadata
-print(f"Sheets: {response.metadata.sheet_count}")
-print(f"Total rows: {response.metadata.total_rows}")
-print(f"Total cells: {response.metadata.total_cells}")
-
-# Splits use 'sheets' instead of 'pages'
-for split in response.splits:
-    print(f"Sheet indices: {split.sheets}")
-    print(f"Markdown: {split.markdown[:200]}...")
-```
-
-### Model Selection
-
-Choose the right model for your documents:
-
-| Model | Best For | Chunk Types |
-|-------|----------|-------------|
-| **dpt-2-latest** | Complex documents with logos, signatures, ID cards | text, table, figure, logo, card, attestation, scan_code, marginalia |
-| **dpt-2-mini** | Simple, digitally-native documents (faster, cheaper) | text, table, figure, marginalia |
-| **dpt-1** | ⚠️ **Deprecated March 31, 2026** — migrate to dpt-2 | text, table, figure, marginalia |
-
-**Recommendation:** Use `dpt-2-latest` unless you have simple documents where cost/speed is critical.
-
-**Version Pinning:** For production, use dated versions (e.g., `dpt-2-20260302`) for reproducibility.
-
-### Parse Large Files (Async)
-
-For files up to 1 GB or 6,000 pages, use Parse Jobs:
-
-```python
-import time
-from dotenv import load_dotenv
-load_dotenv()
-
-from landingai_ade import LandingAIADE
-from pathlib import Path
-
-client = LandingAIADE()
-
-# Step 1: Create parse job
-job = client.parse_jobs.create(
-    document=Path("large_document.pdf"),
-    model="dpt-2-latest"
-)
-
-job_id = job.job_id
-print(f"Job {job_id} created")
-
-# Step 2: Poll for completion
-while True:
-    response = client.parse_jobs.get(job_id)
-    if response.status == "completed":
-        print(f"Job {job_id} completed")
-        break
-    print(f"Progress: {response.progress * 100:.0f}%")
-    time.sleep(5)
-
-# Step 3: Access results
-# Results are in response.data (or response.output_url for large results)
-if response.data:
-    print(f"Chunks: {len(response.data.chunks)}")
-    with open("output.md", "w", encoding="utf-8") as f:
-        f.write(response.data.markdown)
-elif response.output_url:
-    # Results > 1MB are returned as a presigned URL
-    print(f"Download results from: {response.output_url}")
-```
-
-**Job Status Response Fields:**
-- `job_id`, `status` (pending, processing, completed, failed, cancelled), `progress` (0-1)
-- `data`: The `ParseResponse` (or `SpreadsheetParseResponse`) when complete and result < 1MB
-- `output_url`: Presigned S3 URL when result > 1MB or when `output_save_url` was used. Expires after 1 hour; a new URL is generated on each GET.
-- `metadata`: Same as sync parse (`filename`, `page_count`, `duration_ms`, etc.)
-- `failure_reason`: Error message if job failed
-
-### Zero Data Retention (ZDR)
-
-If ZDR is enabled for your organization, you must provide an `output_save_url` where parsed results will be saved. The results will not be returned in the API response. ZDR is not enabled by default. Typically `output_save_url` is a presigned url with write permissions to your S3 bucket, but you can also use other storage solutions that support file uploads via HTTP PUT requests.
-
-```python
-job = client.parse_jobs.create(
-    document=Path("sensitive_document.pdf"),
-    model="dpt-2-latest",
-    output_save_url="https://your-bucket.s3.amazonaws.com/output.json"
-)
-```
-
-### List Parse Jobs
-
-List all async parse jobs with optional pagination and status filtering:
-
-```python
-# List recent jobs
-jobs_response = client.parse_jobs.list(page=0, page_size=10)
-for job in jobs_response.jobs:
-    print(f"{job.job_id}: {job.status} ({job.progress:.0%})")
-
-# Filter by status
-completed = client.parse_jobs.list(status="completed", page_size=5)
-print(f"Completed jobs: {len(completed.jobs)}, more: {completed.has_more}")
-```
-
-**Available status filters:** `pending`, `processing`, `completed`, `failed`, `cancelled`
-
-### Understanding Parse Outputs
-
-Parse returns a `ParseResponse` with:
-
-- **`markdown`**: Complete document in Markdown with HTML anchor tags
-- **`chunks`**: Array of extracted elements (each with unique ID, type, content, and per-chunk grounding)
-- **`grounding`**: Dictionary mapping element IDs to detailed location data (page, bounding box, grounding type, and table cell position). See [JSON Response](#json-response) for structure.
-- **`metadata`**: Processing info — `filename`, `org_id`, `page_count`, `duration_ms`, `credit_usage` (float), `job_id`, `version`, `failed_pages`
-- **`splits`**: Array of split objects grouping chunks. Always present — contains a single `"full"` split by default, or per-page splits if `split="page"` was used. **Note:** Parse splits use a `class` field (values: `"full"` or `"page"`), which is different from the Split API's `classification` field.
-
-**Common chunk types**: `text`, `table`, `figure`, `logo`, `card`, `attestation`, `scan_code`, `marginalia`
-
-For detailed chunk type reference, see [references/chunk-types.md](references/chunk-types.md)
-
-> **Anchor tag prefix in `chunk.markdown`:** Every chunk's `markdown` field
-> is prefixed with an HTML anchor tag embedding the chunk UUID:
-> `<a id='abc123...'></a>\n\nActual content…`. This is how the full document
-> markdown links back to individual chunks. Strip it before string matching,
-> display, or RAG indexing:
->
-> ```python
-> import re
-> _ANCHOR_RE = re.compile(r"<a[^>]*></a>\s*", re.IGNORECASE)
->
-> def chunk_text(ch) -> str:
->     """Return clean chunk markdown without the anchor prefix."""
->     return _ANCHOR_RE.sub("", ch.markdown or "").strip()
->
-> # Example: fingerprint match against a section of the full markdown
-> intro_chunks = [ch for ch in response.chunks
->                 if chunk_text(ch)[:80] in intro_markdown]
-> ```
-
-### Saving Parse Responses
-
-The SDK provides a built-in `save_to` parameter on `parse()`, `extract()`, and `split()` that automatically saves the JSON response to a folder:
-
-```python
-from pathlib import Path
-
-# Parse and auto-save response JSON to output/ folder
-response = client.parse(
-    document=Path("document.pdf"),
-    model="dpt-2-latest",
-    save_to="output/"  # Creates output/document_parse_output.json
-)
-
-# Response is still returned normally for immediate use
-print(response.markdown[:200])
-```
-
-The `save_to` parameter:
-- Creates the folder if it doesn't exist
-- Names the file `{input_filename}_{method}_output.json` (e.g., `document_parse_output.json`)
-- Works on `client.parse()`, `client.extract()`, and `client.split()`
-- Is a **client-side convenience** — it saves the full response locally after the API call
-
-For manual serialization (e.g., custom filenames or selective saving), use `model_dump()`:
-
-```python
-import json
-
-response_dict = response.model_dump()
-with open("parse_response.json", "w", encoding="utf-8") as f:
-    json.dump(response_dict, f, indent=2, ensure_ascii=False)
-
-# Save markdown separately for extraction
-with open("document_parsed.md", "w", encoding="utf-8") as f:
-    f.write(response.markdown)
-```
-
-**Important:** Always use `model_dump()` to serialize the complete response. Do not manually construct dictionaries with selected fields, as you may miss important data like the `splits` array or complete grounding information.
-
-### Parse Parameters
-
-```python
-response = client.parse(
-    document=Path("document.pdf"),
-    model="dpt-2-latest",
-    split="page",       # Optional: organize chunks by page
-    password="secret",   # Optional: decrypt protected files (ZDR only)
-    save_to="output/",   # Optional: auto-save response JSON
-)
-```
-
-### Parse Password-Protected Files
-
-Organizations with [Zero Data Retention (ZDR)](https://docs.landing.ai/ade/zdr) enabled can parse password-protected files by passing the `password` parameter. Supported formats: PDF, DOC, DOCX, ODT, PPT, PPTX, XLSX.
-
-```python
-# Sync parse
-response = client.parse(
-    document=Path("encrypted.pdf"),
-    password="document_password",
-    model="dpt-2-latest"
-)
-
-# Async parse jobs
-job = client.parse_jobs.create(
-    document=Path("encrypted.pdf"),
-    password="document_password",
-    model="dpt-2-latest"
-)
-```
-
-> **Note:** Without ZDR the API returns HTTP 422. If the password is wrong the API
-> returns HTTP 422 with a decryption error. The parameter is ignored for unencrypted documents.
-
-## Structured Data Extraction
-
-### Schema Definition
-
-Define what to extract using JSON Schema or Pydantic models.
-
-**Pydantic approach (recommended for Python):**
-
-```python
-from pydantic import BaseModel, Field
-from landingai_ade.lib import pydantic_to_json_schema
-
-class BankStatement(BaseModel):
-    account_holder: str = Field(description="Account holder name")
-    account_number: str = Field(description="Account number")
-    beginning_balance: float = Field(description="Beginning balance in USD")
-    ending_balance: float = Field(description="Ending balance in USD")
-
-schema = pydantic_to_json_schema(BankStatement)
-```
-
-**JSON Schema approach:**
-
-```python
-schema = {
-    "type": "object",
-    "properties": {
-        "account_holder": {
-            "type": "string",
-            "description": "Account holder name"
+job = client.v2.extract_jobs.create(
+    markdown=Path("output/parse-output.md").read_text(encoding="utf-8"),
+    schema={
+        "type": "object",
+        "properties": {
+            "invoice_number": {"type": "string", "description": "Invoice number"},
+            "total_amount": {"type": "number", "description": "Total amount in USD"},
         },
-        "account_number": {
-            "type": "string",
-            "description": "Account number"
-        },
-        "beginning_balance": {
-            "type": "number",
-            "description": "Beginning balance in USD"
-        },
-        "ending_balance": {
-            "type": "number",
-            "description": "Ending balance in USD"
-        }
     },
-    "required": ["account_holder", "account_number"]
-}
-```
-
-### Extraction Workflow
-
-```python
-from dotenv import load_dotenv
-load_dotenv()
-
-from landingai_ade import LandingAIADE
-from pathlib import Path
-
-client = LandingAIADE()
-
-# Step 1: Parse document
-parse_response = client.parse(
-    document=Path("bank_statement.pdf"),
-    model="dpt-2-latest"
+    service_tier="standard",
 )
-
-# Save markdown
-with open("parsed.md", "w", encoding="utf-8") as f:
-    f.write(parse_response.markdown)
-
-# Step 2: Extract structured data
-extract_response = client.extract(
-    schema=schema,  # Your JSON schema
-    markdown=Path("parsed.md"),
-    model="extract-latest"
-)
-
-# Access extracted data
-print(extract_response.extraction)
-
-# Check traceability (which chunks provided each field)
-for field, metadata in extract_response.extraction_metadata.items():
-    print(f"{field}: from chunks {metadata.chunk_ids}")
+done = client.v2.extract_jobs.wait(job.job_id, timeout=3600, raise_on_failure=True)
+Path("output/extract-response.json").write_text(done.result.model_dump_json(indent=2), encoding="utf-8")
+print(done.result.extraction)
 ```
 
-### Extract from URL
+```typescript
+import fs from "fs";
+import LandingAIADE from "landingai-ade";
 
-You can extract from a remotely-hosted Markdown file using `markdown_url`:
+const client = new LandingAIADE();
 
-```python
-extract_response = client.extract(
-    schema=schema,
-    markdown_url="https://example.com/parsed_document.md",
-    model="extract-latest"
-)
-```
-
-### Common Schema Patterns
-
-For detailed schema patterns, see [references/extraction-schemas.md](references/extraction-schemas.md)
-
-**Nested objects:**
-```python
-class Address(BaseModel):
-    street: str
-    city: str
-    zip_code: str
-
-class Invoice(BaseModel):
-    invoice_number: str
-    billing_address: Address  # Nested object
-```
-
-**Arrays (lists):**
-```python
-class LineItem(BaseModel):
-    description: str
-    quantity: int
-    amount: float
-
-class Invoice(BaseModel):
-    invoice_number: str
-    line_items: list[LineItem]  # Array of objects
-```
-
-**Enums (restricted values):**
-```python
-class BankStatement(BaseModel):
-    account_type: str = Field(
-        description="Account type",
-        enum=["Checking", "Savings"]  # Only these values allowed
-    )
-```
-
-**Nullable fields:**
-```python
-class Patient(BaseModel):
-    first_name: str
-    middle_name: str | None = Field(default=None)  # Optional field
-    last_name: str
-```
-
-### Document Classification
-
-Classify documents before extracting type-specific fields:
-
-```python
-from dotenv import load_dotenv
-load_dotenv()
-
-from landingai_ade import LandingAIADE
-from pydantic import BaseModel, Field
-from landingai_ade.lib import pydantic_to_json_schema
-from pathlib import Path
-
-# Step 1: Define classification schema
-class DocumentType(BaseModel):
-    document_type: str = Field(
-        description="Document classification",
-        enum=["Invoice", "Receipt", "Bank Statement", "Other"]
-    )
-
-client = LandingAIADE()
-
-# Step 2: Parse document
-parse_response = client.parse(
-    document=Path("document.pdf"),
-    model="dpt-2-latest"
-)
-
-# Step 3: Classify document
-classification_schema = pydantic_to_json_schema(DocumentType)
-classification_response = client.extract(
-    schema=classification_schema,
-    markdown=parse_response.markdown,
-    model="extract-latest"
-)
-
-doc_type = classification_response.extraction["document_type"]
-print(f"Classified as: {doc_type}")
-
-# Step 4: Extract based on type
-if doc_type == "Invoice":
-    schema = pydantic_to_json_schema(InvoiceSchema)
-elif doc_type == "Receipt":
-    schema = pydantic_to_json_schema(ReceiptSchema)
-else:
-    print("Unsupported document type")
-    exit()
-
-# Extract type-specific fields
-extract_response = client.extract(
-    schema=schema,
-    markdown=parse_response.markdown,
-    model="extract-latest"
-)
-```
-
-## Document Classification & Splitting
-
-### When to Use Split API
-
-Use the Split API when you have multi-document batches on  single file that need to be separated:
-
-- Financial services: Separate bank statements, utility bills, ID documents
-- Healthcare: Split intake forms, medical reports, medication lists
-- Accounting: Separate multiple invoices and receipts
-- Academic: Separate article bodies from references
-
-### Split Classification
-
-Define how to classify and separate documents using `split_class`:
-
-```python
-from dotenv import load_dotenv
-load_dotenv()
-
-from landingai_ade import LandingAIADE
-from pathlib import Path
-
-client = LandingAIADE()
-
-# Step 1: Parse multi-document PDF
-parse_response = client.parse(
-    document=Path("batch.pdf"),
-    model="dpt-2-latest"
-)
-
-# Step 2: Define split classes
-split_classes = [
-    {
-        "name": "Invoice",
-        "description": "Commercial invoices with itemized charges",
-        "identifier": "Invoice Number"  # Separate by invoice number
+const job = await client.v2.extractJobs.create({
+  markdown: fs.readFileSync("output/parse-output.md", "utf8"),
+  schema: {
+    type: "object",
+    properties: {
+      invoice_number: { type: "string", description: "Invoice number" },
+      total_amount: { type: "number", description: "Total amount in USD" },
     },
-    {
-        "name": "Receipt",
-        "description": "Payment receipts showing transaction details",
-        "identifier": "Receipt Date"
-    },
-    {
-        "name": "Bank Statement",
-        "description": "Monthly bank account statements"
-    }
-]
-
-# Step 3: Split document
-split_response = client.split(
-    markdown=parse_response.markdown,
-    split_class=split_classes
-)
-
-# Step 4: Process each split
-for split in split_response.splits:
-    print(f"Type: {split.classification}")
-    print(f"Identifier: {split.identifier}")
-    print(f"Pages: {split.pages}")
-    print(f"Content: {split.markdowns[0][:200]}...")
-```
-
-**Split Class Components:**
-- **name** (required): Document classification label (e.g., "Invoice")
-- **description** (optional): Context for classification (more detail = better accuracy)
-- **identifier** (optional): Field that makes each instance unique (creates separate split per unique value)
-- **Limit:** Maximum 19 split classes per request
-
-**Split from URL:** You can also split from a remotely-hosted Markdown file:
-
-```python
-split_response = client.split(
-    markdown_url="https://example.com/parsed_document.md",
-    split_class=split_classes
-)
-```
-
-## Output Formats
-
-### Markdown
-
-ADE converts documents to structured Markdown:
-
-```markdown
-# Document Title
-
-## Section 1
-
-Paragraph text...
-
-| Column 1 | Column 2 |
-|----------|----------|
-| Data 1   | Data 2   |
-
-<::Caption: Bar chart showing quarterly revenue::>
-```
-
-**Features:**
-- HTML anchor tags for traceability (link to chunk IDs)
-- Special delimiters for visual elements: `<::Caption: description::>`
-- HTML tables for spreadsheet data
-- Preserved structure and hierarchy
-
-### JSON Response
-
-Parse returns structured JSON with five top-level fields:
-
-```json
-{
-  "markdown": "# Document...",
-  "chunks": [
-    {
-      "id": "7d58c5cf-e4f5-4a7e-ba34-0cd7bc6a6506",
-      "type": "text",
-      "markdown": "Content...",
-      "grounding": {
-        "page": 0,
-        "box": { "left": 0.1, "top": 0.2, "right": 0.9, "bottom": 0.3 }
-      }
-    }
-  ],
-  "splits": [
-    {
-      "class": "full",
-      "identifier": "full",
-      "pages": [0],
-      "markdown": "# Document...",
-      "chunks": ["7d58c5cf-e4f5-4a7e-ba34-0cd7bc6a6506"]
-    }
-  ],
-  "grounding": {
-    "7d58c5cf-e4f5-4a7e-ba34-0cd7bc6a6506": {
-      "box": { "left": 0.1, "top": 0.2, "right": 0.9, "bottom": 0.3 },
-      "page": 0,
-      "type": "chunkText",
-      "confidence": 0.95,
-      "low_confidence_spans": []
-    },
-    "0-1": {
-      "box": { "left": 0.15, "top": 0.4, "right": 0.85, "bottom": 0.7 },
-      "page": 0,
-      "type": "table"
-    },
-    "0-2": {
-      "box": { "left": 0.15, "top": 0.4, "right": 0.5, "bottom": 0.55 },
-      "page": 0,
-      "type": "tableCell",
-      "position": { "row": 0, "col": 0, "rowspan": 1, "colspan": 1,
-                     "chunk_id": "ef24b1ea-..." }
-    }
   },
-  "metadata": {
-    "filename": "document.pdf",
-    "org_id": "org-123",
-    "page_count": 5,
-    "duration_ms": 1500,
-    "credit_usage": 2.0,
-    "job_id": "abc-123",
-    "version": "dpt-2-20260302",
-    "failed_pages": []
-  }
-}
+  service_tier: "standard",
+});
+const done = await client.v2.extractJobs.wait(job.job_id, { timeout: 3_600_000, raiseOnFailure: true });
+const extracted = done.result as LandingAIADE.V2ExtractResult;
+fs.writeFileSync("output/extract-response.json", JSON.stringify(extracted, null, 2));
+console.log(extracted.extraction);
 ```
 
-**Top-level `grounding`** is a dictionary keyed by element ID (UUID for chunks, `{page}-{base62}` for tables/cells). Each value contains `box`, `page`, `type`, and optionally `confidence` and `low_confidence_spans` (see [Confidence Scores](#confidence-scores)). Table cell entries also include a `position` field (see [Grounding and Traceability](#grounding-and-traceability)).
+The libraries also accept a Pydantic class (Python) or Zod schema (TypeScript) directly on `schema`. Full contract: [Extract API reference](https://docs.landing.ai/api-reference/extract/ade-extract), https://docs.landing.ai/dpt3/extract-input.
 
-#### Grounding Type Mapping
+## Reading v2 Responses
 
-Grounding types use a `chunk` prefix to distinguish them from chunk types. The `table` and `tableCell` types are grounding-only (no corresponding chunk type):
+**Parse** returns three top-level fields (https://docs.landing.ai/dpt3/parse-response); on a finished job they sit under `result`:
 
-| Grounding Type | Chunk Type | Description |
-|---|---|---|
-| `chunkText` | `text` | Text content |
-| `chunkTable` | `table` | Table chunk (overall location) |
-| `chunkFigure` | `figure` | Figures and images |
-| `chunkMarginalia` | `marginalia` | Headers, footers, page numbers |
-| `chunkLogo` | `logo` | Company logos (DPT-2) |
-| `chunkCard` | `card` | ID cards, licenses (DPT-2) |
-| `chunkAttestation` | `attestation` | Signatures, stamps (DPT-2) |
-| `chunkScanCode` | `scan_code` | QR codes, barcodes (DPT-2) |
-| `table` | _(grounding only)_ | HTML `<table>` element within a table chunk |
-| `tableCell` | _(grounding only)_ | Individual cell within a table |
+- `markdown`: the whole document in reading order. Every `range` in the response indexes into this string using Unicode code point offsets.
+- `structure`: a `document` node whose children are pages; each page's children are blocks (`text`, `table`, `table_cell`, `figure`, `marginalia`, `attestation`, `logo`, `card`, `scan_code`). Tables nest their cells. Block ids (`text-0`, `table_cell-3`) are unique per response but not stable across re-parses.
+- `metadata`: `job_id`, `model_version`, `page_count`, `failed_pages` (1-indexed), `duration_ms`, `billing`.
 
-Extract returns:
+Every node carries an inline `grounding` object: `page` (1-indexed), `range` (`{start, end}`, end exclusive), and `box` (`xmin/ymin/xmax/ymax`, each normalized 0 to 1). To get a block's text, slice `markdown[range.start:range.end]`. To get pixels, multiply box values by the rendered page dimensions. Leaf blocks also carry `atomic_grounding` for fine-grained highlighting; its granularity depends on the model. DPT-3 Pro emits one entry per visual line (table cells have none). DPT-3 Verity emits one entry per word, table cells included, and each word entry carries a `confidence` score (0 to 1) for how certain the model is it transcribed the word correctly. Confidence appears only on word entries; block, table, and page groundings never carry one, so to score a block, take the minimum across its word entries. Use low scores to route transcriptions to review, or re-parse the document with DPT-3 Pro. DPT-3 Pro returns no confidence scores.
 
-```json
-{
-  "extraction": {
-    "invoice_number": "INV-12345",
-    "total": 1250.00
-  },
-  "extraction_metadata": {
-    "invoice_number": {
-      "chunk_ids": ["chunk-uuid-1"]
-    },
-    "total": {
-      "chunk_ids": ["chunk-uuid-2"],
-      "cell_ids": ["2-a5"]
-    }
-  },
-  "metadata": {
-    "filename": "markdown.md",
-    "org_id": "org-123",
-    "duration_ms": 850,
-    "credit_usage": 1.0,
-    "job_id": "abc-456",
-    "version": "extract-20251024",
-    "schema_violation_error": null,
-    "fallback_model_version": null
-  }
-}
+Markdown format details (page breaks, `<figure>` elements, attestation labels, the trailing `doc_id` comment): https://docs.landing.ai/dpt3/parse-response.
+
+**Extract** returns (https://docs.landing.ai/dpt3/extract-response):
+
+- `extraction`: values matching the schema. Fields the model cannot find come back as `null` (arrays as `[]`).
+- `extraction_metadata`: mirrors `extraction` with each leaf replaced by `{"value": ..., "ranges": [...]}`. Each range indexes into the input Markdown; a synthesized value has `null` ranges. To get a field's bounding box, find the parse block whose `grounding.range` contains the field's range, then use that block's `grounding.box`.
+- `metadata.doc_id`: the originating parse job, when the input Markdown carried the `doc_id` comment.
+
+**Partial results (HTTP 206):** Parse sets `metadata.failed_pages` and per-page `status`; Extract sets `schema_violation_error` and `warnings`. Data is still returned and credits are consumed. **Errors:** every v2 error body has a stable `code` and a human-readable `message`; branch on `code`, never on message text. Credits are consumed only on 200/206; error responses are free, and async jobs bill only when they complete. Per-endpoint error tables: [parse-troubleshoot](https://docs.landing.ai/dpt3/parse-troubleshoot), [extract-troubleshoot](https://docs.landing.ai/dpt3/extract-troubleshoot).
+
+## Processing Modes and Service Tiers (v2)
+
+Every v2 request runs on a service tier, `standard` or `priority`. Jobs default to `standard` and accept `service_tier` to switch. The sync endpoints (`POST /v2/parse`, `POST /v2/extract`; `client.v2.parse` / `client.v2.extract` in the libraries) always run at `priority`, return the result inline, accept `save_to` / `saveTo`, and reject `service_tier` and `output_save_url`.
+
+| Mode | Best for | Result | Turnaround | Credits |
+|------|----------|--------|-----------|---------|
+| Jobs, `service_tier=standard` (default) | Work with no one waiting: automated pipelines, background agent steps, scheduled ingestion, the largest documents | Poll, or `output_save_url` | Minutes to hours | Half the `priority` rate |
+| Jobs, `service_tier=priority` | Time-sensitive work sync can't handle: larger documents, or not holding a connection open | Poll, or `output_save_url` | Seconds to minutes | Full rate |
+| Sync | Interactive work: a person is waiting on this one result | Inline in the response | Seconds to minutes | Full rate |
+
+When you write a script or pipeline for a user, stay on `standard` jobs unless the user asks for faster turnaround; a script the user runs later is not interactive work. When they do ask, switch to `priority` jobs, which keep the batch and large-file handling. Use sync only for a single small document whose result the user needs in the same call, and pass `save_to` / `saveTo` so the full response lands on disk.
+
+Sync requests and `priority` jobs share one per-minute page limit. A single document with more pages than that limit returns HTTP 429 on every attempt; retrying never helps, so submit it as a `standard` job, which takes up to 6,000 pages. Turnaround times are estimates, and rate limits depend on the pricing plan, so check https://docs.landing.ai/dpt3/sync-async and https://docs.landing.ai/dpt3/rate-limits for current values rather than assuming them.
+
+Instead of polling, you can register a webhook endpoint (in the Playground settings; there is no management API) to receive signed `parse.succeeded`, `parse.failed`, `extract.succeeded`, and `extract.failed` events when jobs finish: https://docs.landing.ai/dpt3/webhooks.
+
+Both job create endpoints accept `output_save_url` (a presigned URL where the result is delivered instead of the poll response; recommended with zero data retention). The URL must stay valid until the job completes, not just at submission: an expired or soon-expiring URL is rejected at creation with HTTP 422 and no credits consumed, so sign it with a validity that outlives the job. Under Zero Data Retention (https://docs.landing.ai/ade/zdr), a v2 job result is deleted as soon as you fetch it, and a never-fetched result is deleted 24 to 48 hours after the job completes; persist the first completed poll response immediately (as Core Flow does), because polling again returns HTTP 410 (`result_expired`). With `output_save_url`, the result is delivered to your storage, then deleted immediately. Guides: [parse-async](https://docs.landing.ai/dpt3/parse-async), [extract-async](https://docs.landing.ai/dpt3/extract-async). API reference: [parse jobs](https://docs.landing.ai/api-reference/parse/ade-parse-jobs), [extract jobs](https://docs.landing.ai/api-reference/extract/ade-extract-jobs).
+
+## v1 APIs Without a v2 Equivalent
+
+### Classify: Page-Level Classification
+
+Assigns a class to each page of a raw document (not Parse output), so it composes with v2 pipelines: classify first, then route pages to parsing. Guide: https://docs.landing.ai/ade/ade-classify. API reference: [ade-classify](https://docs.landing.ai/api-reference/tools/ade-classify).
+
+```bash
+curl -X POST 'https://api.va.landing.ai/v1/ade/classify' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -F 'document=@batch.pdf' \
+  -F 'classes=[{"class":"invoice","description":"Commercial bill with line items and totals"},{"class":"bank_statement","description":"Monthly summary of account transactions"}]' \
+  -F 'model=classify-latest'
 ```
 
-**Extract Metadata Fields:**
-- **`schema_violation_error`**: `null` when extraction matches schema. Contains a detailed error message when the extracted data doesn't fully conform (HTTP 206 response). Extraction still returns partial data and consumes credits.
-- **`fallback_model_version`**: `null` normally. Contains the model version actually used when the initial extraction attempt failed with the requested version and a fallback was used.
+The response lists one `class` per `page`. **Classify pages are 0-indexed (v1 convention); v2 Parse `options.pages` is 1-indexed, so add 1 when routing pages.** Unmatched pages come back as `unknown` with a `suggested_class`. Response fields: [ade-classify-response](https://docs.landing.ai/ade/ade-classify-response).
 
-### Grounding and Traceability
+### Section: Table of Contents Generation
 
-Every parsed element includes precise location information in the top-level `grounding` dictionary:
+Generates a hierarchical table of contents. **Requires v1 Parse output** (it depends on the anchor tags only v1 Parse emits); do not feed it v2 Markdown. Guide: https://docs.landing.ai/ade/ade-section. API reference: [ade-section](https://docs.landing.ai/api-reference/tools/ade-section).
 
-- **Page references**: Zero-indexed page numbers
-- **Bounding boxes**: Normalized coordinates (0-1) for position
-  - `left`, `top`, `right`, `bottom`
-  - Convert to pixels: multiply by image dimensions
-- **Element IDs**: UUID for chunks, `{page}-{base62}` for tables and table cells
-  - Table/cell IDs use sequential base62 numbering per page: `0-1`, `0-2`, ..., `0-9`, `0-a`, ..., `0-z`, `0-A`, ..., `0-Z`, `0-10`, etc.
-  - Numbering restarts on each page (e.g., first table on page 1 → `1-1`)
-- **Grounding types**: Each entry has a `type` field using prefixed names (e.g., `chunkText`, `chunkTable`). See [Grounding Type Mapping](#grounding-type-mapping).
-- **Table cell position**: `tableCell` entries include a `position` object with `row`, `col` (zero-indexed), `rowspan`, `colspan`, and `chunk_id` (the parent table chunk UUID)
-- **Extraction metadata**: Shows which chunks/cells provided each field
-
-**Per-chunk grounding** (on each chunk object) contains only `box` and `page`. The **top-level grounding dictionary** adds `type` and, for table cells, `position`.
-
-**Example:**
-```python
-# Per-chunk grounding (basic location)
-for chunk in response.chunks:
-    print(f"Chunk {chunk.id} on page {chunk.grounding.page}")
-    bbox = chunk.grounding.box
-    print(f"Location: ({bbox.left}, {bbox.top}) to ({bbox.right}, {bbox.bottom})")
-
-# Top-level grounding (detailed, with type and position)
-# NOTE: grounding values are Pydantic models — use attribute access, not dict access
-for elem_id, info in response.grounding.items():
-    print(f"{elem_id}: type={info.type}, page={info.page}")
-    if info.type == "tableCell" and info.position:
-        print(f"  Cell at row={info.position.row}, col={info.position.col}")
+```bash
+curl -X POST 'https://api.va.landing.ai/v1/ade/section' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -F 'markdown=@v1-parse-output.md' \
+  -F 'model=section-latest'
 ```
 
-> **Important:** `response.grounding` is a `Dict[str, Grounding]` — the outer container is a dict (so `.items()`, `.get()` work), but each **value** is a Pydantic model. Use **attribute access** (`info.type`, `info.box.left`) not dict access (`info["type"]`).
+An optional `guidelines` field steers the hierarchy. Each entry has `title`, `level`, `section_number`, and `start_reference` (the v1 chunk id where the section begins). Response fields: [ade-section-response](https://docs.landing.ai/ade/ade-section-response).
 
-### Confidence Scores {#confidence-scores}
+### Build Extract Schema: Schema Generation
 
-Top-level grounding entries may include confidence information:
+Generates or refines a JSON extraction schema from sample Markdown and/or a prompt; the returned schema string passes directly to either Extract API. Guide: https://docs.landing.ai/ade/ade-extract-schema-api. API reference: [ade-build-extract-schema](https://docs.landing.ai/api-reference/tools/ade-build-extract-schema).
 
-- **`confidence`** (`float | None`): Overall confidence score (0.0–1.0) for the chunk's transcription
-- **`low_confidence_spans`** (`list | None`): Specific text spans with low confidence, each containing:
-  - `confidence` (`float`): Span-level confidence score
-  - `text` (`str`): The low-confidence text
-  - `span` (`list`): Position markers within the chunk
-
-```python
-# Access confidence scores from top-level grounding
-for elem_id, info in response.grounding.items():
-    if info.confidence is not None:
-        print(f"{elem_id}: confidence={info.confidence:.2f}")
-    for span in info.low_confidence_spans or []:
-        print(f"  Low confidence ({span.confidence:.2f}): "
-              f"'{span.text}'")
+```bash
+curl -X POST 'https://api.va.landing.ai/v1/ade/extract/build-schema' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -F 'markdowns=@sample.md' \
+  -F 'model=extract-latest' \
+  -F 'prompt=Extract the vendor name, invoice date, and total amount due'
 ```
 
-**Notes:**
-- Confidence is only present in **top-level grounding** (not per-chunk grounding)
-- Not all grounding entries will have confidence (e.g., `table`/`tableCell` types may not)
-- Use confidence scores to flag chunks that may need human review
+### Split: Multi-Document Separation
 
-## Best Practices
+Classifies and separates a file containing multiple documents (for example, a scanned packet of invoices and receipts). **Runs on v1 Parse output** (parse with `split=page` first). Guide: https://docs.landing.ai/ade/ade-split. API reference: [ade-split](https://docs.landing.ai/api-reference/tools/ade-split).
 
-### Model Selection
+```bash
+curl -X POST 'https://api.va.landing.ai/v1/ade/split' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -F 'markdown=@v1-parse-output.md' \
+  -F 'split_class=[{"name":"Bank Statement","description":"Summary of account activity over a period"},{"name":"Pay Stub","description":"Earnings and deductions for one pay period","identifier":"Pay Stub Date"}]' \
+  -F 'model=split-latest'
+```
 
-- **Use dpt-2-latest** for most documents (complex layouts, logos, signatures)
-- **Use dpt-2-mini** for simple, digitally-native documents (faster, cheaper)
-- **Pin versions in production** for reproducibility (e.g., `dpt-2-20260302`)
-- **Use extract-latest** for extraction (automatically uses newest model)
-- **Do NOT use dpt-1** — deprecated March 31, 2026; migrate to dpt-2
+A next-generation **Split v2 API is in Preview** (select partners; accepts Markdown from either Parse version): https://docs.landing.ai/splitv2/splitv2.
+
+### v1 Parse and Extract (Superseded)
+
+Still required for spreadsheets (XLSX, CSV), legacy binary Office files (DOC, PPT), password-protected files, custom figure prompts, and Section/Split pipelines. Same auth; host `api.va.landing.ai`; parse model `dpt-2-latest`; v1 responses use a flat `chunks` list with 0-indexed pages and `left/top/right/bottom` boxes. Guides: [v1 Parse](https://docs.landing.ai/ade/parse), [v1 Extract](https://docs.landing.ai/ade/ade-extract), [v1 Parse Jobs](https://docs.landing.ai/ade/ade-parse-async), [v1 Extract Jobs](https://docs.landing.ai/ade/ade-extract-async), [password-protected files](https://docs.landing.ai/ade/ade-parse-password), [custom figure prompts](https://docs.landing.ai/ade/ade-parse-custom-prompts), [chunk types](https://docs.landing.ai/ade/ade-chunk-types), [v1 JSON response](https://docs.landing.ai/ade/ade-json-response). File format support per version: [v2 file types](https://docs.landing.ai/dpt3/file-types), [v1 file types](https://docs.landing.ai/ade/ade-file-types).
+
+## Workflow Rules
+
+These rules come from field experience building document pipelines. Follow them whenever you write pipeline code around ADE. Full working pipelines (batch processing, classify-then-extract, RAG ingestion with vector databases, database loading, visualization, Streamlit review UIs) live at https://github.com/landing-ai/ade-sample-projects; most samples still use the v1 APIs, so check which endpoints a sample calls before borrowing code.
+
+### Pre-Flight: Inspect Before You Code (mandatory)
+
+Before writing any section-detection, heading-matching, or text-search code:
+
+1. **Render 1 or 2 pages as PNG and read them as images.** Check: handwriting or scan versus digital text, single versus two-column layout, running headers or watermarks, whether headings are styled text or plain bold.
+2. **Run one diagnostic parse on one sample** and inspect the Markdown head plus a block inventory (type, page, box, first characters of each block). Heading format is document-specific and cannot be inferred from the task description: `Introduction` may appear as `1. Introduction` (plain text), `## Introduction`, or `INTRODUCTION` inside a larger text block. Getting this wrong causes a silent zero-match failure.
+3. **Cache parse output** (save the response JSON) and reuse it while developing; re-parse only when the document set changes. Parse 1 to 3 samples during development, never the full corpus.
+
+If heading formats vary across documents, match sections with an Extract call instead of regex.
+
+### Bounding-Box Work: Verify Visually (mandatory)
+
+For any crop, overlay, or highlight built from grounding boxes:
+
+- v2 `grounding.page` is 1-indexed; page renderers (such as PyMuPDF) are 0-indexed, so the renderer index is `page - 1`. An off-by-one lands the crop on an adjacent page.
+- Boxes are normalized; multiply by the rendered page's pixel dimensions, not the PDF point size.
+- **After producing the first output image, read it back as an image and describe what you see.** Compare against the request (asked for a table, got a chart? wrong page?). Only proceed with the remaining crops after the first is verified. A brightness heuristic cannot catch wrong-page bugs; visual inspection can.
+
+### Multi-Page Tables (Stitching)
+
+ADE may emit a table that spans pages as separate table blocks per page, and **any page's rows may come back as plain text instead of a table block**, not just the last page. Three approaches, in order of robustness:
+
+1. **Parse, then Extract with a row schema** (an array-of-objects field): the extract model reads the full Markdown, so it absorbs format inconsistencies. Two API calls; use this by default.
+2. **Parse the HTML tables from the Markdown**: one call, but fragile; requires uniform row structure and breaks silently if you switch tables to pipe syntax.
+3. **`pandas.read_html` on the Markdown**: quick prototyping only; misses rows that were emitted as plain text.
+
+After stitching, validate with domain checks: column totals match a stated total, running balances reconcile, dates are chronological, row counts match a stated count. These catch merge errors that no parser will flag.
+
+### Classify-Then-Extract (Mixed Document Batches)
+
+- **Each file is one document of unknown type:** run a one-field Extract (an enum `type` field) on the parsed Markdown, then extract again with the type-specific schema.
+- **One file contains several documents:** use the v1 Split pipeline (v1 Parse with `split=page`, then Split, then Extract per sub-document).
+- **Route pages before parsing:** use Classify on the raw file, then parse only the relevant pages with v2 `options.pages` (remember the 0-indexed to 1-indexed conversion).
+
+### RAG and Embedding Granularity
+
+Choose the embedding unit to match retrieval needs; ADE blocks are the finest unit but not always the right one:
+
+| Level | Unit | Best for |
+|-------|------|----------|
+| Block | One ADE block | Tables, figures, forms with independent fields |
+| Page | All blocks on a page | Slide decks, page-oriented documents |
+| Section | Consecutive blocks grouped by heading | Narrative documents where answers span paragraphs |
+| Document | Full Markdown or a summary | Classification, routing, coarse search |
+
+Embed `text`, `table`, and `card` blocks; exclude `marginalia` (running headers, footers, page numbers). Carry grounding metadata (source file, page, box coordinates) into the vector store as columns so every retrieval hit traces back to a document location.
 
 ### Schema Design
 
-- **Be specific**: Use descriptive field names (`invoice_number` not `number`)
-- **Add descriptions**: Include format requirements ("in USD", "as YYYY-MM-DD")
-- **Keep it simple**: Start with few fields, add more as needed
-- **Limit complexity**: Under 30 properties for optimal performance
-- **Match document structure**: Order fields as they appear in document
+- Start small (a few fields), then grow. Use descriptive field names and put format hints in descriptions ("in USD", "as YYYY-MM-DD"); descriptions act as extraction prompts.
+- Keep nesting to one level of objects; use an array of objects for line items and transactions.
+- v2 Extract **silently removes** unsupported JSON Schema keywords (`allOf`, `oneOf`, `const`, `pattern`, `maximum`, and others) instead of erroring; v1 Extract errors on them. Setting `strict=true` on v2 turns the silent removal into an HTTP 422. All fields are treated as required and nullable regardless of `required`.
+- Schema authoring reference: https://docs.landing.ai/dpt3/ade-extract-schema-json. Or generate a starting schema with the Build Extract Schema API above.
 
-For detailed schema patterns, see [references/extraction-schemas.md](references/extraction-schemas.md)
+### Batch Processing and Scale
 
-### Error Handling
-
-```python
-try:
-    response = client.parse(document=Path("doc.pdf"), model="dpt-2-latest")
-except Exception as e:
-    print(f"Parse error: {e}")
-    # Handle error (check file format, file size, API key, etc.)
-
-try:
-    extract_response = client.extract(schema=schema, markdown=response.markdown)
-except Exception as e:
-    print(f"Extract error: {e}")
-    # Handle error (check schema validity, markdown format, etc.)
-```
-
-### Handling Partial Results (HTTP 206)
-
-Both Parse and Extract APIs can return HTTP 206 (Partial Content) when processing partially succeeds:
-
-**Parse 206**: Some pages failed to parse. Check `metadata.failed_pages`:
-```python
-response = client.parse(document=Path("doc.pdf"), model="dpt-2-latest")
-if response.metadata.failed_pages:
-    print(f"Failed pages: {response.metadata.failed_pages}")
-    # Remaining pages were parsed successfully
-```
-
-**Extract 206**: Extraction completed but data doesn't fully match schema. Check `metadata.schema_violation_error`:
-```python
-response = client.extract(schema=schema, markdown=markdown)
-err = response.metadata.schema_violation_error
-if err:
-    print(f"Schema violation: {err}")
-    # Extraction still returns partial data; credits are consumed
-```
-
-**Note:** 206 responses still consume credits. The API returns the best results it could produce.
-
-### Performance
-
-- **Large files**: Use Parse Jobs API (async) for files > 50 pages or > 10 MB
-- **Batch processing**: Process documents in parallel when possible
-- **Cache parse results**: Save markdown to avoid re-parsing for multiple extractions
-- **Optimize parsing**: Use the `split="page"` parameter when you need page-level organization
-
-### File Formats
-
-- **Prefer PDF** for native documents (no conversion needed)
-- **Use high-resolution images** (300+ DPI) for better OCR
-- **Password-protected files**: Use the `password` parameter (requires ZDR). Without ZDR, remove password protection before parsing
-- **Test conversion** for DOCX/PPTX files (layout may change)
-
-For complete file format reference, see [references/file-formats.md](references/file-formats.md)
-
-## Use Cases
-
-See [references/use-cases.md](references/use-cases.md) for complete worked examples: invoice processing, form data extraction, multi-document classification, table extraction, and figure cropping with PyMuPDF.
-
-## Troubleshooting
-
-See [references/troubleshooting.md](references/troubleshooting.md) for HTTP error codes, parse failures, extraction accuracy issues, schema validation errors, and performance guidance.
+- Batches run as `standard` jobs. Create every job first, record the `job_id`s, then wait on each; a create-then-wait loop per document serializes the batch on its slowest job.
+- If you do fan out over sync endpoints, keep concurrency modest (single digits) and retry 429/5xx with exponential backoff, except a 429 on one oversized document, which no retry clears (see Processing Modes). Limits: https://docs.landing.ai/dpt3/rate-limits.
+- A sync request that times out (HTTP 504) means the document is too large for sync; resubmit it as a job rather than retrying.
+- Save every parse response to disk as you go; a re-run should never re-parse documents that already succeeded.
 
 ## Links
 
-### Official Documentation
-- [LandingAI ADE Documentation](https://docs.landing.ai/ade/)
-- [Parse API Reference](https://docs.landing.ai/api-reference/tools/ade-parse)
-- [Extract API Reference](https://docs.landing.ai/api-reference/tools/ade-extract)
-- [Split API Reference](https://docs.landing.ai/api-reference/tools/ade-split)
-- [Python Library (GitHub)](https://github.com/landing-ai/ade-python)
+**Guides:**
+- v2 overview: https://docs.landing.ai/dpt3/overview
+- v2 quickstart: https://docs.landing.ai/dpt3/quickstart
+- Parsing models (DPT-3 Pro vs. DPT-3 Verity): https://docs.landing.ai/dpt3/parse-models
+- Zero Data Retention: https://docs.landing.ai/ade/zdr
+- Webhooks (job completion events): https://docs.landing.ai/dpt3/webhooks
+- Migration guide (v1 to v2): https://docs.landing.ai/dpt3/migration-guide
+- Rate limits: https://docs.landing.ai/dpt3/rate-limits
+- Credit consumption: https://docs.landing.ai/dpt3/credit-consumption
 
-### API Key
-- [Get API Key](https://va.landing.ai/settings/api-key)
+**API reference (full contracts, with cURL/Python/Node tabs):**
+- Parse v2: https://docs.landing.ai/api-reference/parse/ade-parse
+- Parse Jobs v2: https://docs.landing.ai/api-reference/parse/ade-parse-jobs
+- Extract v2: https://docs.landing.ai/api-reference/extract/ade-extract
+- Extract Jobs v2: https://docs.landing.ai/api-reference/extract/ade-extract-jobs
+- Classify: https://docs.landing.ai/api-reference/tools/ade-classify
+- Section: https://docs.landing.ai/api-reference/tools/ade-section
+- Build Extract Schema: https://docs.landing.ai/api-reference/tools/ade-build-extract-schema
+- Split: https://docs.landing.ai/api-reference/tools/ade-split
+- Parse v1: https://docs.landing.ai/api-reference/tools/ade-parse
+- Extract v1: https://docs.landing.ai/api-reference/tools/ade-extract
 
-### Reference Files
-- [Extraction Schema Patterns](references/extraction-schemas.md) - Detailed schema examples
-- [Chunk Types Reference](references/chunk-types.md) - Complete chunk type guide
-- [File Formats](references/file-formats.md) - Supported formats and considerations
-- [Use Cases](references/use-cases.md) - Worked examples for invoices, forms, tables, and figure extraction
-- [Troubleshooting](references/troubleshooting.md) - HTTP error codes and common issues
+**Troubleshooting (per endpoint):**
+- Parse v2: https://docs.landing.ai/dpt3/parse-troubleshoot
+- Extract v2: https://docs.landing.ai/dpt3/extract-troubleshoot
+- Classify: https://docs.landing.ai/ade/ade-classify-troubleshoot
+- Section: https://docs.landing.ai/ade/ade-section-troubleshoot
+- Split: https://docs.landing.ai/ade/ade-split-troubleshoot
+
+**Libraries:**
+- Python guide (v2): https://docs.landing.ai/dpt3/ade-python
+- ade-python source: https://github.com/landing-ai/ade-python
+- TypeScript guide (v2): https://docs.landing.ai/dpt3/ade-typescript
+- ade-typescript source: https://github.com/landing-ai/ade-typescript

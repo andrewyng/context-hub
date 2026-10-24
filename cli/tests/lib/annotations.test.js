@@ -125,3 +125,44 @@ describe('annotations lib', () => {
     });
   });
 });
+
+describe('annotation filename identity', () => {
+  beforeEach(cleanAnnotationsDir);
+
+  it('keeps slashes distinct from literal double hyphens', () => {
+    writeAnnotation('acme/foo--bar', 'first');
+    writeAnnotation('acme--foo/bar', 'second');
+    expect(readAnnotation('acme/foo--bar').note).toBe('first');
+    expect(readAnnotation('acme--foo/bar').note).toBe('second');
+    expect(listAnnotations()).toHaveLength(2);
+    expect(clearAnnotation('acme/foo--bar')).toBe(true);
+    expect(readAnnotation('acme--foo/bar').note).toBe('second');
+  });
+
+  it('reads and migrates matching legacy annotations without confusing IDs', () => {
+    const dir = join(tempChubDir, 'annotations');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'acme--foo--bar.json'), JSON.stringify({
+      id: 'acme/foo--bar', note: 'legacy', updatedAt: '2026-01-01',
+    }));
+    expect(readAnnotation('acme/foo--bar').note).toBe('legacy');
+    expect(readAnnotation('acme--foo/bar')).toBeNull();
+    expect(clearAnnotation('acme--foo/bar')).toBe(false);
+    writeAnnotation('acme/foo--bar', 'updated');
+    expect(readAnnotation('acme/foo--bar').note).toBe('updated');
+    expect(listAnnotations()).toHaveLength(1);
+  });
+});
+
+it('does not overwrite a legacy filename that resembles an escaped ID', () => {
+  cleanAnnotationsDir();
+  const dir = join(tempChubDir, 'annotations');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'acme--foo%2Dbar.json'), JSON.stringify({
+    id: 'acme/foo%2Dbar', note: 'legacy percent', updatedAt: '2026-01-01',
+  }));
+  writeAnnotation('acme/foo-bar', 'new hyphen');
+  expect(readAnnotation('acme/foo%2Dbar').note).toBe('legacy percent');
+  expect(readAnnotation('acme/foo-bar').note).toBe('new hyphen');
+  expect(listAnnotations()).toHaveLength(2);
+});
